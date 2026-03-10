@@ -1,6 +1,6 @@
 // telegram/payment-check.ts
 import { Context, Markup, Telegraf } from "telegraf";
-import { Contact } from "../database/contact";
+import { Contact } from "../database/Contact";
 
 const PAID_USERS_BUTTON_CALLBACK = "show_paid_users_button";
 const NOT_PAID_USERS_BUTTON_CALLBACK = "show_not_paid_users_button";

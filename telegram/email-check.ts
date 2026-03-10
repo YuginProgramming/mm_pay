@@ -1,7 +1,7 @@
 // telegram/email-check.ts
 import { Context, Markup, Telegraf } from "telegraf";
 import { TelegramUser } from "../database/TelegramUser";
-import { Contact } from "../database/contact";
+import { Contact } from "../database/Contact";
 
 const PROCHAT_BUTTON_CALLBACK = "prochat_access_button";
 
