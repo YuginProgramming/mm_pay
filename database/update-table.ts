@@ -45,7 +45,15 @@ type ApiContact = {
   offers?: ApiContactOffer[];
   orders?: ApiContactOrder[];
 };
-type ApiContactsResponse = { data: ApiContact[]; meta?: { total?: number } };
+type ApiContactsMeta = {
+  current_page?: number;
+  last_page?: number;
+  per_page?: number;
+  total?: number;
+};
+type ApiContactsResponse = { data: ApiContact[]; meta?: ApiContactsMeta };
+
+const PER_PAGE = 15;
 
 function mapApiContactToRow(contact: ApiContact) {
   const tags: ContactTagRecord[] = (contact.tags ?? []).map((t) => ({ id: t.id, name: t.name }));
@@ -85,10 +93,12 @@ function mapApiContactToRow(contact: ApiContact) {
   };
 }
 
-async function fetchContactsPage(page: number): Promise<ApiContact[]> {
+async function fetchContactsPage(
+  page: number,
+): Promise<{ contacts: ApiContact[]; meta?: ApiContactsMeta }> {
   const url = new URL(`${BASE_URL}/contacts`);
   url.searchParams.set("page", String(page));
-  url.searchParams.set("per_page", "15");
+  url.searchParams.set("per_page", String(PER_PAGE));
   url.searchParams.set("with_orders", "1");
   url.searchParams.set("with_certificates", "1");
   url.searchParams.set("with_offers", "1");
@@ -108,7 +118,7 @@ async function fetchContactsPage(page: number): Promise<ApiContact[]> {
   }
 
   const body = (await response.json()) as ApiContactsResponse;
-  return body.data ?? [];
+  return { contacts: body.data ?? [], meta: body.meta };
 }
 
 async function updateTable(): Promise<void> {
@@ -119,7 +129,7 @@ async function updateTable(): Promise<void> {
   let totalUpserted = 0;
 
   while (true) {
-    const contacts = await fetchContactsPage(page);
+    const { contacts, meta } = await fetchContactsPage(page);
     if (contacts.length === 0) break;
 
     for (const apiContact of contacts) {
@@ -131,7 +141,13 @@ async function updateTable(): Promise<void> {
     }
 
     console.log(`Page ${page}: upserted ${contacts.length} contacts (total so far: ${totalUpserted})`);
-    if (contacts.length < 15) break;
+
+    const lastPage = meta?.last_page;
+    if (typeof lastPage === "number" && lastPage > 0) {
+      if (page >= lastPage) break;
+    } else if (contacts.length < PER_PAGE) {
+      break;
+    }
     page += 1;
   }
 

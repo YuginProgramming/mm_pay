@@ -8,5 +8,10 @@
       "esModuleInterop": true,
       "skipLibCheck": true
     },
-    "include": ["app.ts"]
+    "include": [
+      "app.ts",
+      "telegram/**/*.ts",
+      "payment/**/*.ts",
+      "database/**/*.ts"
+    ]
   }

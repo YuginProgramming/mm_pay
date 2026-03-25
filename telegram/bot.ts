@@ -6,9 +6,12 @@ import {
   registerProChatAccessHandler,
 } from "./email-check";
 import {
-  buildPaymentCheckKeyboard,
-  registerPaymentCheckHandlers,
-} from "./payment-check";
+  buildMergedStartEmailKeyboard,
+  buildStandalonePaymentMenuKeyboard,
+  registerDeferEmailHandler,
+} from "./payment-menu";
+import { registerPaymentCheckHandlers } from "./payment-check";
+import { registerWayForPayTestHandlers } from "./wayforpay-test";
 
 // Narrow type so we can access ctx.from safely
 type StartContext = Context & {
@@ -27,8 +30,9 @@ export const bot = new Telegraf<StartContext>(token);
 
 // Register inline button handler for ProChat access
 registerProChatAccessHandler(bot as unknown as any);
-// Register inline button handlers for payment checks
 registerPaymentCheckHandlers(bot as unknown as any);
+registerWayForPayTestHandlers(bot as unknown as any);
+registerDeferEmailHandler(bot as unknown as any);
 
 /**
  * Helper to upsert a TelegramUser based on ctx.from
@@ -114,28 +118,34 @@ bot.start(async (ctx) => {
       await user.save();
 
       const { text, extra } = buildEmailRequestMessage();
-      const paymentKeyboard = buildPaymentCheckKeyboard();
-
-      // Merge inline keyboards: keep original ProChat button and add payment buttons below it
-      const mergedKeyboard = {
-        ...paymentKeyboard,
-        reply_markup: {
-          inline_keyboard: [
-            // @ts-ignore – internal structure of Markup
-            ...(extra.reply_markup?.inline_keyboard ?? []),
-            // @ts-ignore
-            ...(paymentKeyboard.reply_markup?.inline_keyboard ?? []),
-          ],
-        },
-      };
+      const mergedKeyboard = buildMergedStartEmailKeyboard(extra);
 
       await ctx.reply(text, mergedKeyboard);
+    } else {
+      await ctx.reply(
+        "Меню оплати та перевірок:",
+        buildStandalonePaymentMenuKeyboard(),
+      );
     }
   } catch (error) {
     console.error("Error handling /start:", error);
     await ctx.reply(
       "На жаль, сталася помилка під час реєстрації. Спробуй, будь ласка, ще раз пізніше.",
     );
+  }
+});
+
+bot.command("payment", async (ctx) => {
+  try {
+    if (!ctx.from) return;
+    await trackTelegramUser(ctx as StartContext);
+    await ctx.reply(
+      "Меню оплати та перевірок (email для цього не потрібен):",
+      buildStandalonePaymentMenuKeyboard(),
+    );
+  } catch (error) {
+    console.error("Error handling /payment:", error);
+    await ctx.reply("Помилка. Спробуй пізніше.");
   }
 });
 
@@ -166,8 +176,12 @@ bot.on("text", async (ctx) => {
 
   const preferences = (user.preferences ?? {}) as Record<string, any>;
 
-  // If we never asked for email and it's already set, nothing to do
-  if (!preferences.awaitingEmail && preferences.email) {
+  if (preferences.email && !preferences.awaitingEmail) {
+    return;
+  }
+
+  // Не збираємо email, поки користувач сам не потрапить у режим очікування (/start без email)
+  if (!preferences.awaitingEmail) {
     return;
   }
 
@@ -197,6 +211,11 @@ bot.on("text", async (ctx) => {
  * Helper to launch the bot from your main app entrypoint.
  */
 export async function launchTelegramBot(): Promise<void> {
+  await bot.telegram.setMyCommands([
+    { command: "start", description: "Початок роботи з ботом" },
+    { command: "payment", description: "Меню оплати (без email)" },
+  ]);
+
   await bot.launch();
   console.log("Telegram bot started and is now polling for updates");
 
