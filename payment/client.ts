@@ -19,9 +19,27 @@ const createInvoice = async (input: CreateInvoiceInput): Promise<CreateInvoiceRe
     productPrice: [input.price],
   });
 
+  // overshom-wayforpay returns { value, error } (it may not throw on gateway errors)
+  if (session?.error) {
+    const err = session.error as any;
+    const details =
+      typeof err === "object" && err
+        ? {
+            code: err.code,
+            name: err.name,
+            reason: err.reason,
+            messageForClient: err.messageForClient,
+            whoCanHelp: err.whoCanHelp,
+          }
+        : err;
+    throw new Error(`[wayforpay] createInvoiceUrl error: ${JSON.stringify(details)}`);
+  }
+
   const invoiceUrl = session?.value?.invoiceUrl;
   if (!invoiceUrl) {
-    throw new Error("[wayforpay] Invoice URL was not returned");
+    throw new Error(
+      `[wayforpay] Invoice URL was not returned. Raw response: ${JSON.stringify(session?.value ?? null)}`,
+    );
   }
 
   return { invoiceUrl };
