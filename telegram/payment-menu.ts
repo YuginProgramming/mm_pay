@@ -2,7 +2,6 @@
 import type { InlineKeyboardMarkup } from "@telegraf/types/markup";
 import { Context, Markup, Telegraf } from "telegraf";
 import { TelegramUser } from "../database/TelegramUser";
-import { buildPaymentCheckKeyboard } from "./payment-check";
 import { buildWayForPayTestKeyboard } from "./wayforpay-test";
 
 const DEFER_EMAIL_CALLBACK = "payment_menu_defer_email";
@@ -19,7 +18,6 @@ function rowsOf(
 export function buildMergedStartEmailKeyboard(emailProChatExtra: {
   reply_markup?: InlineKeyboardMarkup;
 }) {
-  const paymentCheck = buildPaymentCheckKeyboard();
   const wfp = buildWayForPayTestKeyboard();
   const defer = Markup.inlineKeyboard([
     Markup.button.callback(
@@ -32,7 +30,6 @@ export function buildMergedStartEmailKeyboard(emailProChatExtra: {
     reply_markup: {
       inline_keyboard: [
         ...rowsOf(emailProChatExtra),
-        ...rowsOf(paymentCheck),
         ...rowsOf(wfp),
         ...rowsOf(defer),
       ],
@@ -42,12 +39,11 @@ export function buildMergedStartEmailKeyboard(emailProChatExtra: {
 
 /** Меню оплати / перевірок без рядка ProChat (для /payment або після «без email»). */
 export function buildStandalonePaymentMenuKeyboard() {
-  const paymentCheck = buildPaymentCheckKeyboard();
   const wfp = buildWayForPayTestKeyboard();
 
   return {
     reply_markup: {
-      inline_keyboard: [...rowsOf(paymentCheck), ...rowsOf(wfp)],
+      inline_keyboard: [...rowsOf(wfp)],
     },
   };
 }
