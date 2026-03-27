@@ -1,4 +1,4 @@
-import { appendFile } from "fs/promises";
+import { appendFile, readFile } from "fs/promises";
 import path from "path";
 import type { WayForPayWebhookPayload } from "./payment.types";
 
@@ -31,5 +31,30 @@ export async function logPaymentEvent(input: {
   };
 
   await appendFile(eventsPath, `${JSON.stringify(event)}\n`, "utf8");
+}
+
+export async function readRecentPaymentEvents(limit = 20): Promise<PaymentEvent[]> {
+  const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(200, Math.trunc(limit))) : 20;
+
+  try {
+    const raw = await readFile(eventsPath, "utf8");
+    const lines = raw
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    return lines
+      .slice(-safeLimit)
+      .map((line) => {
+        try {
+          return JSON.parse(line) as PaymentEvent;
+        } catch {
+          return null;
+        }
+      })
+      .filter((e): e is PaymentEvent => e !== null);
+  } catch {
+    return [];
+  }
 }
 

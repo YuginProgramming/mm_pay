@@ -11,6 +11,7 @@
 import "dotenv/config";
 import express from "express";
 import { handleCreateCheckout, handleWayForPayWebhook } from "./payment.controller";
+import { readRecentPaymentEvents } from "./payment-events";
 
 const app = express();
 const port = Number(process.env.PAYMENT_HTTP_PORT ?? process.env.PORT ?? "3000");
@@ -20,6 +21,13 @@ app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
 app.get("/health", (_req, res) => {
   res.status(200).json({ ok: true, service: "payment" });
+});
+
+app.get("/payment-events", async (req, res) => {
+  const rawLimit = Number(req.query.limit);
+  const limit = Number.isFinite(rawLimit) ? rawLimit : 20;
+  const events = await readRecentPaymentEvents(limit);
+  res.status(200).json({ count: events.length, events });
 });
 
 app.post("/wayforpay/webhook", (req, res) => {
@@ -46,6 +54,7 @@ app.listen(port, () => {
     `[payment] listening on http://0.0.0.0:${port}\n` +
       `  POST /wayforpay/webhook\n` +
       `  POST /wayforpay/checkout  (JSON: price, courseName, chatId)\n` +
-      `  GET  /health`,
+      `  GET  /health\n` +
+      `  GET  /payment-events?limit=20`,
   );
 });

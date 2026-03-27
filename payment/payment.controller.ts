@@ -17,19 +17,35 @@ const parseWebhookBody = (body: unknown): WayForPayWebhookPayload => {
   }
 
   const record = body as Record<string, unknown>;
-  const keys = Object.keys(record);
-
-  if (keys.length === 1) {
-    const firstKey = keys[0];
-    try {
-      const parsed = JSON.parse(firstKey) as WayForPayWebhookPayload;
-      if (parsed?.merchantAccount) return parsed;
-    } catch {
-      // fall through to direct body
-    }
+  const entries = Object.entries(record);
+  if (entries.length === 0) {
+    throw new Error("[webhook] Empty body");
   }
 
-  return body as WayForPayWebhookPayload;
+  // Standard JSON body case.
+  if ("merchantAccount" in record) {
+    return record as WayForPayWebhookPayload;
+  }
+
+  // WayForPay x-www-form-urlencoded case:
+  // first key is JSON prefix and first value contains products object pieces.
+  const [mainRawBody, objRawProducts = {}] = entries[0];
+  const rawProducts =
+    objRawProducts && typeof objRawProducts === "object"
+      ? Object.keys(objRawProducts as Record<string, unknown>)
+      : [];
+
+  try {
+    const reconstructed = rawProducts.length > 0 ? `${mainRawBody}[${rawProducts}]}` : mainRawBody;
+    return JSON.parse(reconstructed) as WayForPayWebhookPayload;
+  } catch {
+    // Fallback: sometimes first key can already be a full JSON string.
+    try {
+      return JSON.parse(mainRawBody) as WayForPayWebhookPayload;
+    } catch {
+      throw new Error("[webhook] Cannot parse WayForPay payload");
+    }
+  }
 };
 
 const handleWayForPayWebhook = async (
