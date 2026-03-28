@@ -1,6 +1,12 @@
 import { sequelize } from "./db";
 import "./Contact";
 import "./TelegramUser";
+import "./KwigaProduct";
+import "./ContactProductAccess";
+import { defineAssociations } from "./associations";
+
+defineAssociations();
+
 async function syncDb() {
   try {
     await sequelize.authenticate();
