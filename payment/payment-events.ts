@@ -2,7 +2,9 @@ import { appendFile, readFile } from "fs/promises";
 import path from "path";
 import type { WayForPayWebhookPayload } from "./payment.types";
 
+/** JSONL lines written by the payment webhook (local/dev convenience; production may use DB). */
 export type PaymentEvent = {
+  kind?: "payment";
   at: string; // ISO time
   orderReference: string;
   transactionStatus: string;
@@ -20,6 +22,7 @@ export async function logPaymentEvent(input: {
   metadata?: { chatId: string; courseName: string } | null;
 }): Promise<void> {
   const event: PaymentEvent = {
+    kind: "payment",
     at: new Date().toISOString(),
     orderReference: input.payload.orderReference,
     transactionStatus: String(input.payload.transactionStatus),
@@ -47,7 +50,11 @@ export async function readRecentPaymentEvents(limit = 20): Promise<PaymentEvent[
       .slice(-safeLimit)
       .map((line) => {
         try {
-          return JSON.parse(line) as PaymentEvent;
+          const parsed = JSON.parse(line) as Record<string, unknown>;
+          if (typeof parsed.orderReference !== "string") {
+            return null;
+          }
+          return parsed as PaymentEvent;
         } catch {
           return null;
         }

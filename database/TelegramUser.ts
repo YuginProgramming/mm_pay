@@ -5,6 +5,10 @@ export interface TelegramUserAttributes {
   id: number;
   telegramId: string;              // stored as BIGINT in DB
   email: string | null;
+  /** Bot state: waiting for user to send an email (not stored in JSON). */
+  awaitingEmail: boolean;
+  /** Previous email while user is changing address (not stored in JSON). */
+  emailChangeFrom: string | null;
   username: string | null;
   firstName: string | null;
   lastName: string | null;
@@ -24,6 +28,8 @@ type TelegramUserCreationAttributes = Optional<
   TelegramUserAttributes,
   | "id"
   | "email"
+  | "awaitingEmail"
+  | "emailChangeFrom"
   | "username"
   | "firstName"
   | "lastName"
@@ -46,6 +52,8 @@ export class TelegramUser
   declare id: number;
   declare telegramId: string;
   declare email: string | null;
+  declare awaitingEmail: boolean;
+  declare emailChangeFrom: string | null;
   declare username: string | null;
   declare firstName: string | null;
   declare lastName: string | null;
@@ -79,6 +87,19 @@ TelegramUser.init(
       type: DataTypes.STRING,
       allowNull: true,
       comment: "Email associated with this Telegram user",
+    },
+    awaitingEmail: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+      field: "awaiting_email",
+      comment: "Bot is collecting email from user via chat",
+    },
+    emailChangeFrom: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      field: "email_change_from",
+      comment: "Previous email while change_email flow is active",
     },
     username: {
       type: DataTypes.STRING,

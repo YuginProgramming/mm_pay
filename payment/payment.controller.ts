@@ -9,6 +9,7 @@ import {
   resolveWebhookMetadata,
   verifyIncomingWebhook,
 } from "./payment.service";
+import { processApprovedMultimaskingPayment } from "./grant-multimasking-access";
 import { logPaymentEvent } from "./payment-events";
 
 const parseWebhookBody = (body: unknown): WayForPayWebhookPayload => {
@@ -63,6 +64,15 @@ const handleWayForPayWebhook = async (
     }
 
     const metadata = resolveWebhookMetadata(data);
+
+    if (isApprovedPayment(data) && metadata) {
+      try {
+        await processApprovedMultimaskingPayment(data, metadata);
+      } catch (grantErr) {
+        console.error("[payment] grant after approval failed:", grantErr);
+      }
+    }
+
     await logPaymentEvent({ payload: data, metadata });
 
     releasePendingIfTerminal(data);

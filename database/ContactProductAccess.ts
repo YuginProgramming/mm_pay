@@ -24,6 +24,8 @@ export interface ContactProductAccessAttributes {
   countLeftDays: number | null;
   orderId: string | null;
   offerId: string | null;
+  /** WayForPay orderReference (UUID) — ідемпотентність webhook; лише для payment_hook. */
+  wayforpayOrderReference: string | null;
   source: AccessSource;
   revokedAt: Date | null;
   revokedReason: string | null;
@@ -48,6 +50,7 @@ type ContactProductAccessCreationAttributes = Optional<
   | "countLeftDays"
   | "orderId"
   | "offerId"
+  | "wayforpayOrderReference"
   | "source"
   | "revokedAt"
   | "revokedReason"
@@ -76,6 +79,7 @@ export class ContactProductAccess
   declare countLeftDays: number | null;
   declare orderId: string | null;
   declare offerId: string | null;
+  declare wayforpayOrderReference: string | null;
   declare source: AccessSource;
   declare revokedAt: Date | null;
   declare revokedReason: string | null;
@@ -172,6 +176,11 @@ ContactProductAccess.init(
       type: DataTypes.BIGINT,
       allowNull: true,
       field: "offer_id",
+    },
+    wayforpayOrderReference: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+      field: "wayforpay_order_reference",
     },
     source: {
       type: DataTypes.STRING(32),

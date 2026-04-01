@@ -3,6 +3,8 @@ import "./Contact";
 import "./TelegramUser";
 import "./KwigaProduct";
 import "./ContactProductAccess";
+import "./EmailChangeLog";
+import "./RulesConsent";
 import { defineAssociations } from "./associations";
 
 defineAssociations();

@@ -1,0 +1,204 @@
+First Product Launch Plan (Simplified and Practical)
+
+Launch goal:
+Create a clear, working path for people from the "Corridor" chat:
+announcement -> Telegram bot -> profile/access options check -> 500 UAH payment -> terms confirmation -> 1-month access granted.
+
+==================================================
+0) Readiness Criteria (Definition of Done)
+==================================================
+
+[x] User can open the bot, authorize via email, and see their status.
+[x] User can change email anytime via a separate button/command.
+[x] User sees available options based on KWIGA data (course/access count).
+[x] Bot has a production "Pay 500 UAH" button.
+[x] Before payment, user sees usage rules and "I Agree" confirmation button.
+[x] After successful payment, access period is stored: start date + end date (30 days).
+[x] Active access check logic exists (active/expired).
+[ ] Key event logging exists (started, paid, access granted, errors).
+[ ] Manual fallback process exists for failures (who handles and how to grant access manually).
+
+==================================================
+1) Required Functionality Before Announcement (MVP Launch Scope)
+==================================================
+
+1.1 Bot: login and profile
+[x] Welcome screen with short explanation of what user can do in the bot.
+[x] Email input + format validation.
+[x] Find user contact in local DB by email (synced from KWIGA).
+[x] "My Profile" screen: email, access status, expiration date (if any), available options.
+[x] Clear error texts: email not found, try another email/contact admin.
+
+1.2 Email change
+[x] "Change email" button/command.
+[x] On email change, re-check contact against DB.
+[x] Log email change event (old/new email, telegram_id, timestamp).
+
+1.3 500 UAH payment and 1-month access
+[x] Production "Pay 500 UAH" button.
+[x] WayForPay invoice creation with correct amount (500).
+[x] Webhook processing with strict signature verification.
+[ ] On successful payment status:
+    [x] save/update user access for 30 days,
+    [x] log payment event,
+    [x] persist success-payment record in DB first (source of truth — contact_product_access + wayforpay_order_reference),
+    [ ] enqueue a Redis job after DB write succeeds,
+    [ ] process Redis job from Telegram side to send end-user notification/access message,
+    [x] send payment success confirmation in bot.
+[ ] On failed/expired/declined status:
+    [ ] show correct user message,
+    [ ] clear/close pending state.
+
+1.4 Rules and confirmation
+[x] Rules screen (short, clear, user-friendly).
+[x] "I have read and agree to terms" button.
+[x] Payment button unavailable until rules are confirmed.
+[x] Store consent data: who, when, which rules version was accepted.
+
+1.5 Chat access
+[ ] Define exact list of target chats/groups.
+[ ] Access granting logic for required scenario (after payment and/or based on KWIGA conditions).
+[ ] User message with clear button/link to join target chat.
+[ ] Test "access expired" scenario (remove/restrict access per product rules).
+
+==================================================
+2) Data and Infrastructure
+==================================================
+
+2.1 KWIGA data sync
+[ ] Run and verify regular contacts/products sync.
+[ ] Ensure contacts and product access data are fresh before announcement day.
+[ ] Manually verify 10-20 real emails (exists in KWIGA -> correctly visible in DB).
+
+2.2 Database
+[ ] Verify required tables/columns exist for:
+    [x] Telegram user email,
+    [x] paid access status and expiration,
+    [x] rules consent records,
+    [ ] payment events.
+[ ] Prepare simple SQL checks for daily monitoring.
+
+2.3 Payment flow reliability
+[ ] Remove critical dependency on in-memory pending state (or add safe fallback).
+[ ] Handle server restart and repeated webhook cases.
+[x] Verify webhook idempotency (no duplicate access grant — unique wayforpay_order_reference).
+[ ] Introduce Redis-based async success-payment pipeline:
+    [ ] DB write happens first,
+    [ ] then payment-success event is pushed to Redis queue/stream,
+    [ ] Telegram logic consumes Redis job and sends final message/action to end-user.
+[ ] Add retry and dead-letter strategy for failed Telegram delivery jobs.
+
+==================================================
+3) Copy and UX (for conversion and lower support load)
+==================================================
+
+[ ] Welcome message for users arriving after "Corridor" announcement.
+[ ] Clear "what to do next" screen (1-2-3 steps).
+[ ] Short explanations:
+    [ ] access is for 1 month, not lifetime,
+    [ ] what payment includes,
+    [ ] where to contact support.
+[ ] Error texts without technical jargon.
+[ ] Post-payment messages: success / failed / pending.
+
+==================================================
+4) Pre-Release Test Plan (Mandatory)
+==================================================
+
+4.1 Smoke tests (manual, at least 8 scenarios)
+[ ] New user -> enters valid email -> sees profile.
+[ ] New user -> enters invalid/non-existing email -> sees clear error.
+[ ] User changes email -> new email is saved and used.
+[ ] User confirms rules -> payment button becomes available.
+[ ] 500 UAH payment (success) -> webhook -> 30-day access granted.
+[ ] Failed payment -> no access granted, user gets correct message.
+[ ] Duplicate webhook for same order -> no duplicate access.
+[ ] Expired user -> correct "access expired" status.
+
+4.2 Minimal load check
+[ ] 20-50 simultaneous bot entries do not break flow.
+[ ] Payment endpoint and bot stay stable and reachable.
+
+==================================================
+5) Launch Day (Operational Checklist)
+==================================================
+
+[ ] T-24h: final KWIGA sync and random user sample verification.
+[ ] T-24h: verify production env variables (DB, Telegram, WayForPay).
+[ ] T-24h: verify webhook URL and `/health` availability.
+[ ] T-2h: run 1 end-to-end test payment in production-like environment.
+[ ] T-0: send announcement in "Corridor" chat.
+[ ] T+30m: check first registrations, payments, and access grants.
+[ ] T+2h: short metrics and issues report.
+
+==================================================
+6) Monitoring and Metrics (First 14 Days)
+==================================================
+
+Daily:
+[ ] Number of new bot users.
+[ ] Number of users who completed email step.
+[ ] Number of "Pay 500 UAH" clicks.
+[ ] Conversion to successful payment.
+[ ] Number of granted accesses.
+[ ] Webhook/bot/DB errors.
+
+Alerts:
+[ ] No webhook events for > N minutes while payments are expected.
+[ ] Sharp increase in 4xx/5xx errors.
+[ ] Access granted but user did not receive link/role.
+
+==================================================
+7) Roles and Ownership
+==================================================
+
+[ ] Bot owner (name/contact).
+[ ] Payment + webhook owner.
+[ ] DB + KWIGA sync owner.
+[ ] On-call person for launch day and first week.
+[ ] Incident escalation channel (Telegram/Slack/phone).
+
+==================================================
+8) Plan B (If Something Goes Wrong)
+==================================================
+
+[ ] Ready-to-use user-facing message template for technical issues.
+[ ] Manual process for payment confirmation and temporary access grant.
+[ ] Quick FAQ for common launch problems.
+[ ] Clear "pause announcement/traffic" criteria for critical failures.
+
+==================================================
+9) Minimal Implementation Order (Recommended Sequence)
+==================================================
+
+Step 1: Profile + available options based on KWIGA data.
+Step 2: Stable standalone email change flow.
+Step 3: Rules screen + mandatory confirmation.
+Step 4: Production "Pay 500 UAH" button + reliable webhook flow.
+Step 5: 30-day access assignment and expiration tracking.
+Step 6: End-to-end test, then announcement in "Corridor".
+
+==================================================
+Launch Go/No-Go
+==================================================
+
+If all items in sections 0, 1, and 4 are checked, proceed with first production launch.
+If any critical item is missing (payment, access period, rules, profile), delay announcement by 2-5 days and close the gaps first.
+
+==================================================
+Production Server Launch Files/Modules
+==================================================
+
+For production launch on the server, I need these 3 runtime parts deployed and running:
+
+1) Telegram bot runtime (all Telegram-related running components)
+   - `telegram/*`
+   - Bot entrypoint and handlers
+
+2) Database runtime/processes (all DB-related processes)
+   - `database/*`
+   - DB connection, models, associations, sync/migration jobs
+
+3) Payment HTTP server runtime (all payment-related server parts)
+   - `payment/*`
+   - HTTP server, webhook handling, invoice creation, payment events processing
