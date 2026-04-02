@@ -126,6 +126,45 @@ async function createEmailChangeLogsTable(): Promise<void> {
   );
 }
 
+async function createAppSettingsTable(): Promise<void> {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      setting_key     VARCHAR(128) PRIMARY KEY,
+      setting_value   TEXT NOT NULL DEFAULT '',
+      description_uk  TEXT,
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await sequelize.query(`
+    INSERT INTO app_settings (setting_key, setting_value, description_uk)
+    VALUES
+      (
+        'multimasking_course_price_uah',
+        '500',
+        'Ціна доступу до навчального продукту MULTIMASKING (грн)'
+      ),
+      (
+        'personal_consultation_price_uah',
+        '',
+        'Ціна персональної консультації (грн); порожньо, доки не запущено'
+      ),
+      (
+        'target_group_id',
+        '',
+        'Telegram ID цільової групи (формат -100…); задати вручну UPDATE'
+      ),
+      (
+        'debug_telegram_user_id',
+        '6956239629',
+        'Telegram user id тестового акаунта для дебагу бота'
+      )
+    ON CONFLICT (setting_key) DO NOTHING;
+  `);
+  console.log(
+    'Migration completed: "app_settings" table and default rows (if missing).',
+  );
+}
+
 async function addWayforpayOrderReferenceColumn(): Promise<void> {
   await sequelize.query(`
     ALTER TABLE contact_product_access
@@ -150,6 +189,7 @@ async function runMigrations(): Promise<void> {
     await createRulesConsentsTable();
     await addTelegramUserEmailStateColumns();
     await backfillTelegramStateFromPreferencesJson();
+    await createAppSettingsTable();
     await addWayforpayOrderReferenceColumn();
   } catch (error) {
     console.error("Migration failed:", error);

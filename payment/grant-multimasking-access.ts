@@ -3,9 +3,9 @@ import { ContactProductAccess } from "../database/ContactProductAccess";
 import { TelegramUser } from "../database/TelegramUser";
 import {
   BOT_PAYMENT_EXTERNAL_PRODUCT_ID,
-  MULTIMASKING_ACCESS_PRICE_UAH,
   MULTIMASKING_PRODUCT_NAME,
 } from "./multimasking-product";
+import { getMultimaskingCoursePriceUah } from "./multimasking-price";
 import type { PaymentMetadata, WayForPayWebhookPayload } from "./payment.types";
 import { sendTelegramBotMessage } from "./telegram-notify";
 
@@ -46,11 +46,12 @@ export async function processApprovedMultimaskingPayment(
     return;
   }
 
-  if (!amountMatchesExpected(payload.amount, MULTIMASKING_ACCESS_PRICE_UAH)) {
+  const expectedPrice = await getMultimaskingCoursePriceUah();
+  if (!amountMatchesExpected(payload.amount, expectedPrice)) {
     console.error("[payment] amount mismatch", {
       orderReference,
       amount: payload.amount,
-      expected: MULTIMASKING_ACCESS_PRICE_UAH,
+      expected: expectedPrice,
     });
     await sendTelegramBotMessage(
       chatId,

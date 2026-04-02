@@ -10,6 +10,7 @@
     },
     "include": [
       "app.ts",
+      "debug/**/*.ts",
       "telegram/**/*.ts",
       "payment/**/*.ts",
       "database/**/*.ts"

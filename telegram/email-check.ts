@@ -1,6 +1,7 @@
 // telegram/email-check.ts
 import { Context, Markup, Telegraf } from "telegraf";
 import { TelegramUser } from "../database/TelegramUser";
+import { sparkleLabel } from "./sparkle-label";
 import { Contact } from "../database/Contact";
 
 const PROCHAT_BUTTON_CALLBACK = "prochat_access_button";
@@ -15,7 +16,10 @@ export function buildEmailRequestMessage() {
     "Після цього ви можете натиснути кнопку нижче, щоб перевірити доступ до ProChat.";
 
   const keyboard = Markup.inlineKeyboard([
-    Markup.button.callback("Отримати доступ в ProChat", PROCHAT_BUTTON_CALLBACK),
+    Markup.button.callback(
+      sparkleLabel("Отримати доступ в ProChat"),
+      PROCHAT_BUTTON_CALLBACK,
+    ),
   ]);
 
   // `keyboard` can be passed directly as the second argument to ctx.reply

@@ -34,7 +34,7 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
         const { text, extra } = buildEmailRequestMessage();
         await ctx.reply(
           text,
-          buildMergedStartEmailKeyboard(extra, rulesAccepted),
+          await buildMergedStartEmailKeyboard(extra, rulesAccepted),
         );
         return;
       }
@@ -46,8 +46,8 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
       }
 
       await ctx.reply(
-        "Меню оплати та перевірок:",
-        buildStandalonePaymentMenuKeyboard(true),
+        "Меню оплати:",
+        await buildStandalonePaymentMenuKeyboard(true),
       );
     } catch (error) {
       console.error("Error handling /start:", error);
@@ -70,8 +70,8 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
         return;
       }
       await ctx.reply(
-        "Меню оплати та перевірок (email для цього не потрібен):",
-        buildStandalonePaymentMenuKeyboard(true),
+        "Меню оплати:",
+        await buildStandalonePaymentMenuKeyboard(true),
       );
     } catch (error) {
       console.error("Error handling /payment:", error);

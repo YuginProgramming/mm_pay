@@ -72,8 +72,8 @@ export function registerTextHandlers(bot: Telegraf<StartContext>): void {
       return;
     }
     await ctx.reply(
-      "Меню оплати та перевірок:",
-      buildStandalonePaymentMenuKeyboard(true),
+      "Меню оплати:",
+      await buildStandalonePaymentMenuKeyboard(true),
     );
   });
 }

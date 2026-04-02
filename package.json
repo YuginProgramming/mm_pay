@@ -8,6 +8,7 @@
     "dev": "npm run build && node dist/app.js",
     "kwiga:sync": "ts-node database/sync-from-kwiga.ts",
     "clear-telegram-users": "ts-node database/clear-telegram-users.ts",
+    "debug:add-testuser": "ts-node debug/add-testuser.ts",
     "payment:server": "ts-node payment/http-server.ts",
     "payment:server:build": "npm run build && node dist/payment/http-server.js"
   },

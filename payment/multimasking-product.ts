@@ -1,6 +1,7 @@
-/** Єдине джерело правди для бот-оплати MULTIMASKING (Telegram + payment сервер). */
-
-export const MULTIMASKING_ACCESS_PRICE_UAH = 500;
+/**
+ * Назва продукту та технічні id для бот-оплати MULTIMASKING.
+ * Ціна в грн: таблиця app_settings, ключ multimasking_course_price_uah → getMultimaskingCoursePriceUah().
+ */
 
 /** Латиниця для рахунку WayForPay; без коми (для метаданих productName). */
 export const MULTIMASKING_PRODUCT_NAME = "Multimasking Learning Project";

@@ -33,7 +33,7 @@ registerTextHandlers(bot);
 export async function launchTelegramBot(): Promise<void> {
   await bot.telegram.setMyCommands([
     { command: "start", description: "Початок роботи з ботом" },
-    { command: "payment", description: "Меню оплати (без email)" },
+    { command: "payment", description: "Меню оплати" },
     { command: "profile", description: "Мій профіль і доступні опції" },
     { command: "change_email", description: "Змінити email" },
   ]);

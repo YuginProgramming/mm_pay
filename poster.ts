@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { Context, Markup, Telegraf } from "telegraf";
+import { sparkleLabel } from "./telegram/sparkle-label";
 
 const token = process.env.TELEGRAM_BOT_TOKEN_POSTER;
 const targetGroupId = process.env.TARGET_GROUP_ID;
@@ -19,7 +20,7 @@ if (!targetGroupId) {
 
 const bot = new Telegraf<Context>(token);
 const consultationButtonExtra = Markup.inlineKeyboard([
-  Markup.button.url("🧠 замовити консультацію", accountBotUrl),
+  Markup.button.url(sparkleLabel("🧠 замовити консультацію"), accountBotUrl),
 ]);
 
 bot.start(async (ctx) => {

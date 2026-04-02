@@ -1,6 +1,7 @@
 import { Context, Markup, Telegraf } from "telegraf";
 import { RulesConsent } from "../database/RulesConsent";
 import { TelegramUser } from "../database/TelegramUser";
+import { sparkleLabel } from "./sparkle-label";
 
 /** Full rules (Telegraph). */
 export const MULTIMASKING_RULES_URL =
@@ -29,8 +30,8 @@ export async function hasAcceptedCurrentRules(
 /** Inline actions when full rules text is shown separately or under email menu. */
 export function buildRulesMiniKeyboard() {
   return Markup.inlineKeyboard([
-    [Markup.button.url("Відкрити правила", MULTIMASKING_RULES_URL)],
-    [Markup.button.callback("Погоджуюсь", RULES_ACCEPT_CALLBACK)],
+    [Markup.button.url(sparkleLabel("Відкрити правила"), MULTIMASKING_RULES_URL)],
+    [Markup.button.callback(sparkleLabel("Погоджуюсь"), RULES_ACCEPT_CALLBACK)],
   ]);
 }
 
@@ -82,8 +83,8 @@ export function registerRulesAcceptHandler(bot: Telegraf<Context>): void {
         "./payment-menu-keyboards"
       );
       await ctx.reply(
-        "Умови прийнято. Нижче — меню оплати та перевірок:",
-        buildStandalonePaymentMenuKeyboard(true),
+        "Умови прийнято. Нижче — меню оплати:",
+        await buildStandalonePaymentMenuKeyboard(true),
       );
     } catch (err) {
       console.error("rules accept:", err);

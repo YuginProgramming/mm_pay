@@ -1,6 +1,7 @@
 // telegram/payment-check.ts
 import { Context, Markup, Telegraf } from "telegraf";
 import { Contact } from "../database/Contact";
+import { sparkleLabel } from "./sparkle-label";
 
 const PAID_USERS_BUTTON_CALLBACK = "show_paid_users_button";
 const NOT_PAID_USERS_BUTTON_CALLBACK = "show_not_paid_users_button";
@@ -16,13 +17,13 @@ export function buildPaymentCheckKeyboard() {
   const keyboard = Markup.inlineKeyboard([
     [
       Markup.button.callback(
-        "покажи користувачів що проплатили",
+        sparkleLabel("покажи користувачів що проплатили"),
         PAID_USERS_BUTTON_CALLBACK,
       ),
     ],
     [
       Markup.button.callback(
-        "покажи користувачів що не платили",
+        sparkleLabel("покажи користувачів що не платили"),
         NOT_PAID_USERS_BUTTON_CALLBACK,
       ),
     ],

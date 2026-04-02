@@ -5,6 +5,7 @@ import "./KwigaProduct";
 import "./ContactProductAccess";
 import "./EmailChangeLog";
 import "./RulesConsent";
+import "./AppSetting";
 import { defineAssociations } from "./associations";
 
 defineAssociations();
