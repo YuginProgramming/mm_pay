@@ -9,6 +9,8 @@
     "kwiga:sync": "ts-node database/sync-from-kwiga.ts",
     "clear-telegram-users": "ts-node database/clear-telegram-users.ts",
     "debug:add-testuser": "ts-node debug/add-testuser.ts",
+    "debug:remove-telegram-user": "ts-node debug/remove-telegram-user.ts",
+    "debug:sync-kwiga-ranks": "ts-node debug/sync-telegram-kwiga-ranks.ts",
     "payment:server": "ts-node payment/http-server.ts",
     "payment:server:build": "npm run build && node dist/payment/http-server.js"
   },
