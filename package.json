@@ -11,6 +11,7 @@
     "kwiga:sync:daemon:prod": "npm run build && node dist/database/kwiga-sync-daemon.js",
     "clear-telegram-users": "ts-node database/clear-telegram-users.ts",
     "debug:add-testuser": "ts-node debug/add-testuser.ts",
+    "debug:set-masters-test-user": "ts-node debug/set-masters-rank-test-user.ts",
     "debug:show-rank": "ts-node debug/show-debug-user-rank.ts",
     "debug:list-payments": "ts-node debug/list-successful-payments.ts",
     "debug:list-webhooks": "ts-node debug/list-wayforpay-webhooks.ts",

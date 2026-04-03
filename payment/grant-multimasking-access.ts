@@ -12,6 +12,8 @@ import {
 } from "./multimasking-telegram-groups";
 import type { PaymentMetadata, WayForPayWebhookPayload } from "./payment.types";
 import { sendTelegramBotMessage } from "./telegram-notify";
+import type { KwigaAudienceRank } from "../telegram/kwiga-user-rank";
+import { kwigaAudienceRank } from "../telegram/kwiga-user-rank";
 
 /**
  * Сума з webhook; ціна в боті (app_settings) може бути іншою — доступ надаємо за фактом підтвердженої оплати.
@@ -179,24 +181,65 @@ export async function processApprovedMultimaskingPayment(
     throw err;
   }
 
-  const successText =
+  const lifetimeAccessCount = await ContactProductAccess.count({
+    where: { contactId: contact.id },
+  });
+  const tierAfterPayment = kwigaAudienceRank(true, lifetimeAccessCount);
+
+  const commonHead =
     "Вітаємо! Ви здійснили оплату у розмірі " +
     formatAmountUaHuman(paidUah) +
     " грн.\n\n" +
     "Вам надано доступ до професійної спільноти протягом одного місяця (до " +
     formatEndDateUk(endAt) +
-    ").\n\n" +
-    "Далі вам доступні дві телеграм-групи — скористайтеся кнопками нижче.\n\n" +
-    "1) " +
-    MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL +
-    " — група для Майстрів\n" +
-    "2) " +
-    MULTIMASKING_TELEGRAM_GROUP_PRO_URL +
-    " — група для Про підписників\n\n" +
-    "Перевірте статус у боті: /profile";
+    ").\n\n";
 
-  await sendTelegramBotMessage(chatId, successText, [
-    { text: "Група для Майстрів", url: MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL },
-    { text: "Група для Про підписників", url: MULTIMASKING_TELEGRAM_GROUP_PRO_URL },
-  ]);
+  const { successText, urlButtons } = paymentSuccessCopyAndButtons(
+    tierAfterPayment,
+    commonHead,
+  );
+
+  await sendTelegramBotMessage(chatId, successText, urlButtons);
+}
+
+function paymentSuccessCopyAndButtons(
+  tier: KwigaAudienceRank,
+  commonHead: string,
+): {
+  successText: string;
+  urlButtons: { text: string; url: string }[];
+} {
+  if (tier === "pro") {
+    return {
+      successText:
+        commonHead +
+        "Далі вам доступні дві телеграм-групи — скористайтеся кнопками нижче.\n\n" +
+        "1) " +
+        MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL +
+        " — група для Майстрів\n" +
+        "2) " +
+        MULTIMASKING_TELEGRAM_GROUP_PRO_URL +
+        " — група для Про підписників\n\n" +
+        "Перевірте статус у боті: /profile",
+      urlButtons: [
+        { text: "Група для Майстрів", url: MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL },
+        {
+          text: "Група для Про підписників",
+          url: MULTIMASKING_TELEGRAM_GROUP_PRO_URL,
+        },
+      ],
+    };
+  }
+
+  return {
+    successText:
+      commonHead +
+      "Доступна телеграм-група для Майстрів — скористайтеся кнопкою нижче.\n\n" +
+      MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL +
+      " — група для Майстрів\n\n" +
+      "Перевірте статус у боті: /profile",
+    urlButtons: [
+      { text: "Група для Майстрів", url: MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL },
+    ],
+  };
 }
