@@ -2,7 +2,7 @@
 import { Context, Markup, Telegraf } from "telegraf";
 import { TelegramUser } from "../database/TelegramUser";
 import { sparkleLabel } from "./sparkle-label";
-import { Contact } from "../database/Contact";
+import { findContactByEmailForBot } from "../database/contact-lookup";
 
 const PROCHAT_BUTTON_CALLBACK = "prochat_access_button";
 
@@ -62,7 +62,7 @@ export function registerProChatAccessHandler(bot: Telegraf<Context>) {
       const email = telegramUser.email;
 
       // 2) Check if this email exists in contacts table
-      const contact = await Contact.findOne({ where: { email } });
+      const contact = await findContactByEmailForBot(email);
 
       if (contact) {
         await ctx.reply(

@@ -1,9 +1,13 @@
+export type TelegramUrlButton = { text: string; url: string };
+
 /**
  * Надсилання повідомлень у Telegram без запуску polling-бота (лише Bot API).
+ * `urlButtons` — опційні inline-кнопки з посиланнями (по одній у рядку).
  */
 export async function sendTelegramBotMessage(
   chatId: string,
   text: string,
+  urlButtons?: TelegramUrlButton[],
 ): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) {
@@ -11,15 +15,23 @@ export async function sendTelegramBotMessage(
     return;
   }
 
+  const payload: Record<string, unknown> = {
+    chat_id: chatId,
+    text,
+  };
+
+  if (urlButtons && urlButtons.length > 0) {
+    payload.reply_markup = {
+      inline_keyboard: urlButtons.map((b) => [{ text: b.text, url: b.url }]),
+    };
+  }
+
   const res = await fetch(
     `https://api.telegram.org/bot${encodeURIComponent(token)}/sendMessage`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-      }),
+      body: JSON.stringify(payload),
     },
   );
 

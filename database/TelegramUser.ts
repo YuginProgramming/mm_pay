@@ -1,6 +1,8 @@
 // database/TelegramUser.ts
 import { DataTypes, Model, Optional } from "sequelize";
 import { sequelize } from "./db";
+import type { KwigaAudienceRank } from "../telegram/kwiga-user-rank";
+
 export interface TelegramUserAttributes {
   id: number;
   telegramId: string;              // stored as BIGINT in DB
@@ -20,6 +22,10 @@ export interface TelegramUserAttributes {
   lastActivity: Date | null;
   totalInteractions: number;
   isActive: boolean;
+  /** Кеш рангу KWIGA: оновлюється при відкритті профілю / sync / дебаг-скриптах. */
+  kwigaAudienceRank: KwigaAudienceRank | null;
+  kwigaAccessRowCount: number | null;
+  kwigaRankSyncedAt: Date | null;
   preferences: Record<string, any> | null;
   createdAt?: Date;
   updatedAt?: Date;
@@ -41,6 +47,9 @@ type TelegramUserCreationAttributes = Optional<
   | "lastActivity"
   | "totalInteractions"
   | "isActive"
+  | "kwigaAudienceRank"
+  | "kwigaAccessRowCount"
+  | "kwigaRankSyncedAt"
   | "preferences"
   | "createdAt"
   | "updatedAt"
@@ -65,6 +74,9 @@ export class TelegramUser
   declare lastActivity: Date | null;
   declare totalInteractions: number;
   declare isActive: boolean;
+  declare kwigaAudienceRank: KwigaAudienceRank | null;
+  declare kwigaAccessRowCount: number | null;
+  declare kwigaRankSyncedAt: Date | null;
   declare preferences: Record<string, any> | null;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
@@ -86,7 +98,8 @@ TelegramUser.init(
     email: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: "Email associated with this Telegram user",
+      comment:
+        "Email (lowercase after migration); unique among non-null rows — index telegram_users_email_uq",
     },
     awaitingEmail: {
       type: DataTypes.BOOLEAN,
@@ -171,6 +184,26 @@ TelegramUser.init(
       defaultValue: true,
       field: "is_active",
       comment: "Whether user is currently active",
+    },
+    kwigaAudienceRank: {
+      type: DataTypes.STRING(32),
+      allowNull: true,
+      field: "kwiga_audience_rank",
+      comment:
+        "KWIGA audience tier: no_kwiga_contact | prospectives | masters | pro",
+    },
+    kwigaAccessRowCount: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: "kwiga_access_row_count",
+      comment:
+        "Lifetime contact_product_access row count used for rank (at last sync)",
+    },
+    kwigaRankSyncedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: "kwiga_rank_synced_at",
+      comment: "When kwiga_audience_rank was last written",
     },
     preferences: {
       type: DataTypes.JSONB,

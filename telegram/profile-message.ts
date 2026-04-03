@@ -1,8 +1,11 @@
 import { Op } from "sequelize";
-import { Contact } from "../database/Contact";
 import { ContactProductAccess } from "../database/ContactProductAccess";
 import { TelegramUser } from "../database/TelegramUser";
-import { formatKwigaRankLine, kwigaAudienceRank } from "./kwiga-user-rank";
+import {
+  computeKwigaRankSnapshot,
+  persistKwigaRankSnapshot,
+} from "./kwiga-rank-db";
+import { formatKwigaRankLine } from "./kwiga-user-rank";
 
 function formatDate(date: Date | null): string {
   if (!date) {
@@ -23,6 +26,9 @@ export async function buildProfileMessage(user: TelegramUser): Promise<string> {
   const email = user.email ?? null;
   const lines: string[] = ["Ваш профіль", ""];
 
+  const snapshot = await computeKwigaRankSnapshot(user);
+  await persistKwigaRankSnapshot(user, snapshot);
+
   if (!email) {
     lines.push("Email: не вказано");
     lines.push(
@@ -34,10 +40,10 @@ export async function buildProfileMessage(user: TelegramUser): Promise<string> {
   }
 
   lines.push(`Email: ${email}`);
-  const contact = await Contact.findOne({ where: { email } });
+  const contact = snapshot.contact;
   if (!contact) {
     lines.push("Статус у базі KWIGA: контакт не знайдено");
-    lines.push(formatKwigaRankLine("no_kwiga_contact"));
+    lines.push(formatKwigaRankLine(snapshot.rank));
     lines.push("");
     lines.push(
       "Спробуйте інший email або зверніться до адміністратора, якщо впевнені, що email правильний.",
@@ -46,12 +52,7 @@ export async function buildProfileMessage(user: TelegramUser): Promise<string> {
   }
 
   lines.push("Статус у базі KWIGA: контакт знайдено");
-  const lifetimeAccessCount = await ContactProductAccess.count({
-    where: { contactId: contact.id },
-  });
-  lines.push(
-    formatKwigaRankLine(kwigaAudienceRank(true, lifetimeAccessCount)),
-  );
+  lines.push(formatKwigaRankLine(snapshot.rank));
   const now = new Date();
   const activeRows = await ContactProductAccess.findAll({
     where: {

@@ -1,20 +1,37 @@
-import { Contact } from "../database/Contact";
+import { findContactByEmailForBot } from "../database/contact-lookup";
 import { ContactProductAccess } from "../database/ContactProductAccess";
+import { normalizeEmail } from "../database/normalize-email";
 import { TelegramUser } from "../database/TelegramUser";
 import {
   BOT_PAYMENT_EXTERNAL_PRODUCT_ID,
   MULTIMASKING_PRODUCT_NAME,
 } from "./multimasking-product";
-import { getMultimaskingCoursePriceUah } from "./multimasking-price";
+import {
+  MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL,
+  MULTIMASKING_TELEGRAM_GROUP_PRO_URL,
+} from "./multimasking-telegram-groups";
 import type { PaymentMetadata, WayForPayWebhookPayload } from "./payment.types";
 import { sendTelegramBotMessage } from "./telegram-notify";
 
-function amountMatchesExpected(amount: number | string, expected: number): boolean {
-  const n = typeof amount === "string" ? Number.parseFloat(amount) : amount;
-  if (!Number.isFinite(n)) {
-    return false;
+/**
+ * Сума з webhook; ціна в боті (app_settings) може бути іншою — доступ надаємо за фактом підтвердженої оплати.
+ */
+function parsePositivePaidAmount(
+  amount: number | string,
+): { ok: true; value: number } | { ok: false } {
+  const raw = typeof amount === "string" ? amount.trim().replace(",", ".") : amount;
+  const n = typeof raw === "string" ? Number.parseFloat(raw) : raw;
+  if (!Number.isFinite(n) || n <= 0) {
+    return { ok: false };
   }
-  return Math.abs(n - expected) < 0.01;
+  return { ok: true, value: n };
+}
+
+function formatAmountUaHuman(amount: number): string {
+  return new Intl.NumberFormat("uk-UA", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
 }
 
 function formatEndDateUk(end: Date): string {
@@ -46,21 +63,20 @@ export async function processApprovedMultimaskingPayment(
     return;
   }
 
-  const expectedPrice = await getMultimaskingCoursePriceUah();
-  if (!amountMatchesExpected(payload.amount, expectedPrice)) {
-    console.error("[payment] amount mismatch", {
+  const paidParse = parsePositivePaidAmount(payload.amount);
+  if (!paidParse.ok) {
+    console.error("[payment] invalid or zero amount in webhook", {
       orderReference,
       amount: payload.amount,
-      expected: expectedPrice,
     });
     await sendTelegramBotMessage(
       chatId,
-      "Платіж зафіксовано, але сума не збігається з очікуваною. " +
-        "Зверніться до підтримки та вкажіть номер замовлення:\n" +
+      "Платіж зафіксовано, але сума в повідомленні некоректна. Зверніться до підтримки, номер замовлення:\n" +
         orderReference,
     );
     return;
   }
+  const paidUah = paidParse.value;
 
   const currency = String(payload.currency ?? "").toUpperCase();
   if (currency !== "UAH") {
@@ -104,9 +120,9 @@ export async function processApprovedMultimaskingPayment(
     return;
   }
 
-  const contact = await Contact.findOne({
-    where: { email: telegramUser.email.trim() },
-  });
+  const contact = await findContactByEmailForBot(
+    normalizeEmail(telegramUser.email),
+  );
 
   if (!contact) {
     await sendTelegramBotMessage(
@@ -120,6 +136,13 @@ export async function processApprovedMultimaskingPayment(
   const startAt = new Date();
   const endAt = new Date(startAt);
   endAt.setUTCDate(endAt.getUTCDate() + 30);
+
+  console.log("[payment] granting access", {
+    orderReference,
+    paidUah,
+    currency: payload.currency,
+    contactId: contact.id,
+  });
 
   try {
     await ContactProductAccess.create({
@@ -156,11 +179,24 @@ export async function processApprovedMultimaskingPayment(
     throw err;
   }
 
-  await sendTelegramBotMessage(
-    chatId,
-    "Оплату успішно зараховано. Доступ активний до " +
-      formatEndDateUk(endAt) +
-      " (30 днів з моменту оплати).\n\n" +
-      "Перевірте статус: /profile",
-  );
+  const successText =
+    "Вітаємо! Ви здійснили оплату у розмірі " +
+    formatAmountUaHuman(paidUah) +
+    " грн.\n\n" +
+    "Вам надано доступ до професійної спільноти протягом одного місяця (до " +
+    formatEndDateUk(endAt) +
+    ").\n\n" +
+    "Далі вам доступні дві телеграм-групи — скористайтеся кнопками нижче.\n\n" +
+    "1) " +
+    MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL +
+    " — група для Майстрів\n" +
+    "2) " +
+    MULTIMASKING_TELEGRAM_GROUP_PRO_URL +
+    " — група для Про підписників\n\n" +
+    "Перевірте статус у боті: /profile";
+
+  await sendTelegramBotMessage(chatId, successText, [
+    { text: "Група для Майстрів", url: MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL },
+    { text: "Група для Про підписників", url: MULTIMASKING_TELEGRAM_GROUP_PRO_URL },
+  ]);
 }

@@ -15,8 +15,8 @@ announcement -> Telegram bot -> profile/access options check -> 500 UAH payment 
 [x] Before payment, user sees usage rules and "I Agree" confirmation button.
 [x] After successful payment, access period is stored: start date + end date (30 days).
 [x] Active access check logic exists (active/expired).
-[ ] Key event logging exists (started, paid, access granted, errors).
-[ ] Manual fallback process exists for failures (who handles and how to grant access manually).
+[x] Key event logging: `wayforpay_webhook_events` (усі виклики webhook), `payment-events.jsonl` (structured), консоль/pm2 для помилок; `debug/list-wayforpay-webhooks.ts` / `debug/list-successful-payments.ts` для перевірки.
+[x] Manual fallback: див. §8.1 (orderReference, БД, опційний ручний grant / replay).
 
 ==================================================
 1) Required Functionality Before Announcement (MVP Launch Scope)
@@ -34,20 +34,18 @@ announcement -> Telegram bot -> profile/access options check -> 500 UAH payment 
 [x] On email change, re-check contact against DB.
 [x] Log email change event (old/new email, telegram_id, timestamp).
 
-1.3 500 UAH payment and 1-month access
-[x] Production "Pay 500 UAH" button.
-[x] WayForPay invoice creation with correct amount (500).
-[x] Webhook processing with strict signature verification.
-[ ] On successful payment status:
-    [x] save/update user access for 30 days,
-    [x] log payment event,
-    [x] persist success-payment record in DB first (source of truth — contact_product_access + wayforpay_order_reference),
-    [ ] enqueue a Redis job after DB write succeeds,
-    [ ] process Redis job from Telegram side to send end-user notification/access message,
-    [x] send payment success confirmation in bot.
-[ ] On failed/expired/declined status:
-    [ ] show correct user message,
-    [ ] clear/close pending state.
+1.3 Оплата WayForPay і місячний доступ
+[x] Кнопка оплати в боті (сума з `app_settings` / `multimasking_course_price_uah`, fallback 500 UAH).
+[x] Створення інвойсу WayForPay з актуальною сумою.
+[x] Обробка webhook з перевіркою підпису.
+[x] Успішний статус оплати (Approved):
+    [x] збереження доступу ~30 днів у `contact_product_access` (source `payment_hook`, idempotency `wayforpay_order_reference`),
+    [x] лог: `wayforpay_webhook_events`, `payment-events.jsonl`,
+    [ ] Redis-черга після DB write — свідомо не впроваджено для MVP; після успішного grant викликається Telegram Bot API (`payment/grant-multimasking-access.ts` тощо) у тому ж процесі payment-сервера.
+    [x] Підтвердження успіху в боті (текст з суми, кнопки спільноти/груп за `payment/multimasking-telegram-groups.ts`).
+[x] Термінальні невдачі (Declined / Expired / тощо):
+    [x] повідомлення користувачу в Telegram (dedup `wayforpay_failure_notices`, ENV `WAYFORPAY_NOTIFY_FAILURE`),
+    [x] очищення pending у PostgreSQL (`pending_wayforpay_orders`), не in-memory-only.
 
 1.4 Rules and confirmation
 [x] Rules screen (short, clear, user-friendly).
@@ -56,50 +54,82 @@ announcement -> Telegram bot -> profile/access options check -> 500 UAH payment 
 [x] Store consent data: who, when, which rules version was accepted.
 
 1.5 Chat access
-[ ] Define exact list of target chats/groups.
-[ ] Access granting logic for required scenario (after payment and/or based on KWIGA conditions).
-[ ] User message with clear button/link to join target chat.
-[ ] Test "access expired" scenario (remove/restrict access per product rules).
+[x] Список чатів/URL для кнопок після оплати — `payment/multimasking-telegram-groups.ts`.
+[x] Надання доступу після оплати: рядок у `contact_product_access` + Telegram-повідомлення з інлайн-кнопками.
+[x] Повідомлення після успішної оплати з кнопками до цільових чатів (`grant-multimasking-access.ts`).
+[ ] Перевірити вручну сценарій «доступ закінчився»: профіль / SQL / правила продукту перед анонсом.
 
 ==================================================
 2) Data and Infrastructure
 ==================================================
 
 2.1 KWIGA data sync
-[ ] Run and verify regular contacts/products sync.
-[ ] Ensure contacts and product access data are fresh before announcement day.
-[ ] Manually verify 10-20 real emails (exists in KWIGA -> correctly visible in DB).
+[x] Реалізовано вивантаження KWIGA → PostgreSQL: `database/sync-from-kwiga.ts` (разовий повний прохід: список контактів, для кожного `/contacts/:id/products`, upsert `contacts` / `kwiga_products` / `contact_product_access` з `source = 'kwiga_sync'`).
+[x] Регулярний crawl: `database/kwiga-sync-daemon.ts`, інтервал з `app_settings.kwiga_sync_interval_minutes` або env `KWIGA_SYNC_INTERVAL_MINUTES`; production entrypoint `dist/database/kwiga-sync-daemon.js` (PM2 `mm-kwiga-sync` у `ecosystem.config.cjs`).
+[ ] Операційно на production: переконатися, що `mm-kwiga-sync` (або еквівалент) запущений, цикли в логах завершуються, помилок KWIGA API немає.
+[ ] Перед анонсом: освіжити дані (чек-лист T-24h у §5) і вибірково перевірити вибірку контактів/доступів у БД.
+[ ] Вручну перевірити 10–20 реальних email: контакт є в KWIGA → коректний рядок у `contacts` і очікувані рядки доступу в `contact_product_access` (де застосовно).
 
 2.2 Database
-[ ] Verify required tables/columns exist for:
-    [x] Telegram user email,
-    [x] paid access status and expiration,
-    [x] rules consent records,
-    [ ] payment events.
-[ ] Prepare simple SQL checks for daily monitoring.
+[x] Наявність таблиць/полів для:
+    [x] email у Telegram-профілі,
+    [x] статусу доступу та дат закінчення,
+    [x] згоди з правилами,
+    [x] подій оплати: `wayforpay_webhook_events`, `pending_wayforpay_orders`, `wayforpay_failure_notices`, grants у `contact_product_access` (`source = 'payment_hook'`),
+    [x] дзеркало KWIGA: `contacts` (за `external_id` KWIGA), `kwiga_products`, `contact_product_access` для синху (`source = 'kwiga_sync'`), `app_settings` (у т.ч. `kwiga_sync_interval_minutes`),
+    [x] ознаки аудиторії KWIGA у `telegram_users` (`kwiga_audience_rank`, `kwiga_access_row_count`, `kwiga_rank_synced_at`) для профілю бота.
+[x] SQL для моніторингу оплат — §2.2.1; для KWIGA — §2.2.2.
+[x] Міграції/створення таблиць: `database/migrations.ts` (запуск на сервері після деплою).
+
+2.2.1 Швидкі SQL (моніторинг оплат)
+    -- Останні webhook (усі статуси)
+    SELECT order_reference, transaction_status, amount, created_at
+      FROM wayforpay_webhook_events
+     ORDER BY created_at DESC LIMIT 50;
+
+    -- Успішні grant’и з WayForPay
+    SELECT id, contact_id, valid_until, amount_paid_uah, wayforpay_order_reference, granted_at
+      FROM contact_product_access
+     WHERE source = 'payment_hook'
+     ORDER BY granted_at DESC LIMIT 30;
+
+    -- Pending інвойси (очікують оплати)
+    SELECT order_reference, telegram_user_id, amount_uah, created_at
+      FROM pending_wayforpay_orders
+     ORDER BY created_at DESC LIMIT 30;
+
+    -- Чи вже відправляли повідомлення про невдачу по orderReference
+    SELECT * FROM wayforpay_failure_notices ORDER BY created_at DESC LIMIT 20;
+
+2.2.2 Швидкі SQL (моніторинг KWIGA / контактів)
+    -- Скільки контактів з KWIGA в локальній БД
+    SELECT COUNT(*) AS contacts_total FROM contacts;
+
+    -- Рядки доступу з синху KWIGA (не оплата WayForPay)
+    SELECT COUNT(*) AS kwiga_sync_access_rows FROM contact_product_access WHERE source = 'kwiga_sync';
+
+    -- Найсвіжіша мітка синху по рядках kwiga_sync
+    SELECT MAX(last_synced_at) AS last_kwiga_row_sync FROM contact_product_access WHERE source = 'kwiga_sync';
+
+    -- Приклад перевірки одного email (підставити нормалізований email)
+    -- SELECT id, external_id, email FROM contacts WHERE email = 'user@example.com';
 
 2.3 Payment flow reliability
-[ ] Remove critical dependency on in-memory pending state (or add safe fallback).
-[ ] Handle server restart and repeated webhook cases.
-[x] Verify webhook idempotency (no duplicate access grant — unique wayforpay_order_reference).
-[ ] Introduce Redis-based async success-payment pipeline:
-    [ ] DB write happens first,
-    [ ] then payment-success event is pushed to Redis queue/stream,
-    [ ] Telegram logic consumes Redis job and sends final message/action to end-user.
-[ ] Add retry and dead-letter strategy for failed Telegram delivery jobs.
+[x] Pending-замовлення в PostgreSQL (`pending_wayforpay_orders`), не лише в пам’яті.
+[x] Повторні webhook після рестарту: ідемпотентність по `wayforpay_order_reference` + аудит у `wayforpay_webhook_events`.
+[x] Webhook idempotency — унікальний індекс / логіка в grant (без подвійного доступу за тим самим orderReference).
+[ ] Redis async pipeline — поза поточним scope (див. §1.3; DB-first + sendMessage в payment-процесі).
+[ ] Retry / dead-letter для доставки в Telegram — не впроваджено; при збої перевірити логи та §8.1.
 
 ==================================================
 3) Copy and UX (for conversion and lower support load)
 ==================================================
 
-[ ] Welcome message for users arriving after "Corridor" announcement.
-[ ] Clear "what to do next" screen (1-2-3 steps).
-[ ] Short explanations:
-    [ ] access is for 1 month, not lifetime,
-    [ ] what payment includes,
-    [ ] where to contact support.
-[ ] Error texts without technical jargon.
-[ ] Post-payment messages: success / failed / pending.
+[x] Привітання / короткий Corridor-онбординг для нових користувачів `/start` (`telegram/corridor-onboarding.ts`).
+[x] Далі що робити — кроки 1–3 у тому ж тексті + команди `/profile` / `/payment` / `/change_email`.
+[x] Короткі пояснення в онбордингу та в `/payment`: доступ ~1 місяць, після оплати перевірити `/profile`, куди писати якщо не оновилося.
+[ ] Уніфікувати всі екрани помилок «без жаргону» (періодичний рев’ю копірайту).
+[x] Після оплати: успіх у success-тексті grant; невдача — `payment-failure-notify.ts`; pending — через статуси профілю / повторний візит.
 
 ==================================================
 4) Pre-Release Test Plan (Mandatory)
@@ -162,10 +192,20 @@ Alerts:
 8) Plan B (If Something Goes Wrong)
 ==================================================
 
-[ ] Ready-to-use user-facing message template for technical issues.
-[ ] Manual process for payment confirmation and temporary access grant.
-[ ] Quick FAQ for common launch problems.
-[ ] Clear "pause announcement/traffic" criteria for critical failures.
+[ ] Готовий шаблон повідомлення користувачам при технічних збоях (канал + текст).
+[x] Ручне підтвердження оплати та grant — процедура в §8.1.
+[ ] Швидкий FAQ для типових питань запуску.
+[ ] Критерії «пауза анонсу / трафіку» при критичних збоях.
+
+8.1 Ручне підтвердження оплати (fallback)
+    1. У WayForPay (або листі клієнта) взяти `orderReference` (UUID платежу).
+    2. У БД перевірити: `wayforpay_webhook_events` (чи прийшов Approved), `contact_product_access`
+       з цим `wayforpay_order_reference` та `source = 'payment_hook'`.
+    3. Зіставити користувача: `pending_wayforpay_orders.order_reference` → `telegram_user_id`, або
+       email у `telegram_users` → `contacts`.
+    4. Якщо гроші є, а grant-рядка немає — за потреби вручну додати `contact_product_access`
+       (або безпечно переотримати/відтворити webhook лише після узгодження процедури; не дублювати доступ).
+    5. Повідомити користувача в Telegram вручну або через підтримку (посилання на групи — як у успішному бот-повідомленні).
 
 ==================================================
 9) Minimal Implementation Order (Recommended Sequence)
@@ -195,9 +235,9 @@ For production launch on the server, I need these 3 runtime parts deployed and r
    - `telegram/*`
    - Bot entrypoint and handlers
 
-2) Database runtime/processes (all DB-related processes)
-   - `database/*`
-   - DB connection, models, associations, sync/migration jobs
+2) Database / KWIGA sync runtime
+   - `database/*` (моделі, міграції, `sync-from-kwiga.ts`)
+   - Процес регулярного crawl: `dist/database/kwiga-sync-daemon.js` (PM2 `mm-kwiga-sync`)
 
 3) Payment HTTP server runtime (all payment-related server parts)
    - `payment/*`

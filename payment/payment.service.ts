@@ -28,7 +28,7 @@ const createCheckoutForCourse = async (
   chatId: string
 ): Promise<CreateInvoiceResult> => {
   const orderReference = randomUUID();
-  putPendingOrder(orderReference, { chatId, courseName });
+  await putPendingOrder(orderReference, { chatId, courseName });
 
   try {
     return await createInvoice({
@@ -38,15 +38,15 @@ const createCheckoutForCourse = async (
       price,
     });
   } catch (err) {
-    takePendingOrder(orderReference);
+    await takePendingOrder(orderReference);
     throw err;
   }
 };
 
-/** Invoice serviceUrl callbacks often omit `products[]`; then we use pending order by orderReference. */
-const resolveWebhookMetadata = (
-  data: WayForPayWebhookPayload
-): { courseName: string; chatId: string } | null => {
+/** Invoice serviceUrl callbacks often omit `products[]`; then we use DB pending row by orderReference. */
+const resolveWebhookMetadata = async (
+  data: WayForPayWebhookPayload,
+): Promise<PaymentMetadata | null> => {
   const name = data.products?.[0]?.name;
   if (name) {
     try {
@@ -55,7 +55,7 @@ const resolveWebhookMetadata = (
       return null;
     }
   }
-  const pending = peekPendingOrder(data.orderReference);
+  const pending = await peekPendingOrder(data.orderReference);
   if (pending) {
     return { courseName: pending.courseName, chatId: pending.chatId };
   }
@@ -64,10 +64,16 @@ const resolveWebhookMetadata = (
 
 const TERMINAL_FAILURE = new Set(["Declined", "Voided", "Refunded", "Expired"]);
 
-const releasePendingIfTerminal = (payload: WayForPayWebhookPayload): void => {
+const isTerminalPaymentFailure = (payload: WayForPayWebhookPayload): boolean => {
+  return TERMINAL_FAILURE.has(String(payload.transactionStatus));
+};
+
+const releasePendingIfTerminal = async (
+  payload: WayForPayWebhookPayload,
+): Promise<void> => {
   const status = String(payload.transactionStatus);
   if (status === "Approved" || TERMINAL_FAILURE.has(status)) {
-    takePendingOrder(payload.orderReference);
+    await takePendingOrder(payload.orderReference);
   }
 };
 
@@ -117,6 +123,7 @@ export {
   parseMetadataFromProductName,
   createCheckoutForCourse,
   isApprovedPayment,
+  isTerminalPaymentFailure,
   verifyIncomingWebhook,
   buildAcceptAck,
   buildDeclineAck,

@@ -1,41 +1,27 @@
 /**
- * Прописує в telegram_users.preferences категорію KWIGA (ранг) для кожного користувача
- * за тією ж логікою, що й kwigaAudienceRank / профіль бота:
+ * Прописує ранг KWIGA у колонки telegram_users (kwiga_audience_rank, …) і в preferences
+ * для кожного користувача за тією ж логікою, що й профіль бота:
  *
  *   - немає email або немає контакту в contacts → no_kwiga_contact
  *   - контакт є, 0 рядків у contact_product_access → prospectives
  *   - 1–4 рядки (усі часові, включно з відкликаними) → masters
  *   - 5+ → pro
  *
- * У preferences записуються:
- *   kwigaAudienceRank, kwigaAccessRowCount, kwigaRankSyncedAt
- *
  * Запуск з кореня проєкту:
  *   npx ts-node debug/sync-telegram-kwiga-ranks.ts
  *   npx ts-node debug/sync-telegram-kwiga-ranks.ts --dry-run
  */
 import "dotenv/config";
-import { Contact } from "../database/Contact";
-import { ContactProductAccess } from "../database/ContactProductAccess";
 import { sequelize } from "../database/db";
 import { TelegramUser } from "../database/TelegramUser";
-import { type KwigaAudienceRank, kwigaAudienceRank } from "../telegram/kwiga-user-rank";
-
-const PREFS_RANK_KEY = "kwigaAudienceRank";
-const PREFS_COUNT_KEY = "kwigaAccessRowCount";
-const PREFS_SYNCED_KEY = "kwigaRankSyncedAt";
+import {
+  computeKwigaRankSnapshot,
+  persistKwigaRankSnapshot,
+} from "../telegram/kwiga-rank-db";
+import { type KwigaAudienceRank } from "../telegram/kwiga-user-rank";
 
 function isDryRun(): boolean {
   return process.argv.includes("--dry-run");
-}
-
-function basePrefs(
-  prefs: Record<string, unknown> | null,
-): Record<string, unknown> {
-  if (prefs && typeof prefs === "object" && !Array.isArray(prefs)) {
-    return { ...prefs };
-  }
-  return {};
 }
 
 async function main(): Promise<void> {
@@ -56,43 +42,22 @@ async function main(): Promise<void> {
 
   for (const user of users) {
     const email = user.email?.trim() ?? null;
-    let hasContact = false;
-    let accessRowCount = 0;
+    const snapshot = await computeKwigaRankSnapshot(user);
+    summary[snapshot.rank] += 1;
 
-    if (email) {
-      const contact = await Contact.findOne({ where: { email } });
-      if (contact) {
-        hasContact = true;
-        accessRowCount = await ContactProductAccess.count({
-          where: { contactId: contact.id },
-        });
-      }
-    }
-
-    const rank = kwigaAudienceRank(hasContact, accessRowCount);
-    summary[rank] += 1;
-
-    const nextPrefs = {
-      ...basePrefs(user.preferences as Record<string, unknown> | null),
-      [PREFS_RANK_KEY]: rank,
-      [PREFS_COUNT_KEY]: accessRowCount,
-      [PREFS_SYNCED_KEY]: new Date().toISOString(),
-    };
-
-    const prev = user.preferences as Record<string, unknown> | null;
-    const prevRank = prev?.[PREFS_RANK_KEY];
-    const prevCount = prev?.[PREFS_COUNT_KEY];
+    const prevRank = user.kwigaAudienceRank;
+    const prevCount = user.kwigaAccessRowCount;
     const changed =
-      prevRank !== rank || prevCount !== accessRowCount;
+      prevRank !== snapshot.rank || prevCount !== snapshot.accessRowCount;
 
     if (dry) {
       if (changed) {
         console.log(
-          `id=${user.id} telegram_id=${user.telegramId} email=${email ?? "—"} → ${rank} (access rows=${accessRowCount})`,
+          `id=${user.id} telegram_id=${user.telegramId} email=${email ?? "—"} → ${snapshot.rank} (access rows=${snapshot.accessRowCount})`,
         );
       }
     } else {
-      await user.update({ preferences: nextPrefs });
+      await persistKwigaRankSnapshot(user, snapshot);
       updated += 1;
     }
   }

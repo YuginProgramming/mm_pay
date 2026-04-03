@@ -6,6 +6,9 @@ import "./ContactProductAccess";
 import "./EmailChangeLog";
 import "./RulesConsent";
 import "./AppSetting";
+import "./PendingWayforpayOrder";
+import "./WayforpayFailureNotice";
+import "./WayforpayWebhookEvent";
 import { defineAssociations } from "./associations";
 
 defineAssociations();

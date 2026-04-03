@@ -1,4 +1,5 @@
 // database/migrations.ts
+import { QueryTypes } from "sequelize";
 import { sequelize } from "./db";
 
 async function addEmailToTelegramUsers(): Promise<void> {
@@ -157,11 +158,181 @@ async function createAppSettingsTable(): Promise<void> {
         'debug_telegram_user_id',
         '6956239629',
         'Telegram user id тестового акаунта для дебагу бота'
+      ),
+      (
+        'kwiga_sync_interval_minutes',
+        '30',
+        'Інтервал повного синху KWIGA → БД (хв); env KWIGA_SYNC_INTERVAL_MINUTES перекриває, якщо заданий'
       )
     ON CONFLICT (setting_key) DO NOTHING;
   `);
   console.log(
     'Migration completed: "app_settings" table and default rows (if missing).',
+  );
+}
+
+async function addTelegramUserKwigaRankColumns(): Promise<void> {
+  await sequelize.query(`
+    ALTER TABLE telegram_users
+    ADD COLUMN IF NOT EXISTS kwiga_audience_rank VARCHAR(32);
+  `);
+  await sequelize.query(`
+    ALTER TABLE telegram_users
+    ADD COLUMN IF NOT EXISTS kwiga_access_row_count INTEGER;
+  `);
+  await sequelize.query(`
+    ALTER TABLE telegram_users
+    ADD COLUMN IF NOT EXISTS kwiga_rank_synced_at TIMESTAMPTZ;
+  `);
+  await sequelize.query(`
+    UPDATE telegram_users u
+    SET
+      kwiga_audience_rank = NULLIF(TRIM(u.preferences->>'kwigaAudienceRank'), ''),
+      kwiga_access_row_count = CASE
+        WHEN (u.preferences->>'kwigaAccessRowCount') ~ '^[0-9]+$'
+        THEN (u.preferences->>'kwigaAccessRowCount')::integer
+        ELSE NULL
+      END,
+      kwiga_rank_synced_at = CASE
+        WHEN u.preferences->>'kwigaRankSyncedAt' IS NOT NULL
+          AND TRIM(u.preferences->>'kwigaRankSyncedAt') <> ''
+        THEN (u.preferences->>'kwigaRankSyncedAt')::timestamptz
+        ELSE NULL
+      END
+    WHERE u.preferences IS NOT NULL
+      AND jsonb_typeof(u.preferences) = 'object'
+      AND (u.preferences ? 'kwigaAudienceRank')
+      AND u.kwiga_audience_rank IS NULL;
+  `);
+  console.log(
+    'Migration completed: kwiga_audience_rank columns on telegram_users (if missing) + prefs backfill.',
+  );
+}
+
+async function normalizeEmailsAndAddUniqueIndexes(): Promise<void> {
+  await sequelize.query(`
+    UPDATE telegram_users
+    SET email = NULL
+    WHERE email IS NOT NULL AND trim(email) = '';
+  `);
+  await sequelize.query(`
+    UPDATE telegram_users
+    SET email = lower(trim(email))
+    WHERE email IS NOT NULL;
+  `);
+  await sequelize.query(`
+    UPDATE contacts
+    SET email = lower(trim(email));
+  `);
+  await sequelize.query(`
+    DELETE FROM contacts c
+    USING contacts k
+    WHERE c.external_id = 9000002
+      AND k.external_id <> 9000002
+      AND c.email = k.email;
+  `);
+
+  const tgDups = await sequelize.query<{ email: string }>(
+    `
+    SELECT email FROM telegram_users
+    WHERE email IS NOT NULL
+    GROUP BY email
+    HAVING count(*) > 1
+    LIMIT 5;
+  `,
+    { type: QueryTypes.SELECT },
+  );
+  if (tgDups.length > 0) {
+    console.error("telegram_users duplicate emails:", tgDups);
+    throw new Error(
+      "Migration: виправте дублікати telegram_users.email вручну, потім перезапустіть міграцію.",
+    );
+  }
+
+  const cDups = await sequelize.query<{ email: string }>(
+    `
+    SELECT email FROM contacts
+    GROUP BY email
+    HAVING count(*) > 1
+    LIMIT 5;
+  `,
+    { type: QueryTypes.SELECT },
+  );
+  if (cDups.length > 0) {
+    console.error("contacts duplicate emails:", cDups);
+    throw new Error(
+      "Migration: виправте дублікати contacts.email вручну, потім перезапустіть міграцію.",
+    );
+  }
+
+  await sequelize.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS contacts_email_uq ON contacts (email);
+  `);
+  await sequelize.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS telegram_users_email_uq
+    ON telegram_users (email)
+    WHERE email IS NOT NULL;
+  `);
+  console.log(
+    'Migration completed: normalized emails + unique indexes on contacts(email) and telegram_users(email).',
+  );
+}
+
+async function createPendingWayforpayTables(): Promise<void> {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS pending_wayforpay_orders (
+      order_reference VARCHAR(128) PRIMARY KEY,
+      chat_id         TEXT NOT NULL,
+      course_name     TEXT NOT NULL,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS pending_wayforpay_orders_created_at_idx
+      ON pending_wayforpay_orders (created_at);
+  `);
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS wayforpay_failure_notices (
+      order_reference VARCHAR(128) PRIMARY KEY,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  console.log(
+    'Migration completed: pending_wayforpay_orders + wayforpay_failure_notices (if missing).',
+  );
+}
+
+async function createWayforpayWebhookEventsTable(): Promise<void> {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS wayforpay_webhook_events (
+      id                SERIAL PRIMARY KEY,
+      order_reference   VARCHAR(128) NOT NULL,
+      transaction_status VARCHAR(64) NOT NULL,
+      amount_raw        TEXT NOT NULL,
+      currency          VARCHAR(8) NOT NULL,
+      reason_code       VARCHAR(32),
+      merchant_account  VARCHAR(128) NOT NULL,
+      signature_valid   BOOLEAN NOT NULL,
+      metadata_chat_id  TEXT,
+      metadata_course_name TEXT,
+      raw_payload       JSONB NOT NULL,
+      created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS wayforpay_webhook_events_order_ref_idx
+      ON wayforpay_webhook_events (order_reference);
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS wayforpay_webhook_events_created_at_idx
+      ON wayforpay_webhook_events (created_at DESC);
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS wayforpay_webhook_events_status_idx
+      ON wayforpay_webhook_events (transaction_status);
+  `);
+  console.log(
+    'Migration completed: wayforpay_webhook_events (WayForPay webhook audit log).',
   );
 }
 
@@ -190,6 +361,10 @@ async function runMigrations(): Promise<void> {
     await addTelegramUserEmailStateColumns();
     await backfillTelegramStateFromPreferencesJson();
     await createAppSettingsTable();
+    await addTelegramUserKwigaRankColumns();
+    await normalizeEmailsAndAddUniqueIndexes();
+    await createPendingWayforpayTables();
+    await createWayforpayWebhookEventsTable();
     await addWayforpayOrderReferenceColumn();
   } catch (error) {
     console.error("Migration failed:", error);

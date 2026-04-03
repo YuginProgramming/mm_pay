@@ -1,19 +1,37 @@
-type PendingMeta = { chatId: string; courseName: string };
+import { PendingWayforpayOrder } from "../database/PendingWayforpayOrder";
 
-const store = new Map<string, PendingMeta>();
+export type PendingMeta = { chatId: string; courseName: string };
 
-export function putPendingOrder(orderReference: string, meta: PendingMeta): void {
-  store.set(orderReference, meta);
+export async function putPendingOrder(
+  orderReference: string,
+  meta: PendingMeta,
+): Promise<void> {
+  await PendingWayforpayOrder.create({
+    orderReference,
+    chatId: meta.chatId,
+    courseName: meta.courseName,
+  });
 }
 
 /** Read without removing (intermediate statuses may POST several times). */
-export function peekPendingOrder(orderReference: string): PendingMeta | undefined {
-  return store.get(orderReference);
+export async function peekPendingOrder(
+  orderReference: string,
+): Promise<PendingMeta | undefined> {
+  const row = await PendingWayforpayOrder.findByPk(orderReference);
+  if (!row) {
+    return undefined;
+  }
+  return { chatId: row.chatId, courseName: row.courseName };
 }
 
-export function takePendingOrder(orderReference: string): PendingMeta | undefined {
-  const meta = store.get(orderReference);
-  if (!meta) return undefined;
-  store.delete(orderReference);
+export async function takePendingOrder(
+  orderReference: string,
+): Promise<PendingMeta | undefined> {
+  const row = await PendingWayforpayOrder.findByPk(orderReference);
+  if (!row) {
+    return undefined;
+  }
+  const meta = { chatId: row.chatId, courseName: row.courseName };
+  await row.destroy();
   return meta;
 }

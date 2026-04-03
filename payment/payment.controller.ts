@@ -5,12 +5,15 @@ import {
   buildDeclineAck,
   createCheckoutForCourse,
   isApprovedPayment,
+  isTerminalPaymentFailure,
   releasePendingIfTerminal,
   resolveWebhookMetadata,
   verifyIncomingWebhook,
 } from "./payment.service";
+import { notifyTerminalPaymentFailureIfFirstTime } from "./payment-failure-notify";
 import { processApprovedMultimaskingPayment } from "./grant-multimasking-access";
 import { logPaymentEvent } from "./payment-events";
+import { persistWayforpayWebhookEvent } from "./persist-wayforpay-webhook";
 
 const parseWebhookBody = (body: unknown): WayForPayWebhookPayload => {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -55,15 +58,21 @@ const handleWayForPayWebhook = async (
 ): Promise<void> => {
   try {
     const data = parseWebhookBody(req.body);
+    const metadata = await resolveWebhookMetadata(data);
+    const signatureValid = verifyIncomingWebhook(data);
 
-    if (!verifyIncomingWebhook(data)) {
+    await persistWayforpayWebhookEvent({
+      payload: data,
+      metadata,
+      signatureValid,
+    });
+
+    if (!signatureValid) {
       res
         .status(400)
         .json("Corrupted webhook received. Webhook signature is not authentic.");
       return;
     }
-
-    const metadata = resolveWebhookMetadata(data);
 
     if (isApprovedPayment(data) && metadata) {
       try {
@@ -71,11 +80,33 @@ const handleWayForPayWebhook = async (
       } catch (grantErr) {
         console.error("[payment] grant after approval failed:", grantErr);
       }
+    } else if (!isApprovedPayment(data) && isTerminalPaymentFailure(data)) {
+      if (metadata) {
+        console.log("[payment] terminal non-success webhook", {
+          orderReference: data.orderReference,
+          transactionStatus: data.transactionStatus,
+          chatId: metadata.chatId,
+        });
+        try {
+          await notifyTerminalPaymentFailureIfFirstTime(
+            data.orderReference,
+            metadata.chatId,
+            String(data.transactionStatus),
+          );
+        } catch (notifyErr) {
+          console.error("[payment] failure notify:", notifyErr);
+        }
+      } else {
+        console.log("[payment] terminal failure, no chat metadata", {
+          orderReference: data.orderReference,
+          transactionStatus: data.transactionStatus,
+        });
+      }
     }
 
     await logPaymentEvent({ payload: data, metadata });
 
-    releasePendingIfTerminal(data);
+    await releasePendingIfTerminal(data);
 
     const ack = isApprovedPayment(data)
       ? buildAcceptAck(data.orderReference)

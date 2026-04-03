@@ -1,6 +1,7 @@
 /**
  * Додає тестовий контакт у `contacts` і прив’язує `telegram_users` до того самого email.
- * Створює 5 синтетичних рядків у contact_product_access (ранг KWIGA: pro) і оновлює preferences.
+ * Створює 5 синтетичних рядків у contact_product_access (ранг KWIGA: pro) і
+ * записує ранг у колонки telegram_users + preferences.
  *
  * Telegram id береться з app_settings (debug_telegram_user_id), або з аргумента, або з env.
  *
@@ -8,9 +9,17 @@
  *   npx ts-node debug/add-testuser.ts
  *   npx ts-node debug/add-testuser.ts 6956239629
  *
+ * Важливо: synthetic external_subscription_id залежать від contact.id у БД, щоб
+ * findOrCreate не знаходив чужі рядки (унікальний ключ глобальний) і реальний
+ * контакт KWIGA для того ж email отримав свої 5+ рядків для рангу pro.
+ *
  * Env: DEBUG_TG_USER_ID=... (якщо немає рядка в app_settings)
  */
 import "dotenv/config";
+import {
+  findContactByEmailForBot,
+  SYNTHETIC_DEBUG_CONTACT_EXTERNAL_ID,
+} from "../database/contact-lookup";
 import { Contact } from "../database/Contact";
 import { ContactProductAccess } from "../database/ContactProductAccess";
 import { sequelize } from "../database/db";
@@ -19,11 +28,11 @@ import {
   BOT_PAYMENT_EXTERNAL_PRODUCT_ID,
   MULTIMASKING_PRODUCT_NAME,
 } from "../payment/multimasking-product";
-import { kwigaAudienceRank } from "../telegram/kwiga-user-rank";
+import {
+  computeKwigaRankSnapshot,
+  persistKwigaRankSnapshot,
+} from "../telegram/kwiga-rank-db";
 import { resolveDebugTelegramUserId } from "./resolve-debug-telegram-id";
-
-/** Синтетичний Kwiga external_id (не повинен збігатися з реальними з синку). */
-const DEBUG_CONTACT_EXTERNAL_ID = 9_000_002;
 
 const TEST_EMAIL = "smith@example.com";
 const TEST_FIRST_NAME = "Jane";
@@ -33,24 +42,26 @@ const TEST_PHONE = "+1-555-010-0199";
 /** Мінімум рядків доступу для рангу `pro` (див. kwigaAudienceRank). */
 const PRO_RANK_MIN_ROWS = 5;
 
-/** Унікальні synthetic external_subscription_id для дебаг-доступів (не перетинаються з Kwiga). */
-function debugAccessSubscriptionIds(): string[] {
+/** База для synthetic subscription id — велика, щоб рідко перетинатись з KWIGA. */
+const DEBUG_ACCESS_SUBSCRIPTION_BASE = 9_000_000_000n;
+
+/**
+ * Унікальні synthetic external_subscription_id на контакт.
+ * Раніше ID будувались лише з константи — існуючі рядки «чіплялись» до іншого
+ * contact_id, і ваш KWIGA-контакт лишався з 0 записів (prospectives).
+ */
+function debugAccessSubscriptionIds(contactId: number): string[] {
   return Array.from({ length: PRO_RANK_MIN_ROWS }, (_, i) =>
-    String(BigInt(DEBUG_CONTACT_EXTERNAL_ID) * 10_000n + BigInt(i + 1)),
+    String(
+      DEBUG_ACCESS_SUBSCRIPTION_BASE +
+        BigInt(contactId) * 1_000n +
+        BigInt(i + 1),
+    ),
   );
 }
 
-function mergePreferences(
-  prefs: Record<string, unknown> | null,
-): Record<string, unknown> {
-  if (prefs && typeof prefs === "object" && !Array.isArray(prefs)) {
-    return { ...prefs };
-  }
-  return {};
-}
-
 async function ensureProRankAccessRows(contactId: number): Promise<void> {
-  const subIds = debugAccessSubscriptionIds();
+  const subIds = debugAccessSubscriptionIds(contactId);
   for (const externalSubscriptionId of subIds) {
     await ContactProductAccess.findOrCreate({
       where: { externalSubscriptionId },
@@ -88,10 +99,12 @@ async function main(): Promise<void> {
     "npx ts-node debug/add-testuser.ts <id>",
   );
 
-  const [contact, contactCreated] = await Contact.findOrCreate({
-    where: { email: TEST_EMAIL },
-    defaults: {
-      externalId: DEBUG_CONTACT_EXTERNAL_ID,
+  let contact = await findContactByEmailForBot(TEST_EMAIL);
+  let contactCreated = false;
+
+  if (!contact) {
+    contact = await Contact.create({
+      externalId: SYNTHETIC_DEBUG_CONTACT_EXTERNAL_ID,
       email: TEST_EMAIL,
       firstName: TEST_FIRST_NAME,
       lastName: TEST_LAST_NAME,
@@ -100,10 +113,9 @@ async function main(): Promise<void> {
       tags: [],
       offers: [],
       orders: [],
-    },
-  });
-
-  if (!contactCreated) {
+    });
+    contactCreated = true;
+  } else {
     await contact.update({
       firstName: TEST_FIRST_NAME,
       lastName: TEST_LAST_NAME,
@@ -140,25 +152,17 @@ async function main(): Promise<void> {
   tgUser.emailChangeFrom = null;
   tgUser.firstName = tgUser.firstName ?? TEST_FIRST_NAME;
   tgUser.lastName = tgUser.lastName ?? TEST_LAST_NAME;
-
-  const accessRowCount = await ContactProductAccess.count({
-    where: { contactId: contact.id },
-  });
-  const rank = kwigaAudienceRank(true, accessRowCount);
-  tgUser.preferences = {
-    ...mergePreferences(tgUser.preferences as Record<string, unknown> | null),
-    kwigaAudienceRank: rank,
-    kwigaAccessRowCount: accessRowCount,
-    kwigaRankSyncedAt: new Date().toISOString(),
-  };
   await tgUser.save();
+
+  const snapshot = await computeKwigaRankSnapshot(tgUser);
+  await persistKwigaRankSnapshot(tgUser, snapshot);
 
   console.log("OK — тестовий користувач для дебагу (очікуваний ранг KWIGA: pro)");
   console.log({
     telegramId,
     telegramUserRow: { id: tgUser.id, created: tgCreated },
-    kwigaAudienceRank: rank,
-    kwigaAccessRowCount: accessRowCount,
+    kwigaAudienceRank: snapshot.rank,
+    kwigaAccessRowCount: snapshot.accessRowCount,
     contact: {
       id: contact.id,
       externalId: contact.externalId,

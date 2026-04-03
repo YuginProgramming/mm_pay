@@ -12,6 +12,7 @@ import { ContactProductAccess } from "./ContactProductAccess";
 import { KwigaProduct } from "./KwigaProduct";
 import type { KwigaProductAttributes } from "./KwigaProduct";
 import { sequelize } from "./db";
+import { normalizeEmail } from "./normalize-email";
 
 /**
  * Pull contacts from Kwiga, then for each contact GET /contacts/:id/products
@@ -21,6 +22,7 @@ import { sequelize } from "./db";
  *   npx ts-node database/sync-from-kwiga.ts
  *   npx ts-node database/sync-from-kwiga.ts --contacts-only
  *   npx ts-node database/sync-from-kwiga.ts --max-pages=5 --start-page=1
+ * Регулярний crawl: npm run kwiga:sync:daemon (або PM2 `mm-kwiga-sync`).
  *
  * Env:
  *   SYNC_MAX_PAGES   — stop after N list pages (omit = all pages)
@@ -30,20 +32,24 @@ import { sequelize } from "./db";
  */
 
 const BASE_URL = process.env.KWIGA_BASE_URL ?? "https://api.kwiga.com";
-const TOKEN = process.env.KWIGA_TOKEN;
-const CABINET_HASH = process.env.KWIGA_CABINET_HASH;
 
-if (!TOKEN || !CABINET_HASH) {
-  console.error("Missing KWIGA_TOKEN or KWIGA_CABINET_HASH in .env");
-  process.exit(1);
+export function assertKwigaEnv(): void {
+  const token = process.env.KWIGA_TOKEN?.trim();
+  const cabinet = process.env.KWIGA_CABINET_HASH?.trim();
+  if (!token || !cabinet) {
+    console.error("Missing KWIGA_TOKEN or KWIGA_CABINET_HASH in .env");
+    process.exit(1);
+  }
 }
 
-const headers = {
-  Accept: "application/json",
-  "Content-Type": "application/json",
-  Token: TOKEN,
-  "Cabinet-Hash": CABINET_HASH,
-} as const;
+function kwigaHeaders(): Record<string, string> {
+  return {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    Token: process.env.KWIGA_TOKEN!,
+    "Cabinet-Hash": process.env.KWIGA_CABINET_HASH!,
+  };
+}
 
 const PER_PAGE = Math.min(
   250,
@@ -141,9 +147,10 @@ function mapApiContactToRow(contact: ApiContact) {
     };
   });
 
+  const emailNorm = normalizeEmail(contact.email ?? "");
   return {
     externalId: contact.id,
-    email: contact.email,
+    email: emailNorm,
     firstName: contact.first_name ?? null,
     lastName: contact.last_name ?? null,
     phone: contact.phone ?? null,
@@ -164,7 +171,7 @@ async function fetchContactsPage(
   url.searchParams.set("with_certificates", "1");
   url.searchParams.set("with_offers", "1");
 
-  const response = await fetch(url, { method: "GET", headers });
+  const response = await fetch(url, { method: "GET", headers: kwigaHeaders() });
   if (!response.ok) {
     throw new Error(`GET /contacts ${response.status}: ${await response.text()}`);
   }
@@ -174,7 +181,7 @@ async function fetchContactsPage(
 
 async function fetchContactProducts(kwigaContactId: number): Promise<ApiProduct[]> {
   const url = `${BASE_URL}/contacts/${kwigaContactId}/products`;
-  const response = await fetch(url, { method: "GET", headers });
+  const response = await fetch(url, { method: "GET", headers: kwigaHeaders() });
   if (!response.ok) {
     throw new Error(`GET /contacts/${kwigaContactId}/products ${response.status}: ${await response.text()}`);
   }
@@ -277,7 +284,8 @@ function parseCli() {
   return { contactsOnly, maxPages, startPage };
 }
 
-async function run(): Promise<void> {
+/** Одна повна ітерація синхронізації (контакти + продукти); не закриває пул БД. */
+export async function runKwigaSyncOnce(): Promise<void> {
   const { contactsOnly, maxPages, startPage } = parseCli();
   await sequelize.authenticate();
   console.log(
@@ -297,6 +305,10 @@ async function run(): Promise<void> {
 
     for (const apiContact of contacts) {
       const row = mapApiContactToRow(apiContact);
+      if (!row.email) {
+        console.warn(`Skip Kwiga contact ${apiContact.id}: empty email`);
+        continue;
+      }
       await Contact.upsert(row, {
         conflictFields: ["external_id"] as unknown as (keyof ContactAttributes)[],
       });
@@ -340,9 +352,18 @@ async function run(): Promise<void> {
   );
 }
 
-void run()
-  .catch((e) => {
+async function mainCli(): Promise<void> {
+  assertKwigaEnv();
+  try {
+    await runKwigaSyncOnce();
+  } catch (e) {
     console.error(e);
     process.exit(1);
-  })
-  .finally(() => sequelize.close());
+  } finally {
+    await sequelize.close();
+  }
+}
+
+if (require.main === module) {
+  void mainCli();
+}

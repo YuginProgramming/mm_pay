@@ -6,6 +6,7 @@ import {
   buildStandalonePaymentMenuKeyboard,
 } from "./payment-menu";
 import { buildRulesMessageAndKeyboard, hasAcceptedCurrentRules } from "./rules";
+import { CORRIDOR_START_HINT_UA } from "./corridor-onboarding";
 import { StartContext, trackTelegramUser } from "./user-tracking";
 
 export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
@@ -17,7 +18,8 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
       if (isNew) {
         await ctx.reply(
           `Привіт, ${user.firstName ?? "друже"}! 👋\n\n` +
-            "Дякую, що запустив(ла) бота. Твій профіль успішно зареєстровано.",
+            "Дякую, що запустив(ла) бота. Твій профіль успішно зареєстровано." +
+            CORRIDOR_START_HINT_UA,
         );
       } else {
         await ctx.reply(
@@ -70,7 +72,9 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
         return;
       }
       await ctx.reply(
-        "Меню оплати:",
+        "Меню оплати:\n\n" +
+          "Після успішної оплати WayForPay доступ з’явиться протягом хвилини; перевірте /profile. " +
+          "Якщо статус не змінився — зверніться до підтримки Corridor.",
         await buildStandalonePaymentMenuKeyboard(true),
       );
     } catch (error) {

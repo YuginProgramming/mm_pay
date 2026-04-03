@@ -7,6 +7,8 @@
  * Env:
  *   PAYMENT_HTTP_PORT — listen port (default: PORT or 3000)
  *   WFP_* — see payment.config.ts
+ *   WAYFORPAY_NOTIFY_FAILURE — set to "false" to skip Telegram message on Declined/Expired/etc.
+ *     (default: notify once per orderReference, deduped in wayforpay_failure_notices)
  */
 import "dotenv/config";
 import express from "express";
