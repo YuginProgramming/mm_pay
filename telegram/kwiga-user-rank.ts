@@ -1,6 +1,7 @@
 /**
- * Категорія клієнта за наявністю контакту KWIGA та кількістю записів доступу до продуктів
- * (будь-коли створених рядків у contact_product_access для цього контакту).
+ * Категорія клієнта за наявністю контакту KWIGA та кількістю релевантних рядків у
+ * contact_product_access: kwiga_sync і manual_grant. Рядки payment_hook (оплата в Telegram)
+ * не змінюють ранг — до pro лише через накопичення доступів з боку KWIGA (або manual_grant у дебагу).
  */
 export type KwigaAudienceRank =
   | "no_kwiga_contact"

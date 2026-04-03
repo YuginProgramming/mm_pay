@@ -1,3 +1,4 @@
+import { Op } from "sequelize";
 import { findContactByEmailForBot } from "../database/contact-lookup";
 import type { Contact } from "../database/Contact";
 import { ContactProductAccess } from "../database/ContactProductAccess";
@@ -9,9 +10,21 @@ import {
 
 export type KwigaRankSnapshot = {
   rank: KwigaAudienceRank;
+  /** Кількість рядків access, що впливають на ранг (kwiga_sync, manual_grant; без payment_hook). */
   accessRowCount: number;
   contact: Contact | null;
 };
+
+/**
+ * Рядки з оплати в Telegram не підвищують ранг до pro — лише дані з KWIGA (sync) та manual_grant.
+ */
+export async function countContactAccessRowsForKwigaTier(
+  contactId: number,
+): Promise<number> {
+  return ContactProductAccess.count({
+    where: { contactId, source: { [Op.ne]: "payment_hook" } },
+  });
+}
 
 function mergePrefs(
   prefs: Record<string, unknown> | null,
@@ -34,9 +47,7 @@ export async function computeKwigaRankSnapshot(
   if (!contact) {
     return { rank: "no_kwiga_contact", accessRowCount: 0, contact: null };
   }
-  const accessRowCount = await ContactProductAccess.count({
-    where: { contactId: contact.id },
-  });
+  const accessRowCount = await countContactAccessRowsForKwigaTier(contact.id);
   return {
     rank: kwigaAudienceRank(true, accessRowCount),
     accessRowCount,

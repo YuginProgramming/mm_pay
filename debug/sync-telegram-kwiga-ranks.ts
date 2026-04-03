@@ -3,9 +3,9 @@
  * для кожного користувача за тією ж логікою, що й профіль бота:
  *
  *   - немає email або немає контакту в contacts → no_kwiga_contact
- *   - контакт є, 0 рядків у contact_product_access → prospectives
- *   - 1–4 рядки (усі часові, включно з відкликаними) → masters
- *   - 5+ → pro
+ *   - контакт є, 0 релевантних рядків (contact_product_access без payment_hook) → prospectives
+ *   - 1–4 таких рядки → masters
+ *   - 5+ → pro  (оплати в Telegram не додаються до цього лічильника)
  *
  * Запуск з кореня проєкту:
  *   npx ts-node debug/sync-telegram-kwiga-ranks.ts

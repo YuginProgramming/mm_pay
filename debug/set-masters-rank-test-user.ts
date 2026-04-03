@@ -5,7 +5,7 @@
  * 1–4 рядки `contact_product_access` (за потреби додає 2 debug `manual_grant` «курси»).
  * Якщо контакта з цим email немає в `contacts`, створює тестовий рядок (external_id 9_000_004).
  *
- * Ранг masters = контакт є і 1–4 рядки доступу (`kwiga-user-rank.ts`). При ≥5 рядках у контакта скрипт завершиться з помилкою.
+ * Ранг masters = контакт є і 1–4 релевантні рядки (без payment_hook). При ≥5 таких рядках скрипт завершиться з помилкою.
  *
  * Запуск:
  *   npx ts-node debug/set-masters-rank-test-user.ts
@@ -25,6 +25,7 @@ import {
 } from "../payment/multimasking-product";
 import {
   computeKwigaRankSnapshot,
+  countContactAccessRowsForKwigaTier,
   persistKwigaRankSnapshot,
 } from "../telegram/kwiga-rank-db";
 
@@ -98,20 +99,18 @@ async function main(): Promise<void> {
     },
   });
 
-  const total = await ContactProductAccess.count({
-    where: { contactId: contact.id },
-  });
+  const tierRows = await countContactAccessRowsForKwigaTier(contact.id);
 
-  if (total > 4) {
+  if (tierRows > 4) {
     console.error(
-      `У контакта ${contact.id} уже ${total} рядків contact_product_access (masters потребує 1–4). ` +
-        "Скрипт не видаляє рядки kwiga_sync / payment_hook. Оберіть інший тестовий акаунт або менше даних у KWIGA.",
+      `У контакта ${contact.id} уже ${tierRows} релевантних рядків (без payment_hook); masters потребує 1–4. ` +
+        "Скрипт не видаляє kwiga_sync. Оберіть інший тестовий акаунт або менше даних у KWIGA.",
     );
     process.exit(1);
   }
 
   /** 2 курси → рівно в діапазоні masters (1–4). */
-  const needRows = total === 0 ? 2 : 0;
+  const needRows = tierRows === 0 ? 2 : 0;
   if (needRows === 2) {
     for (const externalSubscriptionId of subIds) {
       await ContactProductAccess.findOrCreate({

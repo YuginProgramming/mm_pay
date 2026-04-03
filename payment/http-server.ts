@@ -12,7 +12,11 @@
  */
 import "dotenv/config";
 import express from "express";
-import { handleCreateCheckout, handleWayForPayWebhook } from "./payment.controller";
+import {
+  handleCreateCheckout,
+  handleWayForPayWebhook,
+  parseWebhookBody,
+} from "./payment.controller";
 import { readRecentPaymentEvents } from "./payment-events";
 
 const app = express();
@@ -35,17 +39,31 @@ app.get("/payment-events", async (req, res) => {
 app.post("/wayforpay/webhook", (req, res) => {
   const body = req.body;
   const keys = body && typeof body === "object" && !Array.isArray(body) ? Object.keys(body) : [];
+  const rawTopLevel =
+    body && typeof body === "object" && body !== null && "orderReference" in body
+      ? (body as { orderReference?: string; transactionStatus?: string }).orderReference
+      : undefined;
+
+  let parsedOrderReference: string | undefined;
+  let parsedTransactionStatus: string | undefined;
+  let parsePreviewOk = false;
+  try {
+    const parsed = parseWebhookBody(body);
+    parsedOrderReference = parsed.orderReference;
+    parsedTransactionStatus = String(parsed.transactionStatus);
+    parsePreviewOk = true;
+  } catch {
+    // Реальна обробка й помилка — у handleWayForPayWebhook; тут лише превʼю для логу.
+  }
+
   console.log("[payment] POST /wayforpay/webhook", {
     contentType: req.headers["content-type"],
-    bodyKeys: keys.slice(0, 20),
-    orderReference:
-      body && typeof body === "object" && body !== null && "orderReference" in body
-        ? (body as { orderReference?: string }).orderReference
-        : undefined,
-    transactionStatus:
-      body && typeof body === "object" && body !== null && "transactionStatus" in body
-        ? (body as { transactionStatus?: string }).transactionStatus
-        : undefined,
+    rawUrlencodedKeyCount: keys.length,
+    rawBodyKeySample: keys.slice(0, 3).map((k) => (k.length > 80 ? `${k.slice(0, 80)}…` : k)),
+    orderReferenceRawTopLevel: rawTopLevel,
+    orderReference: parsePreviewOk ? parsedOrderReference : undefined,
+    transactionStatus: parsePreviewOk ? parsedTransactionStatus : undefined,
+    parsePreviewOk,
   });
   void handleWayForPayWebhook(req, res);
 });

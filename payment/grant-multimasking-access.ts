@@ -1,5 +1,6 @@
 import { findContactByEmailForBot } from "../database/contact-lookup";
 import { ContactProductAccess } from "../database/ContactProductAccess";
+import { countContactAccessRowsForKwigaTier } from "../telegram/kwiga-rank-db";
 import { normalizeEmail } from "../database/normalize-email";
 import { TelegramUser } from "../database/TelegramUser";
 import {
@@ -181,10 +182,15 @@ export async function processApprovedMultimaskingPayment(
     throw err;
   }
 
-  const lifetimeAccessCount = await ContactProductAccess.count({
-    where: { contactId: contact.id },
+  const tierRowCount = await countContactAccessRowsForKwigaTier(contact.id);
+  const tierAfterPayment = kwigaAudienceRank(true, tierRowCount);
+  console.log("[payment] post-grant tier for success message", {
+    orderReference,
+    chatId,
+    contactId: contact.id,
+    tierRowCountExcludingPaymentHook: tierRowCount,
+    tierAfterPayment,
   });
-  const tierAfterPayment = kwigaAudienceRank(true, lifetimeAccessCount);
 
   const commonHead =
     "Вітаємо! Ви здійснили оплату у розмірі " +
