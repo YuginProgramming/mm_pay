@@ -6,7 +6,8 @@ import {
   buildStandalonePaymentMenuKeyboard,
 } from "./payment-menu";
 import { buildRulesMessageAndKeyboard, hasAcceptedCurrentRules } from "./rules";
-import { CORRIDOR_START_HINT_UA } from "./corridor-onboarding";
+import { buildCorridorStartHintUa } from "./corridor-onboarding";
+import { escapeTelegramHtml } from "./telegram-html";
 import { StartContext, trackTelegramUser } from "./user-tracking";
 
 export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
@@ -16,10 +17,12 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
       const { user, isNew } = await trackTelegramUser(ctx);
 
       if (isNew) {
+        const greetName = escapeTelegramHtml(user.firstName ?? "друже");
         await ctx.reply(
-          `Привіт, ${user.firstName ?? "друже"}! 👋\n\n` +
+          `Привіт, ${greetName}! 👋\n\n` +
             "Дякую, що запустив(ла) бота. Твій профіль успішно зареєстровано." +
-            CORRIDOR_START_HINT_UA,
+            buildCorridorStartHintUa(),
+          { parse_mode: "HTML" },
         );
       } else {
         await ctx.reply(

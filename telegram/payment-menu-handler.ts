@@ -6,6 +6,7 @@ import {
 } from "./payment-menu-keyboards";
 import { buildRulesMessageAndKeyboard, hasAcceptedCurrentRules } from "./rules";
 
+/** Обробка застарілої кнопки «Пізніше email» у старих чатах (нові клавіатури без неї). */
 export function registerDeferEmailHandler(bot: Telegraf<Context>) {
   bot.action(DEFER_EMAIL_CALLBACK, async (ctx) => {
     try {

@@ -1,8 +1,10 @@
 // telegram/email-check.ts
 import { Context, Markup, Telegraf } from "telegraf";
 import { TelegramUser } from "../database/TelegramUser";
-import { sparkleLabel } from "./sparkle-label";
+import { MULTIMASKING_TELEGRAM_GROUP_PRO_URL } from "../payment/multimasking-telegram-groups";
 import { findContactByEmailForBot } from "../database/contact-lookup";
+import { sparkleLabel } from "./sparkle-label";
+import { telegramHtmlLink } from "./telegram-html";
 
 const PROCHAT_BUTTON_CALLBACK = "prochat_access_button";
 
@@ -67,8 +69,13 @@ export function registerProChatAccessHandler(bot: Telegraf<Context>) {
       if (contact) {
         await ctx.reply(
           "Вітаю! Ваш контакт знайдено в базі даних.\n\n" +
-            "Ось посилання для доступу в ProChat:\n" +
-            "https://t.me/+r2cVyb4dDUI1MmRi",
+            "Доступ до ProChat: " +
+            telegramHtmlLink(
+              MULTIMASKING_TELEGRAM_GROUP_PRO_URL,
+              "Група ProChat (Про підписники)",
+            ) +
+            ".",
+          { parse_mode: "HTML" },
         );
       } else {
         await ctx.reply(

@@ -22,6 +22,30 @@ function uaRecordsCount(n: number): string {
   return `${n} записів`;
 }
 
+/** Коротка «канонічна» назва продукту: без дебаг-суфіксів у titleSnapshot, інакше найкоротший варіант. */
+function pickPreferredProductTitle(
+  candidates: string[],
+  fallbackProductId: number,
+): string {
+  const trimmed = candidates.map((t) => t.trim()).filter((t) => t.length > 0);
+  if (trimmed.length === 0) return `Продукт #${fallbackProductId}`;
+  const noDebug = trimmed.filter((t) => !/\(debug/i.test(t));
+  const pool = noDebug.length > 0 ? noDebug : trimmed;
+  return pool.reduce((a, b) => (a.length <= b.length ? a : b));
+}
+
+function groupRowsByExternalProductId(
+  rows: ContactProductAccess[],
+): Map<number, ContactProductAccess[]> {
+  const map = new Map<number, ContactProductAccess[]>();
+  for (const row of rows) {
+    const list = map.get(row.externalProductId) ?? [];
+    list.push(row);
+    map.set(row.externalProductId, list);
+  }
+  return map;
+}
+
 export async function buildProfileMessage(user: TelegramUser): Promise<string> {
   const email = user.email ?? null;
   const lines: string[] = ["Ваш профіль", ""];
@@ -71,41 +95,60 @@ export async function buildProfileMessage(user: TelegramUser): Promise<string> {
 
   type ProductAccessGroup = { title: string; total: number; activeNow: number };
   const byProduct = new Map<number, ProductAccessGroup>();
-  for (const row of allNonRevoked) {
-    const title =
-      row.titleSnapshot && row.titleSnapshot.trim().length > 0
-        ? row.titleSnapshot.trim()
-        : `Продукт #${row.externalProductId}`;
-    let g = byProduct.get(row.externalProductId);
-    if (!g) {
-      g = { title, total: 0, activeNow: 0 };
-      byProduct.set(row.externalProductId, g);
+  const rowsByPid = groupRowsByExternalProductId(allNonRevoked);
+  for (const [productId, list] of rowsByPid) {
+    const titles = list
+      .map((r) => r.titleSnapshot?.trim())
+      .filter((t): t is string => Boolean(t && t.length > 0));
+    const title = pickPreferredProductTitle(titles, productId);
+    let activeNow = 0;
+    for (const row of list) {
+      const effectiveNow =
+        row.isActive && (row.endAt === null || row.endAt > now);
+      if (effectiveNow) activeNow += 1;
     }
-    g.total += 1;
-    const effectiveNow =
-      row.isActive && (row.endAt === null || row.endAt > now);
-    if (effectiveNow) g.activeNow += 1;
-    if (title.length > g.title.length) g.title = title;
+    byProduct.set(productId, {
+      title,
+      total: list.length,
+      activeNow,
+    });
   }
 
   const isActiveAccess = activeRows.length > 0;
   const nearestExpiry = activeRows.find((row) => row.endAt !== null)?.endAt ?? null;
-  const optionTitles = activeRows.map((row) => {
-    if (row.titleSnapshot && row.titleSnapshot.trim().length > 0) {
-      return row.titleSnapshot.trim();
-    }
-    return `Product #${row.externalProductId}`;
-  });
+  const activeByPid = groupRowsByExternalProductId(activeRows);
 
   lines.push(`Доступ активний: ${isActiveAccess ? "так" : "ні"}`);
   lines.push(`Дата завершення доступу: ${formatDate(nearestExpiry)}`);
   lines.push("");
   lines.push("Доступні опції:");
 
-  if (optionTitles.length === 0) {
+  if (activeByPid.size === 0) {
     lines.push("- Наразі немає активних опцій");
   } else {
-    optionTitles.forEach((title) => lines.push(`- ${title}`));
+    const sortedActive = [...activeByPid.entries()].sort((a, b) => {
+      const ta = pickPreferredProductTitle(
+        a[1]
+          .map((r) => r.titleSnapshot?.trim())
+          .filter((t): t is string => Boolean(t && t.length > 0)),
+        a[0],
+      );
+      const tb = pickPreferredProductTitle(
+        b[1]
+          .map((r) => r.titleSnapshot?.trim())
+          .filter((t): t is string => Boolean(t && t.length > 0)),
+        b[0],
+      );
+      return ta.localeCompare(tb, "uk");
+    });
+    for (const [productId, list] of sortedActive) {
+      const titles = list
+        .map((r) => r.titleSnapshot?.trim())
+        .filter((t): t is string => Boolean(t && t.length > 0));
+      const label = pickPreferredProductTitle(titles, productId);
+      const n = list.length;
+      lines.push(`- ${label}${n > 1 ? ` ×${n}` : ""}`);
+    }
   }
 
   lines.push("");

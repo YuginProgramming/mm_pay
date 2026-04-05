@@ -1,5 +1,8 @@
 // telegram/wayforpay-invoice.ts — WayForPay оформлення оплати з бота (callback → посилання на оплату)
 import { Context, Markup, Telegraf } from "telegraf";
+import { findContactByEmailForBot } from "../database/contact-lookup";
+import { normalizeEmail } from "../database/normalize-email";
+import { TelegramUser } from "../database/TelegramUser";
 import { MULTIMASKING_PRODUCT_NAME } from "../payment/multimasking-product";
 import { getMultimaskingCoursePriceUah } from "../payment/multimasking-price";
 import { hasAcceptedCurrentRules } from "./rules";
@@ -39,6 +42,26 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
       }
 
       await ctx.answerCbQuery();
+
+      const dbUser = await TelegramUser.findOne({ where: { telegramId } });
+      const emailRaw = dbUser?.email?.trim();
+      if (!emailRaw) {
+        await ctx.reply(
+          "Оплату можна виставити лише після того, як ви надішлете свій email у чат бота " +
+            "(порядок: згода з правилами → email → оплата). Інакше WayForPay зарахувати доступ до вашого профілю не вдасться.\n\n" +
+            "Якщо вже оплатили без email — надішліть адресу зараз; бот спробує зв’язати оплату з акаунтом автоматично.",
+        );
+        return;
+      }
+
+      const contact = await findContactByEmailForBot(normalizeEmail(emailRaw));
+      if (!contact) {
+        await ctx.reply(
+          "За вказаним email контакта у базі KWIGA не знайдено — після оплати доступ не можна буде зарахувати автоматично. " +
+            "Перевірте email (/profile) або зверніться до підтримки, а потім знову натисніть «Оплатити».",
+        );
+        return;
+      }
 
       const price = await getMultimaskingCoursePriceUah();
       const { createCheckoutForCourse } = await import(

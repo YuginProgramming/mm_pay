@@ -1,9 +1,8 @@
 import type { InlineKeyboardMarkup } from "@telegraf/types/markup";
-import { Markup } from "telegraf";
 import { buildRulesMiniKeyboard } from "./rules";
 import { buildWayForPayInvoiceKeyboard } from "./wayforpay-invoice";
-import { sparkleLabel } from "./sparkle-label";
 
+/** Лишається для callback на старих повідомленнях (кнопку з меню прибрано). */
 export const DEFER_EMAIL_CALLBACK = "payment_menu_defer_email";
 
 function rowsOf(
@@ -13,7 +12,7 @@ function rowsOf(
 }
 
 /**
- * Клавіатура після /start, коли просимо email: ProChat + списки оплат + WayForPay + «без email».
+ * Клавіатура після /start, коли просимо email: ProChat + правила / WayForPay.
  */
 export async function buildMergedStartEmailKeyboard(
   emailProChatExtra: {
@@ -24,19 +23,12 @@ export async function buildMergedStartEmailKeyboard(
   const paymentOrRules = rulesAccepted
     ? await buildWayForPayInvoiceKeyboard()
     : buildRulesMiniKeyboard();
-  const defer = Markup.inlineKeyboard([
-    Markup.button.callback(
-      sparkleLabel("Пізніше вкажу email — тільки меню оплати"),
-      DEFER_EMAIL_CALLBACK,
-    ),
-  ]);
 
   return {
     reply_markup: {
       inline_keyboard: [
         ...rowsOf(emailProChatExtra),
         ...rowsOf(paymentOrRules),
-        ...rowsOf(defer),
       ],
     },
   };

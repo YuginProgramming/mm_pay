@@ -15,6 +15,7 @@ import type { PaymentMetadata, WayForPayWebhookPayload } from "./payment.types";
 import { sendTelegramBotMessage } from "./telegram-notify";
 import type { KwigaAudienceRank } from "../telegram/kwiga-user-rank";
 import { kwigaAudienceRank } from "../telegram/kwiga-user-rank";
+import { escapeTelegramHtml, telegramHtmlLink } from "../telegram/telegram-html";
 
 /**
  * Сума з webhook; ціна в боті (app_settings) може бути іншою — доступ надаємо за фактом підтвердженої оплати.
@@ -205,7 +206,9 @@ export async function processApprovedMultimaskingPayment(
     commonHead,
   );
 
-  await sendTelegramBotMessage(chatId, successText, urlButtons);
+  await sendTelegramBotMessage(chatId, successText, urlButtons, {
+    parseMode: "HTML",
+  });
 }
 
 function paymentSuccessCopyAndButtons(
@@ -215,17 +218,25 @@ function paymentSuccessCopyAndButtons(
   successText: string;
   urlButtons: { text: string; url: string }[];
 } {
+  const head = escapeTelegramHtml(commonHead);
+
   if (tier === "pro") {
     return {
       successText:
-        commonHead +
-        "Далі вам доступні дві телеграм-групи — скористайтеся кнопками нижче.\n\n" +
+        head +
+        "Далі вам доступні дві телеграм-групи — натисніть на назви нижче або кнопки.\n\n" +
         "1) " +
-        MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL +
-        " — група для Майстрів\n" +
+        telegramHtmlLink(
+          MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL,
+          "Група для Майстрів",
+        ) +
+        "\n" +
         "2) " +
-        MULTIMASKING_TELEGRAM_GROUP_PRO_URL +
-        " — група для Про підписників\n\n" +
+        telegramHtmlLink(
+          MULTIMASKING_TELEGRAM_GROUP_PRO_URL,
+          "Група для Про підписників",
+        ) +
+        "\n\n" +
         "Перевірте статус у боті: /profile",
       urlButtons: [
         { text: "Група для Майстрів", url: MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL },
@@ -239,10 +250,13 @@ function paymentSuccessCopyAndButtons(
 
   return {
     successText:
-      commonHead +
-      "Доступна телеграм-група для Майстрів — скористайтеся кнопкою нижче.\n\n" +
-      MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL +
-      " — група для Майстрів\n\n" +
+      head +
+      "Доступна телеграм-група для Майстрів — натисніть на назву нижче або кнопку.\n\n" +
+      telegramHtmlLink(
+        MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL,
+        "Група для Майстрів",
+      ) +
+      "\n\n" +
       "Перевірте статус у боті: /profile",
     urlButtons: [
       { text: "Група для Майстрів", url: MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL },

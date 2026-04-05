@@ -3,6 +3,7 @@ import { UniqueConstraintError } from "sequelize";
 import { EmailChangeLog } from "../database/EmailChangeLog";
 import { normalizeEmail } from "../database/normalize-email";
 import { findConflictingTelegramUserForEmail } from "../database/telegram-user-email";
+import { retryUnlinkedApprovedPaymentsForTelegramUser } from "../payment/retry-unlinked-payment-grant";
 import { buildStandalonePaymentMenuKeyboard } from "./payment-menu-keyboards";
 import {
   buildRulesMessageAndKeyboard,
@@ -81,6 +82,13 @@ export function registerTextHandlers(bot: Telegraf<StartContext>): void {
           `Стало: ${normalized}\n\n` +
           "Перевірте профіль: /profile",
       );
+      await user.reload();
+      const linked = await retryUnlinkedApprovedPaymentsForTelegramUser(user);
+      if (linked > 0) {
+        await ctx.reply(
+          "Знайдено успішну оплату WayForPay без зарахованого доступу — зараз зараховано. Перевірте /profile.",
+        );
+      }
       if (!(await hasAcceptedCurrentRules(user.telegramId))) {
         const { text: rulesText, extra } = buildRulesMessageAndKeyboard();
         await ctx.reply(rulesText, extra);
@@ -92,6 +100,14 @@ export function registerTextHandlers(bot: Telegraf<StartContext>): void {
       `Дякую! Ми зберегли вашу електронну адресу: ${normalized}\n\n` +
         "Тепер ви можете повноцінно користуватися ботом.",
     );
+    await user.reload();
+    const linkedAfterFirstEmail =
+      await retryUnlinkedApprovedPaymentsForTelegramUser(user);
+    if (linkedAfterFirstEmail > 0) {
+      await ctx.reply(
+        "Знайдено вашу раніше успішну оплату WayForPay — доступ зараховано. Перевірте /profile.",
+      );
+    }
     if (!(await hasAcceptedCurrentRules(user.telegramId))) {
       const { text: rulesText, extra } = buildRulesMessageAndKeyboard();
       await ctx.reply(rulesText, extra);
