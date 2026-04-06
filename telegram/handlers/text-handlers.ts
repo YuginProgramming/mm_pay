@@ -1,16 +1,16 @@
 import { Telegraf } from "telegraf";
 import { UniqueConstraintError } from "sequelize";
-import { EmailChangeLog } from "../database/EmailChangeLog";
-import { normalizeEmail } from "../database/normalize-email";
-import { findConflictingTelegramUserForEmail } from "../database/telegram-user-email";
-import { retryUnlinkedApprovedPaymentsForTelegramUser } from "../payment/retry-unlinked-payment-grant";
-import { buildStandalonePaymentMenuKeyboard } from "./payment-menu-keyboards";
+import { EmailChangeLog } from "../../database/EmailChangeLog";
+import { normalizeEmail } from "../../database/normalize-email";
+import { findConflictingTelegramUserForEmail } from "../../database/telegram-user-email";
+import { retryUnlinkedApprovedPaymentsForTelegramUser } from "../../payment/retry-unlinked-payment-grant";
+import { buildStandalonePaymentMenuKeyboard } from "../payment/payment-menu-keyboards";
 import {
   buildRulesMessageAndKeyboard,
   hasAcceptedCurrentRules,
 } from "./rules";
-import { StartContext } from "./user-tracking";
-import { getTelegramUserFromContext } from "./user-tracking";
+import { StartContext } from "../core/user-tracking";
+import { getTelegramUserFromContext } from "../core/user-tracking";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

@@ -30,7 +30,7 @@ import {
   computeKwigaRankSnapshot,
   countContactAccessRowsForKwigaTier,
   persistKwigaRankSnapshot,
-} from "../telegram/kwiga-rank-db";
+} from "../telegram/profile/kwiga-rank-db";
 
 const DEFAULT_TELEGRAM_ID = "269694206";
 

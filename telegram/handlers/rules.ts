@@ -1,7 +1,7 @@
 import { Context, Markup, Telegraf } from "telegraf";
-import { RulesConsent } from "../database/RulesConsent";
-import { TelegramUser } from "../database/TelegramUser";
-import { sparkleLabel } from "./sparkle-label";
+import { RulesConsent } from "../../database/RulesConsent";
+import { TelegramUser } from "../../database/TelegramUser";
+import { sparkleLabel } from "../core/sparkle-label";
 
 /** Full rules (Telegraph). */
 export const MULTIMASKING_RULES_URL =
@@ -80,7 +80,7 @@ export function registerRulesAcceptHandler(bot: Telegraf<Context>): void {
       await ctx.answerCbQuery("Дякуємо!");
 
       const { buildStandalonePaymentMenuKeyboard } = await import(
-        "./payment-menu-keyboards"
+        "../payment/payment-menu-keyboards"
       );
       await ctx.reply(
         "Умови прийнято. Нижче — меню оплати:",

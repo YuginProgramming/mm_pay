@@ -1,7 +1,7 @@
-// telegram/payment-check.ts
+// telegram/payment/payment-check.ts
 import { Context, Markup, Telegraf } from "telegraf";
-import { Contact } from "../database/Contact";
-import { sparkleLabel } from "./sparkle-label";
+import { Contact } from "../../database/Contact";
+import { sparkleLabel } from "../core/sparkle-label";
 
 const PAID_USERS_BUTTON_CALLBACK = "show_paid_users_button";
 const NOT_PAID_USERS_BUTTON_CALLBACK = "show_not_paid_users_button";

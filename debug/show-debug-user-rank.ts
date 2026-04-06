@@ -13,8 +13,8 @@ import { APP_SETTING_KEYS } from "../database/app-setting-keys";
 import { ContactProductAccess } from "../database/ContactProductAccess";
 import { sequelize } from "../database/db";
 import { TelegramUser } from "../database/TelegramUser";
-import { computeKwigaRankSnapshot } from "../telegram/kwiga-rank-db";
-import { formatKwigaRankLine } from "../telegram/kwiga-user-rank";
+import { computeKwigaRankSnapshot } from "../telegram/profile/kwiga-rank-db";
+import { formatKwigaRankLine } from "../telegram/profile/kwiga-user-rank";
 
 async function resolveTelegramId(): Promise<string> {
   const fromArg = process.argv[2]?.trim();

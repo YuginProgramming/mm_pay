@@ -1,7 +1,7 @@
 // database/TelegramUser.ts
 import { DataTypes, Model, Optional } from "sequelize";
 import { sequelize } from "./db";
-import type { KwigaAudienceRank } from "../telegram/kwiga-user-rank";
+import type { KwigaAudienceRank } from "../telegram/profile/kwiga-user-rank";
 
 export interface TelegramUserAttributes {
   id: number;

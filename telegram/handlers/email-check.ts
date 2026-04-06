@@ -1,10 +1,10 @@
-// telegram/email-check.ts
+// telegram/handlers/email-check.ts
 import { Context, Markup, Telegraf } from "telegraf";
-import { TelegramUser } from "../database/TelegramUser";
-import { MULTIMASKING_TELEGRAM_GROUP_PRO_URL } from "../payment/multimasking-telegram-groups";
-import { findContactByEmailForBot } from "../database/contact-lookup";
-import { sparkleLabel } from "./sparkle-label";
-import { telegramHtmlLink } from "./telegram-html";
+import { TelegramUser } from "../../database/TelegramUser";
+import { MULTIMASKING_TELEGRAM_GROUP_PRO_URL } from "../../payment/multimasking-telegram-groups";
+import { findContactByEmailForBot } from "../../database/contact-lookup";
+import { sparkleLabel } from "../core/sparkle-label";
+import { telegramHtmlLink } from "../core/telegram-html";
 
 const PROCHAT_BUTTON_CALLBACK = "prochat_access_button";
 

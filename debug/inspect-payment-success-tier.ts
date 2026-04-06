@@ -15,8 +15,8 @@ import "dotenv/config";
 import { ContactProductAccess } from "../database/ContactProductAccess";
 import { sequelize } from "../database/db";
 import { TelegramUser } from "../database/TelegramUser";
-import { computeKwigaRankSnapshot } from "../telegram/kwiga-rank-db";
-import { formatKwigaRankLine, kwigaAudienceRank } from "../telegram/kwiga-user-rank";
+import { computeKwigaRankSnapshot } from "../telegram/profile/kwiga-rank-db";
+import { formatKwigaRankLine, kwigaAudienceRank } from "../telegram/profile/kwiga-user-rank";
 
 const DEFAULT_TELEGRAM_ID = "269694206";
 

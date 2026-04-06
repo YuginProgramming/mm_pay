@@ -1,5 +1,5 @@
 import { Context } from "telegraf";
-import { TelegramUser } from "../database/TelegramUser";
+import { TelegramUser } from "../../database/TelegramUser";
 
 export type StartContext = Context & {
   from: NonNullable<Context["from"]>;

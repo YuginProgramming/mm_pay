@@ -31,7 +31,7 @@ import {
 import {
   computeKwigaRankSnapshot,
   persistKwigaRankSnapshot,
-} from "../telegram/kwiga-rank-db";
+} from "../telegram/profile/kwiga-rank-db";
 import { resolveDebugTelegramUserId } from "./resolve-debug-telegram-id";
 
 const TEST_EMAIL = "smith@example.com";

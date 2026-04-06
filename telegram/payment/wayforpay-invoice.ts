@@ -1,12 +1,12 @@
-// telegram/wayforpay-invoice.ts — WayForPay оформлення оплати з бота (callback → посилання на оплату)
+// telegram/payment/wayforpay-invoice.ts — WayForPay оформлення оплати з бота (callback → посилання на оплату)
 import { Context, Markup, Telegraf } from "telegraf";
-import { findContactByEmailForBot } from "../database/contact-lookup";
-import { normalizeEmail } from "../database/normalize-email";
-import { TelegramUser } from "../database/TelegramUser";
-import { MULTIMASKING_PRODUCT_NAME } from "../payment/multimasking-product";
-import { getMultimaskingCoursePriceUah } from "../payment/multimasking-price";
-import { hasAcceptedCurrentRules } from "./rules";
-import { sparkleLabel } from "./sparkle-label";
+import { findContactByEmailForBot } from "../../database/contact-lookup";
+import { normalizeEmail } from "../../database/normalize-email";
+import { TelegramUser } from "../../database/TelegramUser";
+import { MULTIMASKING_PRODUCT_NAME } from "../../payment/multimasking-product";
+import { getMultimaskingCoursePriceUah } from "../../payment/multimasking-price";
+import { hasAcceptedCurrentRules } from "../handlers/rules";
+import { sparkleLabel } from "../core/sparkle-label";
 
 /**
  * Стабільний ідентифікатор callback: у старих чатах кнопки вже зберегли це значення.
@@ -65,7 +65,7 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
 
       const price = await getMultimaskingCoursePriceUah();
       const { createCheckoutForCourse } = await import(
-        "../payment/payment.service"
+        "../../payment/payment.service"
       );
 
       const { invoiceUrl } = await createCheckoutForCourse(

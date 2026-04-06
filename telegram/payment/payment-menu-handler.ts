@@ -1,10 +1,10 @@
 import { Context, Telegraf } from "telegraf";
-import { TelegramUser } from "../database/TelegramUser";
+import { TelegramUser } from "../../database/TelegramUser";
 import {
   buildStandalonePaymentMenuKeyboard,
   DEFER_EMAIL_CALLBACK,
 } from "./payment-menu-keyboards";
-import { buildRulesMessageAndKeyboard, hasAcceptedCurrentRules } from "./rules";
+import { buildRulesMessageAndKeyboard, hasAcceptedCurrentRules } from "../handlers/rules";
 
 /** Обробка застарілої кнопки «Пізніше email» у старих чатах (нові клавіатури без неї). */
 export function registerDeferEmailHandler(bot: Telegraf<Context>) {

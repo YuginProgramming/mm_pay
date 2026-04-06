@@ -1,14 +1,14 @@
 import { Context, Telegraf } from "telegraf";
-import { buildProfileMessage } from "./profile-message";
+import { buildProfileMessage } from "../profile/profile-message";
 import { buildEmailRequestMessage } from "./email-check";
 import {
   buildMergedStartEmailKeyboard,
   buildStandalonePaymentMenuKeyboard,
-} from "./payment-menu";
+} from "../payment/payment-menu";
 import { buildRulesMessageAndKeyboard, hasAcceptedCurrentRules } from "./rules";
 import { buildCorridorStartHintUa } from "./corridor-onboarding";
-import { escapeTelegramHtml } from "./telegram-html";
-import { StartContext, trackTelegramUser } from "./user-tracking";
+import { escapeTelegramHtml } from "../core/telegram-html";
+import { StartContext, trackTelegramUser } from "../core/user-tracking";
 
 export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
   bot.start(async (ctx) => {

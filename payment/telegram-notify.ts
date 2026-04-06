@@ -1,4 +1,4 @@
-import { ensureSparkleButtonLabel } from "../telegram/sparkle-label";
+import { ensureSparkleButtonLabel } from "../telegram/core/sparkle-label";
 
 export type TelegramUrlButton = { text: string; url: string };
 

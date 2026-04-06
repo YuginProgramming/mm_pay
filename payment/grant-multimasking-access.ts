@@ -1,6 +1,6 @@
 import { findContactByEmailForBot } from "../database/contact-lookup";
 import { ContactProductAccess } from "../database/ContactProductAccess";
-import { countContactAccessRowsForKwigaTier } from "../telegram/kwiga-rank-db";
+import { countContactAccessRowsForKwigaTier } from "../telegram/profile/kwiga-rank-db";
 import { normalizeEmail } from "../database/normalize-email";
 import { TelegramUser } from "../database/TelegramUser";
 import {
@@ -13,9 +13,9 @@ import {
 } from "./multimasking-telegram-groups";
 import type { PaymentMetadata, WayForPayWebhookPayload } from "./payment.types";
 import { sendTelegramBotMessage } from "./telegram-notify";
-import type { KwigaAudienceRank } from "../telegram/kwiga-user-rank";
-import { kwigaAudienceRank } from "../telegram/kwiga-user-rank";
-import { escapeTelegramHtml, telegramHtmlLink } from "../telegram/telegram-html";
+import type { KwigaAudienceRank } from "../telegram/profile/kwiga-user-rank";
+import { kwigaAudienceRank } from "../telegram/profile/kwiga-user-rank";
+import { escapeTelegramHtml, telegramHtmlLink } from "../telegram/core/telegram-html";
 
 /**
  * Сума з webhook; ціна в боті (app_settings) може бути іншою — доступ надаємо за фактом підтвердженої оплати.

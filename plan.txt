@@ -125,7 +125,7 @@ announcement -> Telegram bot -> profile/access options check -> 500 UAH payment 
 3) Copy and UX (for conversion and lower support load)
 ==================================================
 
-[x] Привітання / короткий Corridor-онбординг для нових користувачів `/start` (`telegram/corridor-onboarding.ts`).
+[x] Привітання / короткий Corridor-онбординг для нових користувачів `/start` (`telegram/handlers/corridor-onboarding.ts`).
 [x] Далі що робити — кроки 1–3 у тому ж тексті + команди `/profile` / `/payment` / `/change_email`.
 [x] Короткі пояснення в онбордингу та в `/payment`: доступ ~1 місяць, після оплати перевірити `/profile`, куди писати якщо не оновилося.
 [ ] Уніфікувати всі екрани помилок «без жаргону» (періодичний рев’ю копірайту).

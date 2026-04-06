@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
-import { ContactProductAccess } from "../database/ContactProductAccess";
-import { TelegramUser } from "../database/TelegramUser";
+import { ContactProductAccess } from "../../database/ContactProductAccess";
+import { TelegramUser } from "../../database/TelegramUser";
 import {
   computeKwigaRankSnapshot,
   persistKwigaRankSnapshot,

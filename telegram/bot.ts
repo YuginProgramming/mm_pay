@@ -1,15 +1,15 @@
 // telegram/bot.ts
 import { Telegraf } from "telegraf";
-import { registerProChatAccessHandler } from "./email-check";
+import { registerProChatAccessHandler } from "./handlers/email-check";
 import {
   registerDeferEmailHandler,
-} from "./payment-menu";
-import { registerPaymentCheckHandlers } from "./payment-check";
-import { registerWayForPayInvoiceHandlers } from "./wayforpay-invoice";
-import { registerCommandHandlers } from "./command-handlers";
-import { registerTextHandlers } from "./text-handlers";
-import { registerRulesAcceptHandler } from "./rules";
-import { StartContext } from "./user-tracking";
+} from "./payment/payment-menu";
+import { registerPaymentCheckHandlers } from "./payment/payment-check";
+import { registerWayForPayInvoiceHandlers } from "./payment/wayforpay-invoice";
+import { registerCommandHandlers } from "./handlers/command-handlers";
+import { registerTextHandlers } from "./handlers/text-handlers";
+import { registerRulesAcceptHandler } from "./handlers/rules";
+import { StartContext } from "./core/user-tracking";
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -45,4 +45,3 @@ export async function launchTelegramBot(): Promise<void> {
   process.once("SIGINT", () => bot.stop("SIGINT"));
   process.once("SIGTERM", () => bot.stop("SIGTERM"));
 }
-

@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { Context, Markup, Telegraf } from "telegraf";
-import { sparkleLabel } from "./telegram/sparkle-label";
+import { sparkleLabel } from "./telegram/core/sparkle-label";
 
 const token = process.env.TELEGRAM_BOT_TOKEN_POSTER;
 const targetGroupId = process.env.TARGET_GROUP_ID;

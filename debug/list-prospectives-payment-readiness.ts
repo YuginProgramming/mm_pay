@@ -18,8 +18,8 @@ import { TelegramUser } from "../database/TelegramUser";
 import {
   computeKwigaRankSnapshot,
   persistKwigaRankSnapshot,
-} from "../telegram/kwiga-rank-db";
-import { hasAcceptedCurrentRules } from "../telegram/rules";
+} from "../telegram/profile/kwiga-rank-db";
+import { hasAcceptedCurrentRules } from "../telegram/handlers/rules";
 
 const ADMIN_CONTACT_URL = "https://t.me/YevhenDudar";
 

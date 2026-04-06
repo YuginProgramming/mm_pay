@@ -1,4 +1,4 @@
-// telegram/payment-menu.ts — compatibility exports
+// telegram/payment/payment-menu.ts — compatibility exports
 export {
   buildMergedStartEmailKeyboard,
   buildStandalonePaymentMenuKeyboard,

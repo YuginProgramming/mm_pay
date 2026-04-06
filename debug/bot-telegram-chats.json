@@ -1,0 +1,222 @@
+{
+  "warning": "Один токен = одна черга getUpdates. Не запускайте цей скрипт паралельно з polling-ботом на тому ж токені.",
+  "bot": {
+    "id": 8609263293,
+    "is_bot": true,
+    "first_name": "Multimasking Academy",
+    "username": "multimasking_account_bot",
+    "can_join_groups": true,
+    "can_read_all_group_messages": false,
+    "supports_inline_queries": false,
+    "can_connect_to_business": false,
+    "has_main_web_app": false,
+    "has_topics_enabled": false,
+    "allows_users_to_create_topics": false,
+    "can_manage_bots": false
+  },
+  "stats": {
+    "updatesProcessed": 3,
+    "uniqueChats": 3
+  },
+  "chats": [
+    {
+      "chatId": -1001987850480,
+      "observedTypesFromUpdates": ["channel"],
+      "getChat": {
+        "id": -1001987850480,
+        "title": "Community | MULTIMASKING",
+        "type": "channel",
+        "description": "Офіційний канал системи MULTIMASKING.\nАвтор — Ольга Русанова, косметолог з 2002 року.\nТут простою мовою про:\n• целюліт і набряки\n• якість тканин\n• процедури і косметику\n• харчування і зовнішній вигляд",
+        "invite_link": "https://t.me/+QX9ejo5ypHY0MTgy",
+        "can_send_gift": true,
+        "has_visible_history": true,
+        "can_send_paid_media": true,
+        "accepted_gift_types": {
+          "unlimited_gifts": true,
+          "limited_gifts": true,
+          "unique_gifts": true,
+          "premium_subscription": true,
+          "gifts_from_channels": true
+        },
+        "photo": {
+          "small_file_id": "AQADAgADBxVrG-R2sUkACAIAAxC_3rQW____p_U9_ugCb407BA",
+          "small_file_unique_id": "AQADBxVrG-R2sUkAAQ",
+          "big_file_id": "AQADAgADBxVrG-R2sUkACAMAAxC_3rQW____p_U9_ugCb407BA",
+          "big_file_unique_id": "AQADBxVrG-R2sUkB"
+        },
+        "available_reactions": [],
+        "max_reaction_count": 11,
+        "accent_color_id": 0
+      },
+      "botChatMember": {
+        "user": {
+          "id": 8609263293,
+          "is_bot": true,
+          "first_name": "Multimasking Academy",
+          "username": "multimasking_account_bot"
+        },
+        "status": "administrator",
+        "can_be_edited": false,
+        "can_manage_chat": true,
+        "can_change_info": true,
+        "can_post_messages": true,
+        "can_edit_messages": true,
+        "can_delete_messages": true,
+        "can_invite_users": true,
+        "can_restrict_members": true,
+        "can_promote_members": false,
+        "can_manage_video_chats": true,
+        "can_post_stories": true,
+        "can_edit_stories": true,
+        "can_delete_stories": true,
+        "can_manage_direct_messages": true,
+        "is_anonymous": false,
+        "can_manage_voice_chats": true
+      }
+    },
+    {
+      "chatId": -1003735415732,
+      "observedTypesFromUpdates": ["supergroup"],
+      "getChat": {
+        "id": -1003735415732,
+        "title": "MASTERS| MULTIMASKING",
+        "username": "MULTIMASKING_private",
+        "is_forum": true,
+        "type": "supergroup",
+        "active_usernames": ["MULTIMASKING_private"],
+        "invite_link": "https://t.me/+DaxhjacYKZk2MzEy",
+        "has_visible_history": true,
+        "permissions": {
+          "can_send_messages": true,
+          "can_send_media_messages": true,
+          "can_send_audios": true,
+          "can_send_documents": true,
+          "can_send_photos": true,
+          "can_send_videos": true,
+          "can_send_video_notes": true,
+          "can_send_voice_notes": true,
+          "can_send_polls": true,
+          "can_send_other_messages": true,
+          "can_add_web_page_previews": true,
+          "can_edit_tag": false,
+          "can_change_info": false,
+          "can_invite_users": true,
+          "can_pin_messages": false,
+          "can_manage_topics": true
+        },
+        "join_to_send_messages": true,
+        "accepted_gift_types": {
+          "unlimited_gifts": false,
+          "limited_gifts": false,
+          "unique_gifts": false,
+          "premium_subscription": false,
+          "gifts_from_channels": false
+        },
+        "photo": {
+          "small_file_id": "AQADAgADYBNrG8GVyEkACAIAA0wEtUwW____nU0wt1lhnRU7BA",
+          "small_file_unique_id": "AQADYBNrG8GVyEkAAQ",
+          "big_file_id": "AQADAgADYBNrG8GVyEkACAMAA0wEtUwW____nU0wt1lhnRU7BA",
+          "big_file_unique_id": "AQADYBNrG8GVyEkB"
+        },
+        "max_reaction_count": 11,
+        "accent_color_id": 6
+      },
+      "botChatMember": {
+        "user": {
+          "id": 8609263293,
+          "is_bot": true,
+          "first_name": "Multimasking Academy",
+          "username": "multimasking_account_bot"
+        },
+        "status": "administrator",
+        "can_be_edited": false,
+        "can_manage_chat": true,
+        "can_change_info": true,
+        "can_delete_messages": true,
+        "can_invite_users": true,
+        "can_restrict_members": true,
+        "can_pin_messages": true,
+        "can_manage_topics": false,
+        "can_promote_members": false,
+        "can_manage_video_chats": true,
+        "can_post_stories": true,
+        "can_edit_stories": true,
+        "can_delete_stories": true,
+        "can_manage_tags": true,
+        "is_anonymous": false,
+        "can_manage_voice_chats": true
+      }
+    },
+    {
+      "chatId": -1003861971216,
+      "observedTypesFromUpdates": ["supergroup"],
+      "getChat": {
+        "id": -1003861971216,
+        "title": "Chat PRO (5 модулів MULTIMASKING)",
+        "is_forum": true,
+        "type": "supergroup",
+        "invite_link": "https://t.me/+Sc3T8eYgDphiY2Ri",
+        "has_visible_history": true,
+        "permissions": {
+          "can_send_messages": true,
+          "can_send_media_messages": true,
+          "can_send_audios": true,
+          "can_send_documents": true,
+          "can_send_photos": true,
+          "can_send_videos": true,
+          "can_send_video_notes": true,
+          "can_send_voice_notes": true,
+          "can_send_polls": true,
+          "can_send_other_messages": true,
+          "can_add_web_page_previews": true,
+          "can_edit_tag": false,
+          "can_change_info": true,
+          "can_invite_users": true,
+          "can_pin_messages": true,
+          "can_manage_topics": true
+        },
+        "join_to_send_messages": true,
+        "accepted_gift_types": {
+          "unlimited_gifts": false,
+          "limited_gifts": false,
+          "unique_gifts": false,
+          "premium_subscription": false,
+          "gifts_from_channels": false
+        },
+        "photo": {
+          "small_file_id": "AQADAgADUBdrG4KWAUoACAIAA_DuKUUW_____m7hOHj46T07BA",
+          "small_file_unique_id": "AQADUBdrG4KWAUoAAQ",
+          "big_file_id": "AQADAgADUBdrG4KWAUoACAMAA_DuKUUW_____m7hOHj46T07BA",
+          "big_file_unique_id": "AQADUBdrG4KWAUoB"
+        },
+        "max_reaction_count": 11,
+        "accent_color_id": 5
+      },
+      "botChatMember": {
+        "user": {
+          "id": 8609263293,
+          "is_bot": true,
+          "first_name": "Multimasking Academy",
+          "username": "multimasking_account_bot"
+        },
+        "status": "administrator",
+        "can_be_edited": false,
+        "can_manage_chat": true,
+        "can_change_info": true,
+        "can_delete_messages": true,
+        "can_invite_users": true,
+        "can_restrict_members": true,
+        "can_pin_messages": true,
+        "can_manage_topics": false,
+        "can_promote_members": false,
+        "can_manage_video_chats": true,
+        "can_post_stories": true,
+        "can_edit_stories": true,
+        "can_delete_stories": true,
+        "can_manage_tags": true,
+        "is_anonymous": false,
+        "can_manage_voice_chats": true
+      }
+    }
+  ]
+}

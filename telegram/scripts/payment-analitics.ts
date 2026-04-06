@@ -1,9 +1,9 @@
-// telegram/payment-analitics.ts
-// Run: npx ts-node telegram/payment-analitics.ts
-// Same order rules as payment-check.ts; prints counts only.
+// telegram/scripts/payment-analitics.ts
+// Run: npx ts-node telegram/scripts/payment-analitics.ts
+// Same order rules as payment/payment-check.ts; prints counts only.
 import "dotenv/config";
-import { Contact } from "../database/Contact";
-import { sequelize } from "../database/db";
+import { Contact } from "../../database/Contact";
+import { sequelize } from "../../database/db";
 
 function countPaid(contacts: Contact[]): number {
   return contacts.filter((contact) =>

@@ -1,5 +1,5 @@
 import type { InlineKeyboardMarkup } from "@telegraf/types/markup";
-import { buildRulesMiniKeyboard } from "./rules";
+import { buildRulesMiniKeyboard } from "../handlers/rules";
 import { buildWayForPayInvoiceKeyboard } from "./wayforpay-invoice";
 
 /** Лишається для callback на старих повідомленнях (кнопку з меню прибрано). */

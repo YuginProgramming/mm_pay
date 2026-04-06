@@ -1,8 +1,8 @@
 import { Op } from "sequelize";
-import { findContactByEmailForBot } from "../database/contact-lookup";
-import type { Contact } from "../database/Contact";
-import { ContactProductAccess } from "../database/ContactProductAccess";
-import { TelegramUser } from "../database/TelegramUser";
+import { findContactByEmailForBot } from "../../database/contact-lookup";
+import type { Contact } from "../../database/Contact";
+import { ContactProductAccess } from "../../database/ContactProductAccess";
+import { TelegramUser } from "../../database/TelegramUser";
 import {
   type KwigaAudienceRank,
   kwigaAudienceRank,

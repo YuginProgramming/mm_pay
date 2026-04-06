@@ -17,8 +17,8 @@ import { TelegramUser } from "../database/TelegramUser";
 import {
   computeKwigaRankSnapshot,
   persistKwigaRankSnapshot,
-} from "../telegram/kwiga-rank-db";
-import { type KwigaAudienceRank } from "../telegram/kwiga-user-rank";
+} from "../telegram/profile/kwiga-rank-db";
+import { type KwigaAudienceRank } from "../telegram/profile/kwiga-user-rank";
 
 function isDryRun(): boolean {
   return process.argv.includes("--dry-run");

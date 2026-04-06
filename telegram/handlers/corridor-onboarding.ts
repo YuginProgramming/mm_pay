@@ -1,4 +1,4 @@
-import { telegramHtmlLink } from "./telegram-html";
+import { telegramHtmlLink } from "../core/telegram-html";
 
 /**
  * Короткий онбординг для учасників з Corridor (див. plan.txt §3).
