@@ -6,3 +6,6 @@ dist/
 
 .DS_Store
 *.log
+
+# Локальний вивід `debug/list-bot-telegram-chats.ts` — не комітити
+debug/bot-telegram-chats.json
