@@ -1,6 +1,7 @@
 import { Context, Markup, Telegraf } from "telegraf";
 import { RulesConsent } from "../../database/RulesConsent";
 import { TelegramUser } from "../../database/TelegramUser";
+import { isPrivateChat } from "../core/chat-guards";
 import { sparkleLabel } from "../core/sparkle-label";
 
 /** Full rules (Telegraph). */
@@ -48,6 +49,10 @@ export function buildRulesMessageAndKeyboard() {
 export function registerRulesAcceptHandler(bot: Telegraf<Context>): void {
   bot.action(RULES_ACCEPT_CALLBACK, async (ctx) => {
     if (!ctx.from) {
+      return;
+    }
+    if (!isPrivateChat(ctx)) {
+      await ctx.answerCbQuery().catch(() => {});
       return;
     }
     const telegramId = String(ctx.from.id);

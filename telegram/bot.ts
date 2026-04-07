@@ -7,6 +7,7 @@ import {
 import { registerPaymentCheckHandlers } from "./payment/payment-check";
 import { registerWayForPayInvoiceHandlers } from "./payment/wayforpay-invoice";
 import { registerCommandHandlers } from "./handlers/command-handlers";
+import { registerJoinServiceMessageCleanup } from "./handlers/join-service-message-cleanup";
 import { registerTextHandlers } from "./handlers/text-handlers";
 import { registerRulesAcceptHandler } from "./handlers/rules";
 import { StartContext } from "./core/user-tracking";
@@ -20,6 +21,8 @@ if (!token) {
 }
 
 export const bot = new Telegraf<StartContext>(token);
+
+registerJoinServiceMessageCleanup(bot as unknown as any);
 
 // Register inline/callback handlers
 registerProChatAccessHandler(bot as unknown as any);

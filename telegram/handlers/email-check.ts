@@ -3,6 +3,7 @@ import { Context, Markup, Telegraf } from "telegraf";
 import { TelegramUser } from "../../database/TelegramUser";
 import { MULTIMASKING_TELEGRAM_GROUP_PRO_URL } from "../../payment/multimasking-telegram-groups";
 import { findContactByEmailForBot } from "../../database/contact-lookup";
+import { isPrivateChat } from "../core/chat-guards";
 import { sparkleLabel } from "../core/sparkle-label";
 import { telegramHtmlLink } from "../core/telegram-html";
 
@@ -42,6 +43,10 @@ export function registerProChatAccessHandler(bot: Telegraf<Context>) {
   bot.action(PROCHAT_BUTTON_CALLBACK, async (ctx) => {
     try {
       if (!ctx.from) {
+        return;
+      }
+      if (!isPrivateChat(ctx)) {
+        await ctx.answerCbQuery().catch(() => {});
         return;
       }
 

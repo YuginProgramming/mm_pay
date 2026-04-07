@@ -16,6 +16,11 @@ export const APP_SETTING_KEYS = {
    * У таблиці ключ — `kwiga_sync_interval_minutes`; env `KWIGA_SYNC_INTERVAL_MINUTES` має пріоритет, якщо заданий.
    */
   KWIGA_SYNC_INTERVAL_MINUTES: "kwiga_sync_interval_minutes",
+  /**
+   * JSON-масив: `[{ "chatId": number, "type": string, "title": string }, ...]` —
+   * канали й супергрупи зі знімка `debug/bot-telegram-chats.json`; оновлення: `debug/seed-telegram-chat-ids-to-app-settings.ts`.
+   */
+  TELEGRAM_BOT_CHATS_JSON: "telegram_bot_chats_json",
 } as const;
 
 export type AppSettingKey =

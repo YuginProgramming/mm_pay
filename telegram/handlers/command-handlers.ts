@@ -7,6 +7,7 @@ import {
 } from "../payment/payment-menu";
 import { buildRulesMessageAndKeyboard, hasAcceptedCurrentRules } from "./rules";
 import { buildCorridorStartHintUa } from "./corridor-onboarding";
+import { isPrivateChat } from "../core/chat-guards";
 import { escapeTelegramHtml } from "../core/telegram-html";
 import { StartContext, trackTelegramUser } from "../core/user-tracking";
 
@@ -14,6 +15,7 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
   bot.start(async (ctx) => {
     try {
       if (!ctx.from) return;
+      if (!isPrivateChat(ctx)) return;
       const { user, isNew } = await trackTelegramUser(ctx);
 
       if (isNew) {
@@ -65,6 +67,7 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
   bot.command("payment", async (ctx: Context) => {
     try {
       if (!ctx.from) return;
+      if (!isPrivateChat(ctx)) return;
       const { user } = await trackTelegramUser(ctx as StartContext);
       if (!(await hasAcceptedCurrentRules(user.telegramId))) {
         const { text, extra } = buildRulesMessageAndKeyboard();
@@ -89,6 +92,7 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
   bot.command("profile", async (ctx: Context) => {
     try {
       if (!ctx.from) return;
+      if (!isPrivateChat(ctx)) return;
       const { user } = await trackTelegramUser(ctx as StartContext);
       await ctx.reply(await buildProfileMessage(user));
     } catch (error) {
@@ -100,6 +104,7 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
   bot.command("change_email", async (ctx: Context) => {
     try {
       if (!ctx.from) return;
+      if (!isPrivateChat(ctx)) return;
       const { user } = await trackTelegramUser(ctx as StartContext);
       const previousEmail = user.email;
 

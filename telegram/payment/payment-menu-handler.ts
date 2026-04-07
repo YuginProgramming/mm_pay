@@ -4,14 +4,22 @@ import {
   buildStandalonePaymentMenuKeyboard,
   DEFER_EMAIL_CALLBACK,
 } from "./payment-menu-keyboards";
+import { isPrivateChat } from "../core/chat-guards";
 import { buildRulesMessageAndKeyboard, hasAcceptedCurrentRules } from "../handlers/rules";
 
 /** Обробка застарілої кнопки «Пізніше email» у старих чатах (нові клавіатури без неї). */
 export function registerDeferEmailHandler(bot: Telegraf<Context>) {
   bot.action(DEFER_EMAIL_CALLBACK, async (ctx) => {
     try {
+      if (!ctx.from) {
+        await ctx.answerCbQuery().catch(() => {});
+        return;
+      }
+      if (!isPrivateChat(ctx)) {
+        await ctx.answerCbQuery().catch(() => {});
+        return;
+      }
       await ctx.answerCbQuery();
-      if (!ctx.from) return;
 
       const telegramId = String(ctx.from.id);
       const user = await TelegramUser.findOne({ where: { telegramId } });

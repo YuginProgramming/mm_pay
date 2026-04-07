@@ -163,6 +163,11 @@ async function createAppSettingsTable(): Promise<void> {
         'kwiga_sync_interval_minutes',
         '30',
         'Інтервал повного синху KWIGA → БД (хв); env KWIGA_SYNC_INTERVAL_MINUTES перекриває, якщо заданий'
+      ),
+      (
+        'telegram_bot_chats_json',
+        '[]',
+        'JSON: chatId/type/title чатів і каналів бота; заповнення: debug/seed-telegram-chat-ids-to-app-settings.ts'
       )
     ON CONFLICT (setting_key) DO NOTHING;
   `);

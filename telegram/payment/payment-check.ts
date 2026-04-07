@@ -1,6 +1,7 @@
 // telegram/payment/payment-check.ts
 import { Context, Markup, Telegraf } from "telegraf";
 import { Contact } from "../../database/Contact";
+import { isPrivateChat } from "../core/chat-guards";
 import { sparkleLabel } from "../core/sparkle-label";
 
 const PAID_USERS_BUTTON_CALLBACK = "show_paid_users_button";
@@ -45,6 +46,10 @@ export function registerPaymentCheckHandlers(bot: Telegraf<Context>) {
   // 1) Users who paid
   bot.action(PAID_USERS_BUTTON_CALLBACK, async (ctx) => {
     try {
+      if (!isPrivateChat(ctx)) {
+        await ctx.answerCbQuery().catch(() => {});
+        return;
+      }
       await ctx.answerCbQuery(); // stop loading spinner
 
       // Find contacts that have at least one order with paid_status === "paid"
@@ -84,6 +89,10 @@ export function registerPaymentCheckHandlers(bot: Telegraf<Context>) {
   // 2) Users who have not paid
   bot.action(NOT_PAID_USERS_BUTTON_CALLBACK, async (ctx) => {
     try {
+      if (!isPrivateChat(ctx)) {
+        await ctx.answerCbQuery().catch(() => {});
+        return;
+      }
       await ctx.answerCbQuery(); // stop loading spinner
 
       // Find contacts that have at least one order with paid_status === "not_paid"

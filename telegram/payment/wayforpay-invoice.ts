@@ -5,6 +5,7 @@ import { normalizeEmail } from "../../database/normalize-email";
 import { TelegramUser } from "../../database/TelegramUser";
 import { MULTIMASKING_PRODUCT_NAME } from "../../payment/multimasking-product";
 import { getMultimaskingCoursePriceUah } from "../../payment/multimasking-price";
+import { isPrivateChat } from "../core/chat-guards";
 import { hasAcceptedCurrentRules } from "../handlers/rules";
 import { sparkleLabel } from "../core/sparkle-label";
 
@@ -32,6 +33,10 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
     try {
       const chatId = ctx.from?.id;
       if (chatId == null) return;
+      if (!isPrivateChat(ctx)) {
+        await ctx.answerCbQuery().catch(() => {});
+        return;
+      }
 
       const telegramId = String(chatId);
       if (!(await hasAcceptedCurrentRules(telegramId))) {

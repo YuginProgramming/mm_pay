@@ -20,6 +20,7 @@
     "debug:list-webhooks": "ts-node debug/list-wayforpay-webhooks.ts",
     "debug:remove-telegram-user": "ts-node debug/remove-telegram-user.ts",
     "debug:sync-kwiga-ranks": "ts-node debug/sync-telegram-kwiga-ranks.ts",
+    "debug:seed-telegram-chats": "ts-node debug/seed-telegram-chat-ids-to-app-settings.ts",
     "payment:server": "ts-node payment/http-server.ts",
     "payment:server:build": "npm run build && node dist/payment/http-server.js"
   },

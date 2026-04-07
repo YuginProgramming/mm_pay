@@ -9,6 +9,7 @@ import {
   buildRulesMessageAndKeyboard,
   hasAcceptedCurrentRules,
 } from "./rules";
+import { isPrivateChat } from "../core/chat-guards";
 import { StartContext } from "../core/user-tracking";
 import { getTelegramUserFromContext } from "../core/user-tracking";
 
@@ -26,6 +27,7 @@ export function registerTextHandlers(bot: Telegraf<StartContext>): void {
 
     const text = message.text.trim();
     if (text.startsWith("/")) return;
+    if (!isPrivateChat(ctx)) return;
 
     const user = await getTelegramUserFromContext(ctx);
     if (!user) return;
