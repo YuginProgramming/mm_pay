@@ -41,7 +41,7 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
         const { text, extra } = buildEmailRequestMessage();
         await ctx.reply(
           text,
-          await buildMergedStartEmailKeyboard(extra, rulesAccepted),
+          await buildMergedStartEmailKeyboard(extra, rulesAccepted, user.telegramId),
         );
         return;
       }
@@ -54,7 +54,7 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
 
       await ctx.reply(
         "Меню оплати:",
-        await buildStandalonePaymentMenuKeyboard(true),
+        await buildStandalonePaymentMenuKeyboard(true, user.telegramId),
       );
     } catch (error) {
       console.error("Error handling /start:", error);
@@ -81,7 +81,7 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
         "Меню оплати:\n\n" +
           "Після успішної оплати WayForPay доступ з’явиться протягом хвилини; перевірте /profile. " +
           "Якщо статус не змінився — зверніться до підтримки Corridor.",
-        await buildStandalonePaymentMenuKeyboard(true),
+        await buildStandalonePaymentMenuKeyboard(true, user.telegramId),
       );
     } catch (error) {
       console.error("Error handling /payment:", error);

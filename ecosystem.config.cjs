@@ -1,5 +1,5 @@
 /**
- * PM2: три процеси з plan.txt (Telegram, WayForPay webhook, KWIGA crawl).
+ * PM2: чотири процеси (Telegram, WayForPay webhook, KWIGA crawl, paid-chat janitor).
  * Після деплою: npm ci && npm run build
  * Старт: pm2 start ecosystem.config.cjs
  *
@@ -32,6 +32,15 @@ module.exports = {
       name: "mm-kwiga-sync",
       cwd: root,
       script: "dist/database/kwiga-sync-daemon.js",
+      instances: 1,
+      autorestart: true,
+      max_restarts: 20,
+      min_uptime: "10s",
+    },
+    {
+      name: "mm-paid-chat-janitor",
+      cwd: root,
+      script: "dist/database/paid-chat-janitor-daemon.js",
       instances: 1,
       autorestart: true,
       max_restarts: 20,

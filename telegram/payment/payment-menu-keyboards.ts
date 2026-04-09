@@ -19,9 +19,10 @@ export async function buildMergedStartEmailKeyboard(
     reply_markup?: InlineKeyboardMarkup;
   },
   rulesAccepted: boolean,
+  telegramId: string,
 ) {
   const paymentOrRules = rulesAccepted
-    ? await buildWayForPayInvoiceKeyboard()
+    ? await buildWayForPayInvoiceKeyboard(telegramId)
     : buildRulesMiniKeyboard();
 
   return {
@@ -35,11 +36,14 @@ export async function buildMergedStartEmailKeyboard(
 }
 
 /** Меню оплати без рядка ProChat (для /payment або після «без email»). */
-export async function buildStandalonePaymentMenuKeyboard(rulesAccepted: boolean) {
+export async function buildStandalonePaymentMenuKeyboard(
+  rulesAccepted: boolean,
+  telegramId: string,
+) {
   if (!rulesAccepted) {
     return buildRulesMiniKeyboard();
   }
-  const wfp = await buildWayForPayInvoiceKeyboard();
+  const wfp = await buildWayForPayInvoiceKeyboard(telegramId);
   return {
     reply_markup: {
       inline_keyboard: [...rowsOf(wfp)],

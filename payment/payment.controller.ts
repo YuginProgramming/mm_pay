@@ -12,6 +12,8 @@ import {
 } from "./payment.service";
 import { notifyTerminalPaymentFailureIfFirstTime } from "./payment-failure-notify";
 import { processApprovedMultimaskingPayment } from "./grant-multimasking-access";
+import { gateMultimaskingCheckoutForTelegramId } from "./multimasking-checkout-eligibility";
+import { MULTIMASKING_PRODUCT_NAME } from "./multimasking-product";
 import { logPaymentEvent } from "./payment-events";
 import { persistWayforpayWebhookEvent } from "./persist-wayforpay-webhook";
 
@@ -132,6 +134,18 @@ const handleCreateCheckout = async (
     if (!Number.isFinite(price) || !courseName || !chatId) {
       res.status(400).json({ error: "price, courseName, chatId required" });
       return;
+    }
+
+    if (courseName === MULTIMASKING_PRODUCT_NAME) {
+      const gate = await gateMultimaskingCheckoutForTelegramId(chatId);
+      if (!gate.ok) {
+        res.status(403).json({
+          error: "multimasking checkout not allowed",
+          reason: gate.reason,
+          rank: gate.rank,
+        });
+        return;
+      }
     }
 
     const { invoiceUrl } = await createCheckoutForCourse(price, courseName, chatId);

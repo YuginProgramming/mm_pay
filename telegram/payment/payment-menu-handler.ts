@@ -43,7 +43,7 @@ export function registerDeferEmailHandler(bot: Telegraf<Context>) {
 
       await ctx.reply(
         "Ок, email можна вказати пізніше.\n\nМеню оплати:",
-        await buildStandalonePaymentMenuKeyboard(true),
+        await buildStandalonePaymentMenuKeyboard(true, telegramId),
       );
     } catch (err) {
       console.error("defer email payment menu:", err);

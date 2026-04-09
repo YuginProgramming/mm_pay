@@ -7,6 +7,11 @@ import { MULTIMASKING_PRODUCT_NAME } from "../../payment/multimasking-product";
 import { getMultimaskingCoursePriceUah } from "../../payment/multimasking-price";
 import { isPrivateChat } from "../core/chat-guards";
 import { hasAcceptedCurrentRules } from "../handlers/rules";
+import { computeKwigaRankSnapshot } from "../profile/kwiga-rank-db";
+import {
+  isKwigaRankEligibleForPaidChatPurchase,
+  multimaskingIneligibleUserMessageUa,
+} from "../profile/paid-chat-payment-eligibility";
 import { sparkleLabel } from "../core/sparkle-label";
 
 /**
@@ -14,21 +19,77 @@ import { sparkleLabel } from "../core/sparkle-label";
  */
 const WAYFORPAY_INVOICE_CALLBACK = "wfp_smoke_test_invoice";
 
+/** Пояснення, чому приховано WayForPay (лише masters/pro за KWIGA). */
+const WFP_RANK_INELIGIBLE_INFO = "wfp_rank_ineligible_info";
+
 export { MULTIMASKING_PRODUCT_NAME };
 
-export async function buildWayForPayInvoiceKeyboard() {
+function payButtonRow(price: number) {
+  return [
+    Markup.button.callback(
+      sparkleLabel(`Оплатити ${price} грн`),
+      WAYFORPAY_INVOICE_CALLBACK,
+    ),
+  ];
+}
+
+/**
+ * Кнопка оплати — лише якщо email є, контакт у KWIGA є і ранг masters/pro.
+ * Інакше одна кнопка з поясненням (деталі по натисканню).
+ */
+export async function buildWayForPayInvoiceKeyboard(telegramId: string) {
   const price = await getMultimaskingCoursePriceUah();
-  return Markup.inlineKeyboard([
-    [
-      Markup.button.callback(
-        sparkleLabel(`Оплатити ${price} грн`),
-        WAYFORPAY_INVOICE_CALLBACK,
-      ),
-    ],
-  ]);
+  const dbUser = await TelegramUser.findOne({ where: { telegramId } });
+  const emailRaw = dbUser?.email?.trim();
+
+  if (!emailRaw || !dbUser) {
+    return Markup.inlineKeyboard([payButtonRow(price)]);
+  }
+
+  const contact = await findContactByEmailForBot(normalizeEmail(emailRaw));
+  if (!contact) {
+    return Markup.inlineKeyboard([payButtonRow(price)]);
+  }
+
+  const rankSnapshot = await computeKwigaRankSnapshot(dbUser);
+  if (!isKwigaRankEligibleForPaidChatPurchase(rankSnapshot.rank)) {
+    return Markup.inlineKeyboard([
+      [
+        Markup.button.callback(
+          sparkleLabel("Оплата: потрібен статус masters або pro"),
+          WFP_RANK_INELIGIBLE_INFO,
+        ),
+      ],
+    ]);
+  }
+
+  return Markup.inlineKeyboard([payButtonRow(price)]);
 }
 
 export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
+  bot.action(WFP_RANK_INELIGIBLE_INFO, async (ctx) => {
+    try {
+      const chatId = ctx.from?.id;
+      if (chatId == null) return;
+      if (!isPrivateChat(ctx)) {
+        await ctx.answerCbQuery().catch(() => {});
+        return;
+      }
+      await ctx.answerCbQuery().catch(() => {});
+      const telegramId = String(chatId);
+      const dbUser = await TelegramUser.findOne({ where: { telegramId } });
+      if (!dbUser) {
+        await ctx.reply("Профіль не знайдено. Спробуйте /start.");
+        return;
+      }
+      const rankSnapshot = await computeKwigaRankSnapshot(dbUser);
+      await ctx.reply(multimaskingIneligibleUserMessageUa(rankSnapshot.rank));
+    } catch (err) {
+      console.error("WayForPay rank info callback:", err);
+      await ctx.answerCbQuery().catch(() => {});
+    }
+  });
+
   bot.action(WAYFORPAY_INVOICE_CALLBACK, async (ctx) => {
     try {
       const chatId = ctx.from?.id;
@@ -50,7 +111,7 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
 
       const dbUser = await TelegramUser.findOne({ where: { telegramId } });
       const emailRaw = dbUser?.email?.trim();
-      if (!emailRaw) {
+      if (!emailRaw || !dbUser) {
         await ctx.reply(
           "Оплату можна виставити лише після того, як ви надішлете свій email у чат бота " +
             "(порядок: згода з правилами → email → оплата). Інакше WayForPay зарахувати доступ до вашого профілю не вдасться.\n\n" +
@@ -65,6 +126,12 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
           "За вказаним email контакта у базі KWIGA не знайдено — після оплати доступ не можна буде зарахувати автоматично. " +
             "Перевірте email (/profile) або зверніться до підтримки, а потім знову натисніть «Оплатити».",
         );
+        return;
+      }
+
+      const rankSnapshot = await computeKwigaRankSnapshot(dbUser);
+      if (!isKwigaRankEligibleForPaidChatPurchase(rankSnapshot.rank)) {
+        await ctx.reply(multimaskingIneligibleUserMessageUa(rankSnapshot.rank));
         return;
       }
 

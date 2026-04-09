@@ -9,6 +9,9 @@
     "kwiga:sync": "ts-node database/sync-from-kwiga.ts",
     "kwiga:sync:daemon": "ts-node database/kwiga-sync-daemon.ts",
     "kwiga:sync:daemon:prod": "npm run build && node dist/database/kwiga-sync-daemon.js",
+    "paid-chat:janitor:daemon": "ts-node database/paid-chat-janitor-daemon.ts",
+    "paid-chat:janitor:daemon:prod": "npm run build && node dist/database/paid-chat-janitor-daemon.js",
+    "paid-chat:janitor:once:prod": "npm run build && node dist/database/paid-chat-janitor-daemon.js --once",
     "clear-telegram-users": "ts-node database/clear-telegram-users.ts",
     "debug:add-testuser": "ts-node debug/add-testuser.ts",
     "debug:set-masters-test-user": "ts-node debug/set-masters-rank-test-user.ts",
@@ -21,6 +24,8 @@
     "debug:remove-telegram-user": "ts-node debug/remove-telegram-user.ts",
     "debug:sync-kwiga-ranks": "ts-node debug/sync-telegram-kwiga-ranks.ts",
     "debug:seed-telegram-chats": "ts-node debug/seed-telegram-chat-ids-to-app-settings.ts",
+    "debug:paid-chat-snapshot": "ts-node debug/paid-chat-janitor-snapshot.ts",
+    "debug:paid-chat-allowlist": "ts-node debug/paid-chat-janitor-allowlist.ts",
     "payment:server": "ts-node payment/http-server.ts",
     "payment:server:build": "npm run build && node dist/payment/http-server.js"
   },

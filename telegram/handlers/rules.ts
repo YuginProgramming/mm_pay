@@ -89,7 +89,7 @@ export function registerRulesAcceptHandler(bot: Telegraf<Context>): void {
       );
       await ctx.reply(
         "Умови прийнято. Нижче — меню оплати:",
-        await buildStandalonePaymentMenuKeyboard(true),
+        await buildStandalonePaymentMenuKeyboard(true, telegramId),
       );
     } catch (err) {
       console.error("rules accept:", err);

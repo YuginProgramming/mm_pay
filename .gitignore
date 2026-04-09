@@ -10,3 +10,6 @@ dist/
 # Локальні нотатки / вивід debug-скриптів — не комітити
 debug/bot-telegram-chats.json
 debug/info.txt
+
+# Local specs/notes
+TZ/

@@ -21,6 +21,16 @@ export const APP_SETTING_KEYS = {
    * канали й супергрупи зі знімка `debug/bot-telegram-chats.json`; оновлення: `debug/seed-telegram-chat-ids-to-app-settings.ts`.
    */
   TELEGRAM_BOT_CHATS_JSON: "telegram_bot_chats_json",
+  /**
+   * Кількість днів перебування в платних чатах (Masters / Chat PRO) від дати оплати / grant.
+   * Оператор змінює лише значення в БД; див. TZ/user-control-crawler.txt.
+   */
+  PAID_CHAT_ACCESS_DAYS: "paid_chat_access_days",
+  /**
+   * Інтервал між циклами paid-chat janitor (секунди), `database/paid-chat-janitor-daemon.ts`.
+   * Production: 7200 (2 год). Тест: 30 у БД або env `PAID_CHAT_JANITOR_INTERVAL_SECONDS` (має пріоритет).
+   */
+  PAID_CHAT_JANITOR_INTERVAL_SECONDS: "paid_chat_janitor_interval_seconds",
 } as const;
 
 export type AppSettingKey =

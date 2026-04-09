@@ -1,5 +1,5 @@
 import "dotenv/config";
-import type { CreationAttributes, Transaction } from "sequelize";
+import type { Transaction } from "sequelize";
 import { Contact } from "./Contact";
 import type { ContactAttributes } from "./Contact";
 import type {
@@ -8,7 +8,10 @@ import type {
   ContactPaymentRecord,
   ContactTagRecord,
 } from "./Contact";
-import { ContactProductAccess } from "./ContactProductAccess";
+import {
+  ContactProductAccess,
+  type ContactProductAccessAttributes,
+} from "./ContactProductAccess";
 import { KwigaProduct } from "./KwigaProduct";
 import type { KwigaProductAttributes } from "./KwigaProduct";
 import { sequelize } from "./db";
@@ -16,7 +19,9 @@ import { normalizeEmail } from "./normalize-email";
 
 /**
  * Pull contacts from Kwiga, then for each contact GET /contacts/:id/products
- * and upsert kwiga_products + replace contact_product_access rows (source kwiga_sync only).
+ * and upsert kwiga_products + upsert contact_product_access rows (source kwiga_sync only).
+ * Рядки `kwiga_sync` не видаляються, якщо KWIGA більше не повертає відповідну підписку в API —
+ * локальний знімок зберігається (див. TZ/user-control-crawler.txt п. 1.1).
  *
  * Usage:
  *   npx ts-node database/sync-from-kwiga.ts
@@ -220,13 +225,6 @@ async function syncProductsAndAccess(contactDbId: number, products: ApiProduct[]
   const now = new Date();
 
   await sequelize.transaction(async (t) => {
-    await ContactProductAccess.destroy({
-      where: { contactId: contactDbId, source: "kwiga_sync" },
-      transaction: t,
-    });
-
-    const accessRows: CreationAttributes<ContactProductAccess>[] = [];
-
     for (const p of products) {
       const kwigaProductPk = await upsertKwigaProduct(p, t);
       const agg = p.aggregated_subscription;
@@ -235,32 +233,44 @@ async function syncProductsAndAccess(contactDbId: number, products: ApiProduct[]
       if (subs.length === 0) continue;
 
       for (const sub of subs) {
-        accessRows.push({
-          contactId: contactDbId,
-          kwigaProductId: kwigaProductPk,
-          externalProductId: p.id,
-          externalSubscriptionId: String(sub.id),
-          titleSnapshot: p.title,
-          isActive: sub.is_active ?? agg?.is_active ?? true,
-          isPaid: agg?.is_paid ?? false,
-          startAt: sub.start_at ? new Date(sub.start_at) : agg?.start_at ? new Date(agg.start_at) : null,
-          endAt: sub.end_at ? new Date(sub.end_at) : agg?.end_at ? new Date(agg.end_at) : null,
-          paidAt: sub.paid_at ? new Date(sub.paid_at) : null,
-          subscriptionStateTitle: agg?.state?.title ?? agg?.state?.name ?? null,
-          countAvailableDays: agg?.count_available_days ?? null,
-          countLeftDays: agg?.count_left_days ?? null,
-          orderId: sub.order_id != null ? String(sub.order_id) : null,
-          offerId: sub.offer_id != null ? String(sub.offer_id) : null,
-          source: "kwiga_sync",
-          revokedAt: null,
-          revokedReason: null,
-          lastSyncedAt: now,
-        });
+        const externalSubId = String(sub.id);
+        await ContactProductAccess.upsert(
+          {
+            contactId: contactDbId,
+            kwigaProductId: kwigaProductPk,
+            externalProductId: p.id,
+            externalSubscriptionId: externalSubId,
+            titleSnapshot: p.title,
+            isActive: sub.is_active ?? agg?.is_active ?? true,
+            isPaid: agg?.is_paid ?? false,
+            startAt: sub.start_at
+              ? new Date(sub.start_at)
+              : agg?.start_at
+                ? new Date(agg.start_at)
+                : null,
+            endAt: sub.end_at
+              ? new Date(sub.end_at)
+              : agg?.end_at
+                ? new Date(agg.end_at)
+                : null,
+            paidAt: sub.paid_at ? new Date(sub.paid_at) : null,
+            subscriptionStateTitle: agg?.state?.title ?? agg?.state?.name ?? null,
+            countAvailableDays: agg?.count_available_days ?? null,
+            countLeftDays: agg?.count_left_days ?? null,
+            orderId: sub.order_id != null ? String(sub.order_id) : null,
+            offerId: sub.offer_id != null ? String(sub.offer_id) : null,
+            source: "kwiga_sync",
+            revokedAt: null,
+            revokedReason: null,
+            lastSyncedAt: now,
+            wayforpayOrderReference: null,
+          },
+          {
+            transaction: t,
+            conflictFields: ["externalSubscriptionId"] as unknown as (keyof ContactProductAccessAttributes)[],
+          },
+        );
       }
-    }
-
-    if (accessRows.length > 0) {
-      await ContactProductAccess.bulkCreate(accessRows, { transaction: t, validate: true });
     }
   });
 }

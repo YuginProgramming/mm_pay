@@ -117,7 +117,7 @@ export function registerTextHandlers(bot: Telegraf<StartContext>): void {
     }
     await ctx.reply(
       "Меню оплати:",
-      await buildStandalonePaymentMenuKeyboard(true),
+      await buildStandalonePaymentMenuKeyboard(true, user.telegramId),
     );
   });
 }

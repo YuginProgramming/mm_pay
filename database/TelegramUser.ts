@@ -190,7 +190,7 @@ TelegramUser.init(
       allowNull: true,
       field: "kwiga_audience_rank",
       comment:
-        "KWIGA audience tier: no_kwiga_contact | prospectives | masters | pro",
+        "KWIGA audience tier (cache for UI/profile). For janitor kick/skip use computeKwigaRankSnapshot at run time.",
     },
     kwigaAccessRowCount: {
       type: DataTypes.INTEGER,

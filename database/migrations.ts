@@ -168,11 +168,36 @@ async function createAppSettingsTable(): Promise<void> {
         'telegram_bot_chats_json',
         '[]',
         'JSON: chatId/type/title чатів і каналів бота; заповнення: debug/seed-telegram-chat-ids-to-app-settings.ts'
+      ),
+      (
+        'paid_chat_access_days',
+        '30',
+        'Днів у платних чатах (Masters / Chat PRO) від дати оплати / grant; зміна лише в БД'
+      ),
+      (
+        'paid_chat_janitor_interval_seconds',
+        '7200',
+        'Інтервал між прогонами paid-chat janitor (сек): production 7200 (2 год); тест 30 у БД або env PAID_CHAT_JANITOR_INTERVAL_SECONDS'
       )
     ON CONFLICT (setting_key) DO NOTHING;
   `);
   console.log(
     'Migration completed: "app_settings" table and default rows (if missing).',
+  );
+}
+
+async function seedPaidChatJanitorIntervalSetting(): Promise<void> {
+  await sequelize.query(`
+    INSERT INTO app_settings (setting_key, setting_value, description_uk)
+    VALUES (
+      'paid_chat_janitor_interval_seconds',
+      '7200',
+      'Інтервал між прогонами paid-chat janitor (сек): production 7200 (2 год); тест 30 у БД або env PAID_CHAT_JANITOR_INTERVAL_SECONDS'
+    )
+    ON CONFLICT (setting_key) DO NOTHING;
+  `);
+  console.log(
+    'Migration completed: paid_chat_janitor_interval_seconds seed (if missing).',
   );
 }
 
@@ -341,6 +366,47 @@ async function createWayforpayWebhookEventsTable(): Promise<void> {
   );
 }
 
+async function createPaidChatMemberStateTable(): Promise<void> {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS paid_chat_member_state (
+      chat_id    VARCHAR(32) NOT NULL,
+      user_id    VARCHAR(32) NOT NULL,
+      status     VARCHAR(32) NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (chat_id, user_id)
+    );
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS paid_chat_member_state_chat_status_idx
+      ON paid_chat_member_state (chat_id, status);
+  `);
+  console.log(
+    'Migration completed: "paid_chat_member_state" (TZ chat_member облік, if missing).',
+  );
+}
+
+async function createPaidChatJanitorAlertLogTable(): Promise<void> {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS paid_chat_janitor_alert_log (
+      id             SERIAL PRIMARY KEY,
+      telegram_id    VARCHAR(32) NOT NULL,
+      alert_type     VARCHAR(64) NOT NULL,
+      dedupe_key     VARCHAR(512) NOT NULL,
+      contact_id     INTEGER,
+      grant_end_at   TIMESTAMPTZ,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (telegram_id, alert_type, dedupe_key)
+    );
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS paid_chat_janitor_alert_log_created_at_idx
+      ON paid_chat_janitor_alert_log (created_at DESC);
+  `);
+  console.log(
+    'Migration completed: "paid_chat_janitor_alert_log" (§7.6 idempotency, if missing).',
+  );
+}
+
 async function addWayforpayOrderReferenceColumn(): Promise<void> {
   await sequelize.query(`
     ALTER TABLE contact_product_access
@@ -371,6 +437,9 @@ async function runMigrations(): Promise<void> {
     await createPendingWayforpayTables();
     await createWayforpayWebhookEventsTable();
     await addWayforpayOrderReferenceColumn();
+    await createPaidChatJanitorAlertLogTable();
+    await createPaidChatMemberStateTable();
+    await seedPaidChatJanitorIntervalSetting();
   } catch (error) {
     console.error("Migration failed:", error);
     process.exit(1);

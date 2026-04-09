@@ -35,7 +35,12 @@ function mergePrefs(
   return {};
 }
 
-/** Обчислити ранг і контакт KWIGA для користувача бота (та сама логіка, що профіль). */
+/**
+ * Обчислити ранг і контакт KWIGA для користувача бота (та сама логіка, що профіль).
+ *
+ * Для виконавчих рішень (paid-chat janitor, kick/skip) викликати **щоразу** на момент прогону —
+ * не покладатися лише на `telegram_users.kwiga_audience_rank`. Див. TZ/user-control-crawler.txt п. 1.1.
+ */
 export async function computeKwigaRankSnapshot(
   user: TelegramUser,
 ): Promise<KwigaRankSnapshot> {
