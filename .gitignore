@@ -13,3 +13,6 @@ debug/info.txt
 
 # Local specs/notes
 TZ/
+
+# Local debug artifacts
+debug/
