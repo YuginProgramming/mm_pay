@@ -55,14 +55,16 @@ async function maybeDelay(ms: number): Promise<void> {
   await new Promise((r) => setTimeout(r, ms));
 }
 
-function shouldStayInMasters(
+/** Експортовано для unit-тестів політики доступу до MASTERS / Chat PRO. */
+export function shouldStayInMasters(
   activeBotPayment: boolean,
   rank: KwigaAudienceRank,
 ): boolean {
   return activeBotPayment && (rank === "masters" || rank === "pro");
 }
 
-function shouldStayInCatPro(
+/** Експортовано для unit-тестів політики доступу до MASTERS / Chat PRO. */
+export function shouldStayInCatPro(
   activeBotPayment: boolean,
   rank: KwigaAudienceRank,
 ): boolean {

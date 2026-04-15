@@ -9,10 +9,12 @@
       "skipLibCheck": true
     },
     "include": [
-      "app.ts",
-      "debug/**/*.ts",
-      "telegram/**/*.ts",
-      "payment/**/*.ts",
-      "database/**/*.ts"
+        "app.ts",
+        "debug/**/*.ts",
+        "telegram/**/*.ts",
+        "payment/**/*.ts",
+        "database/**/*.ts",
+        "tests/**/*.ts",
+        "vitest.config.ts"
     ]
   }
