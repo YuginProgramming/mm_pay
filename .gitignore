@@ -14,5 +14,7 @@ debug/info.txt
 # Local specs/notes
 TZ/
 
-# Local debug artifacts
-debug/
+# Завантажені логи / сміття в debug (джерела *.ts у debug/ лишаємо в репо)
+debug/mm-*.log
+debug/*-error.log
+debug/*-out.log
