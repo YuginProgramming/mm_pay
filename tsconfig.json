@@ -13,8 +13,12 @@
         "debug/**/*.ts",
         "telegram/**/*.ts",
         "payment/**/*.ts",
-        "database/**/*.ts",
-        "tests/**/*.ts",
+        "database/**/*.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist",
+        "tests",
         "vitest.config.ts"
     ]
   }

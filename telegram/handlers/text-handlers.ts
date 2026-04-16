@@ -85,7 +85,15 @@ export function registerTextHandlers(bot: Telegraf<StartContext>): void {
           "Перевірте профіль: /profile",
       );
       await user.reload();
-      const linked = await retryUnlinkedApprovedPaymentsForTelegramUser(user);
+      let linked = 0;
+      try {
+        linked = await retryUnlinkedApprovedPaymentsForTelegramUser(user);
+      } catch (err) {
+        console.error(
+          "[text-handlers] retryUnlinkedApprovedPaymentsForTelegramUser (change_email):",
+          err,
+        );
+      }
       if (linked > 0) {
         await ctx.reply(
           "Знайдено успішну оплату WayForPay без зарахованого доступу — зараз зараховано. Перевірте /profile.",
@@ -103,8 +111,16 @@ export function registerTextHandlers(bot: Telegraf<StartContext>): void {
         "Тепер ви можете повноцінно користуватися ботом.",
     );
     await user.reload();
-    const linkedAfterFirstEmail =
-      await retryUnlinkedApprovedPaymentsForTelegramUser(user);
+    let linkedAfterFirstEmail = 0;
+    try {
+      linkedAfterFirstEmail =
+        await retryUnlinkedApprovedPaymentsForTelegramUser(user);
+    } catch (err) {
+      console.error(
+        "[text-handlers] retryUnlinkedApprovedPaymentsForTelegramUser (first email):",
+        err,
+      );
+    }
     if (linkedAfterFirstEmail > 0) {
       await ctx.reply(
         "Знайдено вашу раніше успішну оплату WayForPay — доступ зараховано. Перевірте /profile.",
