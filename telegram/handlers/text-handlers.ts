@@ -6,9 +6,10 @@ import { findConflictingTelegramUserForEmail } from "../../database/telegram-use
 import { retryUnlinkedApprovedPaymentsForTelegramUser } from "../../payment/retry-unlinked-payment-grant";
 import { buildStandalonePaymentMenuKeyboard } from "../payment/payment-menu-keyboards";
 import {
-  buildRulesMessageAndKeyboard,
+  buildPaymentNeedsConsentMessageAndKeyboard,
   hasAcceptedCurrentRules,
 } from "./rules";
+import { SUPPORT_CONTACT_SUFFIX_PLAIN_UA } from "../core/support";
 import { isPrivateChat } from "../core/chat-guards";
 import { StartContext } from "../core/user-tracking";
 import { getTelegramUserFromContext } from "../core/user-tracking";
@@ -18,7 +19,8 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const EMAIL_ALREADY_LINKED_MESSAGE =
   "Цей email уже прив’язаний до іншого Telegram-акаунта.\n\n" +
   "Якщо це справді ваша пошта — увійдіть у бот з того акаунта або зверніться до підтримки.\n" +
-  "Якщо ви помилилися — введіть іншу адресу або скористайтесь /change_email.";
+  "Якщо ви помилилися — введіть іншу адресу або скористайтесь /change_email.\n\n" +
+  SUPPORT_CONTACT_SUFFIX_PLAIN_UA;
 
 export function registerTextHandlers(bot: Telegraf<StartContext>): void {
   bot.on("text", async (ctx) => {
@@ -100,8 +102,8 @@ export function registerTextHandlers(bot: Telegraf<StartContext>): void {
         );
       }
       if (!(await hasAcceptedCurrentRules(user.telegramId))) {
-        const { text: rulesText, extra } = buildRulesMessageAndKeyboard();
-        await ctx.reply(rulesText, extra);
+        const { text, extra } = buildPaymentNeedsConsentMessageAndKeyboard();
+        await ctx.reply(text, extra);
       }
       return;
     }
@@ -127,8 +129,8 @@ export function registerTextHandlers(bot: Telegraf<StartContext>): void {
       );
     }
     if (!(await hasAcceptedCurrentRules(user.telegramId))) {
-      const { text: rulesText, extra } = buildRulesMessageAndKeyboard();
-      await ctx.reply(rulesText, extra);
+      const { text, extra } = buildPaymentNeedsConsentMessageAndKeyboard();
+      await ctx.reply(text, extra);
       return;
     }
     await ctx.reply(

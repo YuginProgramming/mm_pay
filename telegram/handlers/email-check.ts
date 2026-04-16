@@ -5,6 +5,7 @@ import { MULTIMASKING_TELEGRAM_GROUP_PRO_URL } from "../../payment/multimasking-
 import { findContactByEmailForBot } from "../../database/contact-lookup";
 import { isPrivateChat } from "../core/chat-guards";
 import { sparkleLabel } from "../core/sparkle-label";
+import { SUPPORT_CONTACT_SUFFIX_PLAIN_UA } from "../core/support";
 import { telegramHtmlLink } from "../core/telegram-html";
 
 const PROCHAT_BUTTON_CALLBACK = "prochat_access_button";
@@ -84,7 +85,7 @@ export function registerProChatAccessHandler(bot: Telegraf<Context>) {
         );
       } else {
         await ctx.reply(
-          "Вашого контакту немає в базі даних, будь ласка зверніться до адміністратора.",
+          "Вашого контакту немає в базі даних.\n\n" + SUPPORT_CONTACT_SUFFIX_PLAIN_UA,
         );
       }
     } catch (error) {

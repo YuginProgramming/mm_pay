@@ -36,13 +36,31 @@ export function buildRulesMiniKeyboard() {
   ]);
 }
 
+/** Основний текст згоди (без додаткового вступу для сценарію «немає оплати»). */
+const RULES_CONSENT_MAIN_TEXT_UA =
+  "Перед оплатою та доступом ознайомтеся з правилами навчального проєкту MULTIMASKING.\n\n" +
+  `Повний текст: ${MULTIMASKING_RULES_URL}\n\n` +
+  "Натискаючи «Погоджуюсь», ви підтверджуєте, що прочитали правила та згодні їх дотримуватися.";
+
+/**
+ * Короткий текст для спливаючого вікна після натискання «Оплатити» без згоди (ліміт Telegram ~200 символів).
+ */
+export const CALLBACK_ALERT_CONSENT_REQUIRED_FOR_PAYMENT_UA =
+  "Спочатку прийміть правила проєкту: кнопка «Погоджуюсь» під повідомленням з правилами або команда /payment.";
+
 /** Short copy + link; «Погоджуюсь» matches the Telegraph page. */
 export function buildRulesMessageAndKeyboard() {
-  const text =
-    "Перед оплатою та доступом ознайомтеся з правилами навчального проєкту MULTIMASKING.\n\n" +
-    `Повний текст: ${MULTIMASKING_RULES_URL}\n\n` +
-    "Натискаючи «Погоджуюсь», ви підтверджуєте, що прочитали правила та згодні їх дотримуватися.";
+  return { text: RULES_CONSENT_MAIN_TEXT_UA, extra: buildRulesMiniKeyboard() };
+}
 
+/**
+ * Повідомлення, коли користувач намагається оплатити або відкрити оплату без збереженої згоди в базі.
+ */
+export function buildPaymentNeedsConsentMessageAndKeyboard() {
+  const text =
+    "Щоб перейти до оплати, потрібна ваша згода з правилами доступу до навчального проєкту MULTIMASKING " +
+    "(це фіксується в боті після натискання «Погоджуюсь»).\n\n" +
+    RULES_CONSENT_MAIN_TEXT_UA;
   return { text, extra: buildRulesMiniKeyboard() };
 }
 

@@ -1,4 +1,5 @@
 import { WayforpayFailureNotice } from "../database/WayforpayFailureNotice";
+import { SUPPORT_CONTACT_SUFFIX_PLAIN_UA } from "../telegram/core/support";
 import { sendTelegramBotMessage } from "./telegram-notify";
 
 /**
@@ -33,8 +34,9 @@ export async function notifyTerminalPaymentFailureIfFirstTime(
     "Оплату не завершено (статус WayForPay: " +
       status +
       "). Можливі причини: відмова банку, недостатньо коштів, прострочена сесія.\n\n" +
-      "Спробуйте ще раз через /payment або зверніться до підтримки.\n" +
-      "Номер замовлення: " +
+      "Спробуйте ще раз через /payment або зверніться до підтримки:\n" +
+      SUPPORT_CONTACT_SUFFIX_PLAIN_UA +
+      "\n\nНомер замовлення: " +
       orderReference,
   );
 }

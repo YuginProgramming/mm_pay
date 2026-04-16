@@ -1,6 +1,9 @@
-/** UA тексти приватних повідомлень для paid-chat janitor (TZ/user-control-crawler.txt §7.6). */
+import {
+  SUPPORT_TELEGRAM_HANDLE,
+  SUPPORT_TELEGRAM_URL,
+} from "../core/support";
 
-export const SUPPORT_TELEGRAM_URL_PM = "https://t.me/YevhenDudar";
+/** UA тексти приватних повідомлень для paid-chat janitor (TZ/user-control-crawler.txt §7.6). */
 
 function fmtUkrHoursMinutes(ms: number): string {
   const totalMin = Math.max(0, Math.ceil(ms / 60_000));
@@ -27,7 +30,7 @@ export function buildExpiryWarn24hUa(args: {
     `Залишилось приблизно ${left} (до ${args.grantEndsAtIso} за часом системи).\n\n` +
     `Після закінчення терміну ви будете вилучені з: ${args.chatLabels}. ` +
     `Щоб продовжити доступ — відкрийте /payment та оплатіть знову, перевірте email у /change_email або статус у /profile.\n\n` +
-    `Якщо щось працює не так — напишіть у підтримку: ${SUPPORT_TELEGRAM_URL_PM}. ` +
+    `Якщо щось працює не так — напишіть у підтримку (${SUPPORT_TELEGRAM_HANDLE}): ${SUPPORT_TELEGRAM_URL}. ` +
     `Відкрита спільнота Community залишається за правилами публічного каналу.`
   );
 }
@@ -42,7 +45,7 @@ export function buildExpiryWarnFinalUa(args: {
     "Останнє нагадування перед вилученням з платних груп.\n\n" +
     `До кінця оплаченого періоду лишилось близько ${left} (орієнтир ${args.grantEndsAtIso}). ` +
     `Незабаром ви будете вилучені з: ${args.chatLabels}.\n\n` +
-    `За потреби продовжіть доступ через /payment, перевірте /profile. Підтримка: ${SUPPORT_TELEGRAM_URL_PM}.`
+    `За потреби продовжіть доступ через /payment, перевірте /profile. Підтримка: ${SUPPORT_TELEGRAM_HANDLE} — ${SUPPORT_TELEGRAM_URL}.`
   );
 }
 
@@ -54,7 +57,7 @@ export function buildExpiryWarnTest1mUa(args: {
     "Тестовий режим короткого доступу.\n\n" +
     `Приблизно за хвилину закінчиться тестовий термін; вас можуть вилучити з: ${args.chatLabels}. ` +
     `Орієнтир часу кінця: ${args.grantEndsAtIso}.\n\n` +
-    `/profile — статус, /payment — оплата. Підтримка: ${SUPPORT_TELEGRAM_URL_PM}.`
+    `/profile — статус, /payment — оплата. Підтримка: ${SUPPORT_TELEGRAM_HANDLE} — ${SUPPORT_TELEGRAM_URL}.`
   );
 }
 
@@ -76,7 +79,9 @@ export function buildPostKickUa(args: {
       "(оплата MULTIMASKING у цьому боті та відповідний запис KWIGA за email).\n\n" +
       "Якщо це ваш акаунт — оформіть доступ через /payment, перевірте email у /profile або /change_email. " +
       "Помилка або запитання — " +
-      SUPPORT_TELEGRAM_URL_PM +
+      SUPPORT_TELEGRAM_HANDLE +
+      ": " +
+      SUPPORT_TELEGRAM_URL +
       ".\nВідкритий канал Community доступний окремо за його правилами."
     );
   }
@@ -84,8 +89,10 @@ export function buildPostKickUa(args: {
     return (
       base +
       "За вашим поточним рангом KWIGA умови цієї групи не виконуються (доступ у боті може бути ще активний, але чат — лише для відповідної категорії).\n\n" +
-      "Перевірте /profile, за потреби зверніться до KWIGA або підтримки: " +
-      SUPPORT_TELEGRAM_URL_PM +
+      "Перевірте /profile, за потреби зверніться до KWIGA або підтримки (" +
+      SUPPORT_TELEGRAM_HANDLE +
+      "): " +
+      SUPPORT_TELEGRAM_URL +
       ".\nКоманди: /payment, /change_email."
     );
   }
@@ -93,8 +100,10 @@ export function buildPostKickUa(args: {
     base +
     "Доступ за оплатою в боті зараз не активний або термін сплив.\n\n" +
     "Щоб повернутися після оплати: /payment, статус і дати — /profile. " +
-    "Якщо це помилка — напишіть у підтримку: " +
-    SUPPORT_TELEGRAM_URL_PM +
+    "Якщо це помилка — напишіть у підтримку (" +
+    SUPPORT_TELEGRAM_HANDLE +
+    "): " +
+    SUPPORT_TELEGRAM_URL +
     ".\nВідкрита спільнота Community доступна окремо за правилами каналу."
   );
 }

@@ -1,3 +1,7 @@
+import {
+  SUPPORT_TELEGRAM_HANDLE,
+  SUPPORT_TELEGRAM_URL,
+} from "../core/support";
 import { telegramHtmlLink } from "../core/telegram-html";
 
 /**
@@ -6,8 +10,7 @@ import { telegramHtmlLink } from "../core/telegram-html";
  * Містить HTML (`<a href=…>`) — надсилати з parse_mode: "HTML".
  */
 
-/** Telegram для підтримки (профіль @YevhenDudar). */
-export const SUPPORT_TELEGRAM_URL = "https://t.me/YevhenDudar";
+export { SUPPORT_TELEGRAM_URL } from "../core/support";
 
 export function buildCorridorStartHintUa(): string {
   return (
@@ -17,7 +20,7 @@ export function buildCorridorStartHintUa(): string {
     "3. У меню оплати здійсніть оплату — після підтвердження банком відкриється доступ до професійної спільноти на 1 місяць.\n\n" +
     "Команди: /profile — статус і дати доступу, /payment — оплата, /change_email — змінити email.\n" +
     "Якщо після оплати нічого не змінилося за кілька хвилин — напишіть " +
-    telegramHtmlLink(SUPPORT_TELEGRAM_URL, "в підтримку") +
+    telegramHtmlLink(SUPPORT_TELEGRAM_URL, SUPPORT_TELEGRAM_HANDLE) +
     " (вкажіть час оплати)."
   );
 }

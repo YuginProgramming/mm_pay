@@ -23,6 +23,7 @@ import type { PaymentMetadata, WayForPayWebhookPayload } from "./payment.types";
 import { sendTelegramBotMessage } from "./telegram-notify";
 import type { KwigaAudienceRank } from "../telegram/profile/kwiga-user-rank";
 import { kwigaAudienceRank } from "../telegram/profile/kwiga-user-rank";
+import { SUPPORT_CONTACT_SUFFIX_PLAIN_UA } from "../telegram/core/support";
 import { escapeTelegramHtml, telegramHtmlLink } from "../telegram/core/telegram-html";
 
 /**
@@ -94,7 +95,9 @@ export async function processApprovedMultimaskingPayment(
     await sendTelegramBotMessage(
       chatId,
       "Платіж зафіксовано, але сума в повідомленні некоректна. Зверніться до підтримки, номер замовлення:\n" +
-        orderReference,
+        orderReference +
+        "\n\n" +
+        SUPPORT_CONTACT_SUFFIX_PLAIN_UA,
     );
     return;
   }
@@ -109,7 +112,9 @@ export async function processApprovedMultimaskingPayment(
     await sendTelegramBotMessage(
       chatId,
       "Платіж отримано в іншій валюті, ніж очікується. Зверніться до підтримки:\n" +
-        orderReference,
+        orderReference +
+        "\n\n" +
+        SUPPORT_CONTACT_SUFFIX_PLAIN_UA,
     );
     return;
   }
@@ -124,7 +129,9 @@ export async function processApprovedMultimaskingPayment(
       chatId,
       "Платіж отримано, але назва продукту не збігається з поточною пропозицією. " +
         "Зверніться до підтримки:\n" +
-        orderReference,
+        orderReference +
+        "\n\n" +
+        SUPPORT_CONTACT_SUFFIX_PLAIN_UA,
     );
     return;
   }
@@ -136,8 +143,12 @@ export async function processApprovedMultimaskingPayment(
   if (!telegramUser?.email) {
     await sendTelegramBotMessage(
       chatId,
-      "Оплату зараховано в WayForPay, але в боті не вказано email. " +
-        "Надішліть email у боті та зверніться до підтримки для зарахування доступу.",
+      "Оплату в WayForPay зафіксовано, але в боті не збережено email — без нього ми не зможемо зарахувати доступ до профілю KWIGA.\n\n" +
+        "Надішліть у цьому чаті свій email одним повідомленням і перевірте /profile. " +
+        "Якщо доступ не з’явиться автоматично — зверніться до підтримки з номером замовлення:\n" +
+        orderReference +
+        "\n\n" +
+        SUPPORT_CONTACT_SUFFIX_PLAIN_UA,
     );
     return;
   }
@@ -149,8 +160,11 @@ export async function processApprovedMultimaskingPayment(
   if (!contact) {
     await sendTelegramBotMessage(
       chatId,
-      "Оплату отримано, але за вашим email контакт у базі не знайдено. " +
-        "Перевірте email у профілі (/profile) або зверніться до підтримки.",
+      "Оплату в WayForPay зафіксовано, але за email із бота контакта у KWIGA не знайдено — автоматично зарахувати доступ неможливо.\n\n" +
+        "Перевірте адресу в /profile, за потреби змініть через /change_email або зверніться до підтримки з номером замовлення:\n" +
+        orderReference +
+        "\n\n" +
+        SUPPORT_CONTACT_SUFFIX_PLAIN_UA,
     );
     return;
   }

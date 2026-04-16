@@ -5,7 +5,11 @@ import {
   buildMergedStartEmailKeyboard,
   buildStandalonePaymentMenuKeyboard,
 } from "../payment/payment-menu";
-import { buildRulesMessageAndKeyboard, hasAcceptedCurrentRules } from "./rules";
+import {
+  buildPaymentNeedsConsentMessageAndKeyboard,
+  hasAcceptedCurrentRules,
+} from "./rules";
+import { SUPPORT_CONTACT_SUFFIX_PLAIN_UA } from "../core/support";
 import { buildCorridorStartHintUa } from "./corridor-onboarding";
 import { isPrivateChat } from "../core/chat-guards";
 import { escapeTelegramHtml } from "../core/telegram-html";
@@ -47,7 +51,7 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
       }
 
       if (!(await hasAcceptedCurrentRules(user.telegramId))) {
-        const { text, extra } = buildRulesMessageAndKeyboard();
+        const { text, extra } = buildPaymentNeedsConsentMessageAndKeyboard();
         await ctx.reply(text, extra);
         return;
       }
@@ -70,17 +74,15 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
       if (!isPrivateChat(ctx)) return;
       const { user } = await trackTelegramUser(ctx as StartContext);
       if (!(await hasAcceptedCurrentRules(user.telegramId))) {
-        const { text, extra } = buildRulesMessageAndKeyboard();
-        await ctx.reply(
-          "Спочатку прийміть правила доступу (це потрібно й без email):\n\n" + text,
-          extra,
-        );
+        const { text, extra } = buildPaymentNeedsConsentMessageAndKeyboard();
+        await ctx.reply(text, extra);
         return;
       }
       await ctx.reply(
         "Меню оплати:\n\n" +
-          "Після успішної оплати WayForPay доступ з’явиться протягом хвилини; перевірте /profile. " +
-          "Якщо статус не змінився — зверніться до підтримки Corridor.",
+          "Після успішної оплати WayForPay доступ з’явиться протягом хвилини; перевірте /profile.\n\n" +
+          "Якщо статус не змінився — зверніться до підтримки:\n" +
+          SUPPORT_CONTACT_SUFFIX_PLAIN_UA,
         await buildStandalonePaymentMenuKeyboard(true, user.telegramId),
       );
     } catch (error) {

@@ -1,3 +1,4 @@
+import { SUPPORT_CONTACT_SUFFIX_PLAIN_UA } from "../core/support";
 import { Op } from "sequelize";
 import { ContactProductAccess } from "../../database/ContactProductAccess";
 import { TelegramUser } from "../../database/TelegramUser";
@@ -70,7 +71,8 @@ export async function buildProfileMessage(user: TelegramUser): Promise<string> {
     lines.push(formatKwigaRankLine(snapshot.rank));
     lines.push("");
     lines.push(
-      "Спробуйте інший email або зверніться до адміністратора, якщо впевнені, що email правильний.",
+      "Спробуйте інший email, якщо впевнені, що поточна адреса некоректна.\n" +
+        SUPPORT_CONTACT_SUFFIX_PLAIN_UA,
     );
     return lines.join("\n");
   }

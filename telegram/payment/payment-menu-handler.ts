@@ -5,7 +5,10 @@ import {
   DEFER_EMAIL_CALLBACK,
 } from "./payment-menu-keyboards";
 import { isPrivateChat } from "../core/chat-guards";
-import { buildRulesMessageAndKeyboard, hasAcceptedCurrentRules } from "../handlers/rules";
+import {
+  buildPaymentNeedsConsentMessageAndKeyboard,
+  hasAcceptedCurrentRules,
+} from "../handlers/rules";
 
 /** Обробка застарілої кнопки «Пізніше email» у старих чатах (нові клавіатури без неї). */
 export function registerDeferEmailHandler(bot: Telegraf<Context>) {
@@ -33,7 +36,7 @@ export function registerDeferEmailHandler(bot: Telegraf<Context>) {
       await user.save();
 
       if (!(await hasAcceptedCurrentRules(telegramId))) {
-        const { text, extra } = buildRulesMessageAndKeyboard();
+        const { text, extra } = buildPaymentNeedsConsentMessageAndKeyboard();
         await ctx.reply(
           "Ок, email можна вказати пізніше.\n\n" + text,
           extra,

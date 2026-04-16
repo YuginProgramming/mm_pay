@@ -132,12 +132,19 @@ export async function buildPaidChatAllowlistsStepB(): Promise<PaidChatAllowlists
   };
 }
 
-/** Чи є в контакту активний рядок оплати MULTIMASKING у боті (як у профілі). */
-export async function contactHasActiveMultimaskingPayment(
+export type ActiveMultimaskingPaymentSummary =
+  | { active: false }
+  | { active: true; grantEndAt: Date | null };
+
+/**
+ * Активна оплата MULTIMASKING у боті для контакту: чи є діючий payment_hook і орієнтир кінця періоду.
+ * `grantEndAt: null` — у записі немає дати закінчення (рідко); див. /profile.
+ */
+export async function getActiveMultimaskingPaymentSummaryForContact(
   contactId: number,
-): Promise<boolean> {
+): Promise<ActiveMultimaskingPaymentSummary> {
   const now = new Date();
-  const row = await ContactProductAccess.findOne({
+  const rows = await ContactProductAccess.findAll({
     where: {
       contactId,
       source: "payment_hook",
@@ -147,7 +154,21 @@ export async function contactHasActiveMultimaskingPayment(
       [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
     },
   });
-  return row !== null;
+  if (rows.length === 0) {
+    return { active: false };
+  }
+  if (rows.some((r) => r.endAt == null)) {
+    return { active: true, grantEndAt: null };
+  }
+  return { active: true, grantEndAt: maxGrantEndAt(rows) };
+}
+
+/** Чи є в контакту активний рядок оплати MULTIMASKING у боті (як у профілі). */
+export async function contactHasActiveMultimaskingPayment(
+  contactId: number,
+): Promise<boolean> {
+  const summary = await getActiveMultimaskingPaymentSummaryForContact(contactId);
+  return summary.active;
 }
 
 /**

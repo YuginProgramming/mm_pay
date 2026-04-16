@@ -142,7 +142,8 @@ const handleCreateCheckout = async (
         res.status(403).json({
           error: "multimasking checkout not allowed",
           reason: gate.reason,
-          rank: gate.rank,
+          ...("rank" in gate ? { rank: gate.rank } : {}),
+          ...("grantEndAtIso" in gate ? { grantEndAt: gate.grantEndAtIso } : {}),
         });
         return;
       }

@@ -5,6 +5,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:gate": "vitest run tests/payment/multimasking-checkout-gate.test.ts",
     "build": "tsc",
     "dev": "npm run build && node dist/app.js",
     "kwiga:sync": "ts-node database/sync-from-kwiga.ts",
