@@ -1,5 +1,6 @@
 import { Op } from "sequelize";
 import { findContactByEmailForBot } from "../../database/contact-lookup";
+import { ensureMastersDebugRankDataForUser } from "./masters-debug-seed";
 import type { Contact } from "../../database/Contact";
 import { ContactProductAccess } from "../../database/ContactProductAccess";
 import { TelegramUser } from "../../database/TelegramUser";
@@ -48,6 +49,7 @@ export async function computeKwigaRankSnapshot(
   if (!email) {
     return { rank: "no_kwiga_contact", accessRowCount: 0, contact: null };
   }
+  await ensureMastersDebugRankDataForUser(user);
   const contact = await findContactByEmailForBot(email);
   if (!contact) {
     return { rank: "no_kwiga_contact", accessRowCount: 0, contact: null };

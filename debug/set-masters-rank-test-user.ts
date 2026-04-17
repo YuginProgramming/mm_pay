@@ -1,71 +1,55 @@
 /**
  * Підготовка telegram_users до рангу **masters** для перевірки /profile у реальному часі.
  *
- * Завжди виставляє email **dudaryev@gmail.com** на вказаного користувача бота і забезпечує
+ * Завжди виставляє email **vlad@example.com** на вказаного користувача бота і забезпечує
  * 1–4 рядки `contact_product_access` (за потреби додає 2 debug `manual_grant` «курси»).
- * Якщо контакта з цим email немає в `contacts`, створює тестовий рядок (external_id 9_000_004).
+ * Якщо контакта з цим email немає в `contacts`, створює тестовий рядок (external_id 9_000_005).
  *
  * Ранг masters = контакт є і 1–4 релевантні рядки (без payment_hook). При ≥5 таких рядках скрипт завершиться з помилкою.
  *
  * Запуск:
  *   npx ts-node debug/set-masters-rank-test-user.ts
- *   npx ts-node debug/set-masters-rank-test-user.ts 269694206
+ *   npx ts-node debug/set-masters-rank-test-user.ts 208159926
+ *
+ * Без аргумента: DEBUG_MASTERS_TG_USER_ID або app_settings.debug_telegram_user_id_masters.
  */
 import "dotenv/config";
-import { Op } from "sequelize";
-import { findContactByEmailForBot } from "../database/contact-lookup";
-import { Contact } from "../database/Contact";
-import { ContactProductAccess } from "../database/ContactProductAccess";
+import {
+  ensureMastersDebugSyntheticContactIfNeeded,
+  findContactByEmailForBot,
+  MASTERS_DEBUG_TEST_EMAIL,
+} from "../database/contact-lookup";
 import { sequelize } from "../database/db";
 import { normalizeEmail } from "../database/normalize-email";
 import { TelegramUser } from "../database/TelegramUser";
-import {
-  BOT_PAYMENT_EXTERNAL_PRODUCT_ID,
-  MULTIMASKING_PRODUCT_NAME,
-} from "../payment/multimasking-product";
 import {
   computeKwigaRankSnapshot,
   countContactAccessRowsForKwigaTier,
   persistKwigaRankSnapshot,
 } from "../telegram/profile/kwiga-rank-db";
-
-const DEFAULT_TELEGRAM_ID = 269694206;
-
-/** Email і синтетичний KWIGA contact id лише для цього дебаг-сценарію. */
-const TEST_EMAIL_RAW = "dudaryev@gmail.com";
-/** Не перетинається з add-testuser (9_000_002). */
-const MASTERS_TEST_CONTACT_EXTERNAL_ID = 9_000_004;
-
-/** Відрізняється від pro-seed (9e9) у add-testuser.ts. */
-const DEBUG_MASTERS_SUB_BASE = 8_000_000_000n;
-
-function mastersDebugSubscriptionIds(telegramId: number): string[] {
-  return [1, 2].map((i) =>
-    String(DEBUG_MASTERS_SUB_BASE + BigInt(telegramId) * 10n + BigInt(i)),
-  );
-}
-
-function argvTelegramId(): number {
-  const raw = process.argv[2];
-  if (raw && /^\d+$/.test(raw)) {
-    return parseInt(raw, 10);
-  }
-  return DEFAULT_TELEGRAM_ID;
-}
+import {
+  destroyMastersDebugSeedRows,
+  seedMastersDebugManualGrantsIfNeeded,
+} from "../telegram/profile/masters-debug-seed";
+import { resolveMastersDebugTelegramUserId } from "./resolve-debug-telegram-id";
 
 async function main(): Promise<void> {
   await sequelize.authenticate();
 
-  const telegramId = argvTelegramId();
+  const telegramIdStr = await resolveMastersDebugTelegramUserId(
+    2,
+    "npx ts-node debug/set-masters-rank-test-user.ts <id>",
+  );
+  const telegramId = parseInt(telegramIdStr, 10);
   const tgUser = await TelegramUser.findOne({ where: { telegramId } });
   if (!tgUser) {
     console.error("Немає рядка telegram_users з telegram_id=", telegramId);
     process.exit(1);
   }
 
-  const email = normalizeEmail(TEST_EMAIL_RAW);
+  const email = normalizeEmail(MASTERS_DEBUG_TEST_EMAIL);
   if (!email) {
-    console.error("Некоректний TEST_EMAIL");
+    console.error("Некоректний MASTERS_DEBUG_TEST_EMAIL");
     process.exit(1);
   }
 
@@ -74,30 +58,14 @@ async function main(): Promise<void> {
   tgUser.emailChangeFrom = null;
   await tgUser.save();
 
-  let contact = await findContactByEmailForBot(email);
+  await ensureMastersDebugSyntheticContactIfNeeded(email);
+  const contact = await findContactByEmailForBot(email);
   if (!contact) {
-    contact = await Contact.create({
-      externalId: MASTERS_TEST_CONTACT_EXTERNAL_ID,
-      email,
-      firstName: "Masters",
-      lastName: "Debug",
-      phone: null,
-      createdAtFromApi: new Date(),
-      tags: [],
-      offers: [],
-      orders: [],
-    });
-    console.log("Створено тестовий contacts для email", email, "id=", contact.id);
+    console.error("Не вдалося отримати contacts для email", email);
+    process.exit(1);
   }
 
-  const subIds = mastersDebugSubscriptionIds(telegramId);
-
-  await ContactProductAccess.destroy({
-    where: {
-      contactId: contact.id,
-      externalSubscriptionId: { [Op.in]: subIds },
-    },
-  });
+  await destroyMastersDebugSeedRows(contact.id, telegramId);
 
   const tierRows = await countContactAccessRowsForKwigaTier(contact.id);
 
@@ -109,37 +77,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  /** 2 курси → рівно в діапазоні masters (1–4). */
-  const needRows = tierRows === 0 ? 2 : 0;
-  if (needRows === 2) {
-    for (const externalSubscriptionId of subIds) {
-      await ContactProductAccess.findOrCreate({
-        where: { externalSubscriptionId },
-        defaults: {
-          contactId: contact.id,
-          kwigaProductId: null,
-          externalProductId: BOT_PAYMENT_EXTERNAL_PRODUCT_ID,
-          externalSubscriptionId,
-          titleSnapshot: `${MULTIMASKING_PRODUCT_NAME} (debug · masters)`,
-          isActive: false,
-          isPaid: true,
-          startAt: new Date("2020-01-01T00:00:43.000Z"),
-          endAt: new Date("2020-02-01T00:00:43.000Z"),
-          paidAt: new Date("2020-01-01T00:00:43.000Z"),
-          subscriptionStateTitle: "Debug seed · masters rank",
-          countAvailableDays: null,
-          countLeftDays: null,
-          orderId: null,
-          offerId: null,
-          wayforpayOrderReference: null,
-          source: "manual_grant",
-          revokedAt: null,
-          revokedReason: null,
-          lastSyncedAt: null,
-        },
-      });
-    }
-  }
+  await seedMastersDebugManualGrantsIfNeeded(contact.id, telegramId);
 
   await tgUser.reload();
   const snapshot = await computeKwigaRankSnapshot(tgUser);

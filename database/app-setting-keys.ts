@@ -12,6 +12,10 @@ export const APP_SETTING_KEYS = {
   /** Telegram user id тестового акаунта для дебагу (читає debug/add-testuser.ts) */
   DEBUG_TELEGRAM_USER_ID: "debug_telegram_user_id",
   /**
+   * Другий тестовий акаунт (наприклад для рангу masters); читає debug/set-masters-rank-test-user.ts
+   */
+  DEBUG_TELEGRAM_USER_ID_MASTERS: "debug_telegram_user_id_masters",
+  /**
    * Інтервал повного синху KWIGA → БД (хвилини), `database/kwiga-sync-daemon.ts`.
    * У таблиці ключ — `kwiga_sync_interval_minutes`; env `KWIGA_SYNC_INTERVAL_MINUTES` має пріоритет, якщо заданий.
    */

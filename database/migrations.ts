@@ -201,6 +201,21 @@ async function seedPaidChatJanitorIntervalSetting(): Promise<void> {
   );
 }
 
+async function seedDebugTelegramUserIdMastersSetting(): Promise<void> {
+  await sequelize.query(`
+    INSERT INTO app_settings (setting_key, setting_value, description_uk)
+    VALUES (
+      'debug_telegram_user_id_masters',
+      '208159926',
+      'Telegram user id другого тестового акаунта (ранг masters); debug/set-masters-rank-test-user.ts'
+    )
+    ON CONFLICT (setting_key) DO NOTHING;
+  `);
+  console.log(
+    'Migration completed: debug_telegram_user_id_masters seed (if missing).',
+  );
+}
+
 async function addTelegramUserKwigaRankColumns(): Promise<void> {
   await sequelize.query(`
     ALTER TABLE telegram_users
@@ -440,6 +455,7 @@ async function runMigrations(): Promise<void> {
     await createPaidChatJanitorAlertLogTable();
     await createPaidChatMemberStateTable();
     await seedPaidChatJanitorIntervalSetting();
+    await seedDebugTelegramUserIdMastersSetting();
   } catch (error) {
     console.error("Migration failed:", error);
     process.exit(1);

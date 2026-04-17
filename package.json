@@ -17,6 +17,7 @@
     "clear-telegram-users": "ts-node database/clear-telegram-users.ts",
     "debug:add-testuser": "ts-node debug/add-testuser.ts",
     "debug:set-masters-test-user": "ts-node debug/set-masters-rank-test-user.ts",
+    "debug:verify-masters-email": "ts-node debug/verify-masters-test-email-in-db.ts",
     "debug:show-rank": "ts-node debug/show-debug-user-rank.ts",
     "debug:inspect-payment-tier": "ts-node debug/inspect-payment-success-tier.ts",
     "debug:clean-user-masters": "ts-node debug/clean-telegram-user-to-masters.ts",

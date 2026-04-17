@@ -29,3 +29,34 @@ export async function resolveDebugTelegramUserId(
       `або DEBUG_TG_USER_ID у .env, або аргументом: ${scriptHint}`,
   );
 }
+
+/**
+ * Порядок: argv[argvIndex], env DEBUG_MASTERS_TG_USER_ID, app_settings.debug_telegram_user_id_masters.
+ */
+export async function resolveMastersDebugTelegramUserId(
+  argvIndex: number,
+  scriptHint: string,
+): Promise<string> {
+  const fromArg = process.argv[argvIndex]?.trim();
+  if (fromArg && /^\d+$/.test(fromArg)) {
+    return fromArg;
+  }
+
+  const fromEnv = process.env.DEBUG_MASTERS_TG_USER_ID?.trim();
+  if (fromEnv && /^\d+$/.test(fromEnv)) {
+    return fromEnv;
+  }
+
+  const row = await AppSetting.findByPk(
+    APP_SETTING_KEYS.DEBUG_TELEGRAM_USER_ID_MASTERS,
+  );
+  const fromDb = row?.settingValue?.trim();
+  if (fromDb && /^\d+$/.test(fromDb)) {
+    return fromDb;
+  }
+
+  throw new Error(
+    "Не знайдено telegram user id: задайте app_settings.debug_telegram_user_id_masters, " +
+      `або DEBUG_MASTERS_TG_USER_ID у .env, або аргументом: ${scriptHint}`,
+  );
+}
