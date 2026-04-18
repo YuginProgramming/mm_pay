@@ -12,7 +12,8 @@ function rowsOf(
 }
 
 /**
- * Клавіатура після /start, коли просимо email: ProChat + правила / WayForPay.
+ * Клавіатура після /start, коли просимо email: спочатку правила / оплата, внизу ProChat.
+ * Порядок без згоди (зверху вниз): Відкрити правила → Погоджуюсь → Отримати доступ в ProChat.
  */
 export async function buildMergedStartEmailKeyboard(
   emailProChatExtra: {
@@ -28,8 +29,8 @@ export async function buildMergedStartEmailKeyboard(
   return {
     reply_markup: {
       inline_keyboard: [
-        ...rowsOf(emailProChatExtra),
         ...rowsOf(paymentOrRules),
+        ...rowsOf(emailProChatExtra),
       ],
     },
   };
