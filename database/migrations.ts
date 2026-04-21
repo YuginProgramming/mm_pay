@@ -178,6 +178,11 @@ async function createAppSettingsTable(): Promise<void> {
         'paid_chat_janitor_interval_seconds',
         '7200',
         'Інтервал між прогонами paid-chat janitor (сек): production 7200 (2 год); тест 30 у БД або env PAID_CHAT_JANITOR_INTERVAL_SECONDS'
+      ),
+      (
+        'inline_menu_inactivity_timeout_seconds',
+        '300',
+        'Таймаут неактивності користувача перед показом inline-меню (сек); за замовчуванням 300 (5 хв)'
       )
     ON CONFLICT (setting_key) DO NOTHING;
   `);
@@ -213,6 +218,21 @@ async function seedDebugTelegramUserIdMastersSetting(): Promise<void> {
   `);
   console.log(
     'Migration completed: debug_telegram_user_id_masters seed (if missing).',
+  );
+}
+
+async function seedInlineMenuInactivityTimeoutSetting(): Promise<void> {
+  await sequelize.query(`
+    INSERT INTO app_settings (setting_key, setting_value, description_uk)
+    VALUES (
+      'inline_menu_inactivity_timeout_seconds',
+      '300',
+      'Таймаут неактивності користувача перед показом inline-меню (сек); за замовчуванням 300 (5 хв)'
+    )
+    ON CONFLICT (setting_key) DO NOTHING;
+  `);
+  console.log(
+    "Migration completed: inline_menu_inactivity_timeout_seconds seed (if missing).",
   );
 }
 
@@ -456,6 +476,7 @@ async function runMigrations(): Promise<void> {
     await createPaidChatMemberStateTable();
     await seedPaidChatJanitorIntervalSetting();
     await seedDebugTelegramUserIdMastersSetting();
+    await seedInlineMenuInactivityTimeoutSetting();
   } catch (error) {
     console.error("Migration failed:", error);
     process.exit(1);

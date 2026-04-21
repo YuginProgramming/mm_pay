@@ -66,6 +66,8 @@ export const PAID_CHAT_JANITOR_INTERVAL_SECONDS_ENV =
 
 const PAID_CHAT_JANITOR_DEFAULT_SECONDS = 7200;
 const PAID_CHAT_JANITOR_MIN_SECONDS = 1;
+const INLINE_MENU_INACTIVITY_TIMEOUT_DEFAULT_SECONDS = 300;
+const INLINE_MENU_INACTIVITY_TIMEOUT_MIN_SECONDS = 1;
 
 function readPaidChatJanitorIntervalMsFromEnv(): number | null {
   const raw = process.env[PAID_CHAT_JANITOR_INTERVAL_SECONDS_ENV]?.trim();
@@ -100,4 +102,22 @@ export async function resolvePaidChatJanitorIntervalMs(): Promise<number> {
       ? sec
       : PAID_CHAT_JANITOR_DEFAULT_SECONDS;
   return safe * 1000;
+}
+
+/**
+ * Таймаут неактивності користувача перед показом inline-меню (сек).
+ * Джерело: `app_settings.inline_menu_inactivity_timeout_seconds`; дефолт 300.
+ */
+export async function getInlineMenuInactivityTimeoutSeconds(): Promise<number> {
+  const sec = await getAppSettingInt(
+    APP_SETTING_KEYS.INLINE_MENU_INACTIVITY_TIMEOUT_SECONDS,
+    INLINE_MENU_INACTIVITY_TIMEOUT_DEFAULT_SECONDS,
+  );
+  if (
+    !Number.isFinite(sec) ||
+    sec < INLINE_MENU_INACTIVITY_TIMEOUT_MIN_SECONDS
+  ) {
+    return INLINE_MENU_INACTIVITY_TIMEOUT_DEFAULT_SECONDS;
+  }
+  return sec;
 }

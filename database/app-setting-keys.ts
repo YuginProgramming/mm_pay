@@ -35,6 +35,12 @@ export const APP_SETTING_KEYS = {
    * Production: 7200 (2 год). Тест: 30 у БД або env `PAID_CHAT_JANITOR_INTERVAL_SECONDS` (має пріоритет).
    */
   PAID_CHAT_JANITOR_INTERVAL_SECONDS: "paid_chat_janitor_interval_seconds",
+  /**
+   * Таймаут неактивності користувача перед показом inline-меню в text zone (секунди).
+   * За замовчуванням: 300 (5 хв).
+   */
+  INLINE_MENU_INACTIVITY_TIMEOUT_SECONDS:
+    "inline_menu_inactivity_timeout_seconds",
 } as const;
 
 export type AppSettingKey =
