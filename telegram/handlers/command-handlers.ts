@@ -10,7 +10,6 @@ import {
   hasAcceptedCurrentRules,
 } from "./rules";
 import { SUPPORT_CONTACT_SUFFIX_PLAIN_UA } from "../core/support";
-import { buildCorridorStartHintUa } from "./corridor-onboarding";
 import { isPrivateChat } from "../core/chat-guards";
 import { escapeTelegramHtml } from "../core/telegram-html";
 import { StartContext, trackTelegramUser } from "../core/user-tracking";
@@ -22,20 +21,21 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
       if (!isPrivateChat(ctx)) return;
       const { user, isNew } = await trackTelegramUser(ctx);
 
-      if (isNew) {
-        const greetName = escapeTelegramHtml(user.firstName ?? "друже");
-        await ctx.reply(
-          `Привіт, ${greetName}! 👋\n\n` +
-            "Дякую, що запустив(ла) бота. Твій профіль успішно зареєстровано." +
-            buildCorridorStartHintUa(),
-          { parse_mode: "HTML" },
-        );
-      } else {
-        await ctx.reply(
-          `Рада бачити тебе знову, ${user.firstName ?? "друже"}! 👋\n\n` +
-            "Ми оновили твою активність у системі.",
-        );
-      }
+      const replyStartGreeting = async (): Promise<void> => {
+        if (isNew) {
+          const greetName = escapeTelegramHtml(user.firstName ?? "друже");
+          await ctx.reply(
+            `Привіт, ${greetName}! 👋\n\n` +
+              "Дякую, що запустив(ла) бота. Твій профіль успішно зареєстровано.",
+            { parse_mode: "HTML" },
+          );
+        } else {
+          await ctx.reply(
+            `Рада бачити тебе знову, ${user.firstName ?? "друже"}! 👋\n\n` +
+              "Ми оновили твою активність у системі.",
+          );
+        }
+      };
 
       if (!user.email) {
         user.awaitingEmail = true;
@@ -47,8 +47,11 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
           text,
           await buildMergedStartEmailKeyboard(extra, rulesAccepted, user.telegramId),
         );
+        await replyStartGreeting();
         return;
       }
+
+      await replyStartGreeting();
 
       if (!(await hasAcceptedCurrentRules(user.telegramId))) {
         const { text, extra } = buildPaymentNeedsConsentMessageAndKeyboard();

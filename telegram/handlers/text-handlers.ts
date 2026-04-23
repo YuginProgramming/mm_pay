@@ -5,6 +5,7 @@ import { normalizeEmail } from "../../database/normalize-email";
 import { findConflictingTelegramUserForEmail } from "../../database/telegram-user-email";
 import { retryUnlinkedApprovedPaymentsForTelegramUser } from "../../payment/retry-unlinked-payment-grant";
 import { buildStandalonePaymentMenuKeyboard } from "../payment/payment-menu-keyboards";
+import { buildCorridorAfterEmailHintUa } from "./corridor-onboarding";
 import {
   buildPaymentNeedsConsentMessageAndKeyboard,
   hasAcceptedCurrentRules,
@@ -112,6 +113,12 @@ export function registerTextHandlers(bot: Telegraf<StartContext>): void {
       `Дякую! Ми зберегли вашу електронну адресу: ${normalized}\n\n` +
         "Тепер ви можете повноцінно користуватися ботом.",
     );
+    const rulesOkAfterFirstEmail = await hasAcceptedCurrentRules(
+      user.telegramId,
+    );
+    await ctx.reply(buildCorridorAfterEmailHintUa(rulesOkAfterFirstEmail), {
+      parse_mode: "HTML",
+    });
     await user.reload();
     let linkedAfterFirstEmail = 0;
     try {
@@ -128,7 +135,7 @@ export function registerTextHandlers(bot: Telegraf<StartContext>): void {
         "Знайдено вашу раніше успішну оплату WayForPay — доступ зараховано. Перевірте /profile.",
       );
     }
-    if (!(await hasAcceptedCurrentRules(user.telegramId))) {
+    if (!rulesOkAfterFirstEmail) {
       const { text, extra } = buildPaymentNeedsConsentMessageAndKeyboard();
       await ctx.reply(text, extra);
       return;
