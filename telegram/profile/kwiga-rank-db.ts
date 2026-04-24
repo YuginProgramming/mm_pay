@@ -59,6 +59,10 @@ export async function computeKwigaRankSnapshot(
   user: TelegramUser,
   options?: ComputeKwigaRankOptions,
 ): Promise<KwigaRankSnapshot> {
+  /** Критично для monotonic: інакше /profile бачить застарілий in-memory `user` (ручні правки в БД, інший воркер) і затирає `kwiga_*` колонки. */
+  if (user.id != null) {
+    await user.reload();
+  }
   const email = user.email?.trim() ?? null;
   if (!email) {
     if (options?.bypassMonotonic) {
