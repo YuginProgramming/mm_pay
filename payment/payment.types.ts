@@ -47,5 +47,6 @@ export type CreateInvoiceInput = {
 };
 
 export type CreateInvoiceResult = {
+  orderReference: string;
   invoiceUrl: string;
 };

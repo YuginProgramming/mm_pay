@@ -401,6 +401,34 @@ async function createWayforpayWebhookEventsTable(): Promise<void> {
   );
 }
 
+async function createWayforpayPendingNoticesTable(): Promise<void> {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS wayforpay_pending_notices (
+      order_reference          VARCHAR(128) PRIMARY KEY,
+      chat_id                  TEXT,
+      first_pending_at         TIMESTAMPTZ,
+      pending_notified_at      TIMESTAMPTZ,
+      pending_reminder_sent_at TIMESTAMPTZ,
+      pending_timeout_sent_at  TIMESTAMPTZ,
+      terminal_status_at       TIMESTAMPTZ,
+      terminal_status_value    VARCHAR(64),
+      created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS wayforpay_pending_notices_active_idx
+      ON wayforpay_pending_notices (terminal_status_at, first_pending_at);
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS wayforpay_pending_notices_notified_idx
+      ON wayforpay_pending_notices (pending_notified_at);
+  `);
+  console.log(
+    'Migration completed: wayforpay_pending_notices (pending alert stages, if missing).',
+  );
+}
+
 async function createPaidChatMemberStateTable(): Promise<void> {
   await sequelize.query(`
     CREATE TABLE IF NOT EXISTS paid_chat_member_state (
@@ -471,6 +499,7 @@ async function runMigrations(): Promise<void> {
     await normalizeEmailsAndAddUniqueIndexes();
     await createPendingWayforpayTables();
     await createWayforpayWebhookEventsTable();
+    await createWayforpayPendingNoticesTable();
     await addWayforpayOrderReferenceColumn();
     await createPaidChatJanitorAlertLogTable();
     await createPaidChatMemberStateTable();

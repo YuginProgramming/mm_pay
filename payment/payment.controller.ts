@@ -5,6 +5,7 @@ import {
   buildDeclineAck,
   createCheckoutForCourse,
   isApprovedPayment,
+  isPendingOrSuspendedPayment,
   isTerminalPaymentFailure,
   releasePendingIfTerminal,
   resolveWebhookMetadata,
@@ -16,6 +17,10 @@ import { gateMultimaskingCheckoutForTelegramId } from "./multimasking-checkout-e
 import { MULTIMASKING_PRODUCT_NAME } from "./multimasking-product";
 import { logPaymentEvent } from "./payment-events";
 import { persistWayforpayWebhookEvent } from "./persist-wayforpay-webhook";
+import {
+  markPendingOrderTerminal,
+  notifyPendingProcessingIfFirstTime,
+} from "./payment-pending-notify";
 
 const parseWebhookBody = (body: unknown): WayForPayWebhookPayload => {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -82,6 +87,16 @@ const handleWayForPayWebhook = async (
       } catch (grantErr) {
         console.error("[payment] grant after approval failed:", grantErr);
       }
+    } else if (isPendingOrSuspendedPayment(data)) {
+      try {
+        await notifyPendingProcessingIfFirstTime({
+          orderReference: data.orderReference,
+          chatId: metadata?.chatId ?? null,
+          transactionStatus: String(data.transactionStatus),
+        });
+      } catch (pendingErr) {
+        console.error("[payment] pending notify:", pendingErr);
+      }
     } else if (!isApprovedPayment(data) && isTerminalPaymentFailure(data)) {
       if (metadata) {
         console.log("[payment] terminal non-success webhook", {
@@ -103,6 +118,17 @@ const handleWayForPayWebhook = async (
           orderReference: data.orderReference,
           transactionStatus: data.transactionStatus,
         });
+      }
+    }
+
+    if (isApprovedPayment(data) || isTerminalPaymentFailure(data)) {
+      try {
+        await markPendingOrderTerminal({
+          orderReference: data.orderReference,
+          transactionStatus: String(data.transactionStatus),
+        });
+      } catch (terminalMarkErr) {
+        console.error("[payment] pending terminal marker update failed:", terminalMarkErr);
       }
     }
 
@@ -149,8 +175,12 @@ const handleCreateCheckout = async (
       }
     }
 
-    const { invoiceUrl } = await createCheckoutForCourse(price, courseName, chatId);
-    res.json({ invoiceUrl });
+    const { invoiceUrl, orderReference } = await createCheckoutForCourse(
+      price,
+      courseName,
+      chatId,
+    );
+    res.json({ invoiceUrl, orderReference });
   } catch (err) {
     console.error("Create checkout error:", err);
     res.status(500).json({ error: "Server Error" });

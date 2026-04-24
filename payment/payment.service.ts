@@ -31,12 +31,13 @@ const createCheckoutForCourse = async (
   await putPendingOrder(orderReference, { chatId, courseName });
 
   try {
-    return await createInvoice({
+    const invoice = await createInvoice({
       orderReference,
       courseName,
       chatId,
       price,
     });
+    return { orderReference, invoiceUrl: invoice.invoiceUrl };
   } catch (err) {
     await takePendingOrder(orderReference);
     throw err;
@@ -63,6 +64,12 @@ const resolveWebhookMetadata = async (
 };
 
 const TERMINAL_FAILURE = new Set(["Declined", "Voided", "Refunded", "Expired"]);
+const PENDING_OR_SUSPENDED = new Set([
+  "Pending",
+  "InProcessing",
+  "WaitingAuthComplete",
+  "Suspended",
+]);
 
 const isTerminalPaymentFailure = (payload: WayForPayWebhookPayload): boolean => {
   return TERMINAL_FAILURE.has(String(payload.transactionStatus));
@@ -79,6 +86,10 @@ const releasePendingIfTerminal = async (
 
 const isApprovedPayment = (payload: WayForPayWebhookPayload): boolean => {
   return payload.transactionStatus === "Approved";
+};
+
+const isPendingOrSuspendedPayment = (payload: WayForPayWebhookPayload): boolean => {
+  return PENDING_OR_SUSPENDED.has(String(payload.transactionStatus));
 };
 
 const verifyIncomingWebhook = (payload: WayForPayWebhookPayload): boolean => {
@@ -129,4 +140,5 @@ export {
   buildDeclineAck,
   resolveWebhookMetadata,
   releasePendingIfTerminal,
+  isPendingOrSuspendedPayment,
 };

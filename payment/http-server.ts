@@ -18,6 +18,7 @@ import {
   parseWebhookBody,
 } from "./payment.controller";
 import { readRecentPaymentEvents } from "./payment-events";
+import { startPendingPaymentReminderLoop } from "./pending-payment-reminder";
 
 const app = express();
 const port = Number(process.env.PAYMENT_HTTP_PORT ?? process.env.PORT ?? "3000");
@@ -70,6 +71,7 @@ app.post("/wayforpay/webhook", (req, res) => {
 app.post("/wayforpay/checkout", handleCreateCheckout);
 
 app.listen(port, () => {
+  startPendingPaymentReminderLoop();
   console.log(
     `[payment] listening on http://0.0.0.0:${port}\n` +
       `  POST /wayforpay/webhook\n` +

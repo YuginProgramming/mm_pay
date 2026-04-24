@@ -5,6 +5,7 @@ import { AppSetting } from "./AppSetting";
 import { RulesConsent } from "./RulesConsent";
 import { KwigaProduct } from "./KwigaProduct";
 import { TelegramUser } from "./TelegramUser";
+import { WayforpayPendingNotice } from "./WayforpayPendingNotice";
 
 export { defineAssociations } from "./associations";
 export { APP_SETTING_KEYS, type AppSettingKey } from "./app-setting-keys";
@@ -21,6 +22,7 @@ export {
   AppSetting,
   RulesConsent,
   TelegramUser,
+  WayforpayPendingNotice,
 };
 export * from "./access-queries";
 export const models = {
@@ -31,4 +33,5 @@ export const models = {
   AppSetting,
   RulesConsent,
   TelegramUser,
+  WayforpayPendingNotice,
 };

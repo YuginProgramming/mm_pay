@@ -1,6 +1,6 @@
 import { WFP, WFP_CONFIG } from "overshom-wayforpay";
 import paymentConfig from "./payment.config";
-import type { CreateInvoiceInput, CreateInvoiceResult } from "./payment.types";
+import type { CreateInvoiceInput } from "./payment.types";
 
 WFP_CONFIG.DEFAULT_PAYMENT_CURRENCY = paymentConfig.currency;
 
@@ -11,7 +11,7 @@ const wfp = new WFP({
   SERVICE_URL: paymentConfig.serviceUrl,
 });
 
-const createInvoice = async (input: CreateInvoiceInput): Promise<CreateInvoiceResult> => {
+const createInvoice = async (input: CreateInvoiceInput): Promise<{ invoiceUrl: string }> => {
   const session = await wfp.createInvoiceUrl({
     orderReference: input.orderReference,
     productName: [`${input.courseName},${input.chatId}`], // keep current metadata flow

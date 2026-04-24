@@ -3,7 +3,7 @@ import { findContactByEmailForBot } from "../database/contact-lookup";
 import { ContactProductAccess } from "../database/ContactProductAccess";
 import {
   computeKwigaRankSnapshot,
-  countContactAccessRowsForKwigaTier,
+  persistKwigaRankSnapshot,
 } from "../telegram/profile/kwiga-rank-db";
 import {
   isKwigaRankEligibleForPaidChatPurchase,
@@ -22,7 +22,6 @@ import {
 import type { PaymentMetadata, WayForPayWebhookPayload } from "./payment.types";
 import { sendTelegramBotMessage } from "./telegram-notify";
 import type { KwigaAudienceRank } from "../telegram/profile/kwiga-user-rank";
-import { kwigaAudienceRank } from "../telegram/profile/kwiga-user-rank";
 import { SUPPORT_CONTACT_SUFFIX_PLAIN_UA } from "../telegram/core/support";
 import { escapeTelegramHtml, telegramHtmlLink } from "../telegram/core/telegram-html";
 
@@ -232,14 +231,17 @@ export async function processApprovedMultimaskingPayment(
     throw err;
   }
 
-  const tierRowCount = await countContactAccessRowsForKwigaTier(contact.id);
-  const tierAfterPayment = kwigaAudienceRank(true, tierRowCount);
+  /** Повідомлення після оплати: той самий «ефективний» ранг, що /profile (monotonic з telegram_users, TZ/rank-info.txt), а не сирий count→rank без збереженого pro. */
+  const postGrantSnapshot = await computeKwigaRankSnapshot(telegramUser);
+  await persistKwigaRankSnapshot(telegramUser, postGrantSnapshot);
+  const tierAfterPayment = postGrantSnapshot.rank;
   console.log("[payment] post-grant tier for success message", {
     orderReference,
     chatId,
     contactId: contact.id,
-    tierRowCountExcludingPaymentHook: tierRowCount,
-    tierAfterPayment,
+    effectiveRank: postGrantSnapshot.rank,
+    candidateRank: postGrantSnapshot.candidateRank,
+    accessRowCount: postGrantSnapshot.accessRowCount,
   });
 
   const commonHead =

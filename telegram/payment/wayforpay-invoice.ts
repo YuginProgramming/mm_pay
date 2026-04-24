@@ -278,7 +278,7 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
         "../../payment/payment.service"
       );
 
-      const { invoiceUrl } = await createCheckoutForCourse(
+      const { invoiceUrl, orderReference } = await createCheckoutForCourse(
         price,
         MULTIMASKING_PRODUCT_NAME,
         String(chatId),
@@ -287,7 +287,11 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
       await ctx.reply(
         `Рахунок WayForPay на суму ${price} грн за доступ до навчального продукту ` +
           "«Multimasking Learning Project» створено.\n\n" +
-          "Натисніть кнопку нижче, щоб перейти до безпечної оплати.",
+          "Натисніть кнопку нижче, щоб перейти до безпечної оплати.\n\n" +
+          "Після оплати підтвердження зазвичай надходить протягом 1-2 хвилин. " +
+          "Будь ласка, не створюйте повторну оплату, доки очікуєте результат.\n\n" +
+          "Номер замовлення: " +
+          orderReference,
         Markup.inlineKeyboard([
           Markup.button.url(sparkleLabel("Перейти до оплати"), invoiceUrl),
         ]),
