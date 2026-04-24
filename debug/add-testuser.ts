@@ -154,7 +154,9 @@ async function main(): Promise<void> {
   tgUser.lastName = tgUser.lastName ?? TEST_LAST_NAME;
   await tgUser.save();
 
-  const snapshot = await computeKwigaRankSnapshot(tgUser);
+  const snapshot = await computeKwigaRankSnapshot(tgUser, {
+    bypassMonotonic: true,
+  });
   await persistKwigaRankSnapshot(tgUser, snapshot);
 
   console.log("OK — тестовий користувач для дебагу (очікуваний ранг KWIGA: pro)");

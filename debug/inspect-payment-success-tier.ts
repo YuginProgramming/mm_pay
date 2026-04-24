@@ -73,7 +73,10 @@ async function main(): Promise<void> {
     }
   }
 
-  const tier = kwigaAudienceRank(snapshot.contact !== null, snapshot.accessRowCount);
+  const tier = kwigaAudienceRank(
+    snapshot.contact !== null,
+    snapshot.candidateAccessRowCount,
+  );
   const totalAllRows = rows.length;
 
   console.log("=== inspect-payment-success-tier ===\n");
@@ -82,7 +85,9 @@ async function main(): Promise<void> {
     telegramUserPk: user.id,
     email: email ?? "(немає — грант не знайде контакт)",
     contactId: snapshot.contact?.id ?? null,
-    tierRowCountForRankExcludesPaymentHook: snapshot.accessRowCount,
+    tierRowCountForRankExcludesPaymentHook: snapshot.candidateAccessRowCount,
+    effectiveRankAfterMonotonic: snapshot.rank,
+    effectiveAccessRowCount: snapshot.accessRowCount,
     totalRowsInContactProductAccess: totalAllRows,
     countsBySource: snapshot.contact ? bySource : {},
     rankFromSameRuleAsGrant: tier,

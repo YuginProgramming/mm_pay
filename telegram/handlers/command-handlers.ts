@@ -41,13 +41,14 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
         user.awaitingEmail = true;
         await user.save();
 
+        await replyStartGreeting();
+
         const rulesAccepted = await hasAcceptedCurrentRules(user.telegramId);
         const { text, extra } = buildEmailRequestMessage();
         await ctx.reply(
           text,
           await buildMergedStartEmailKeyboard(extra, rulesAccepted, user.telegramId),
         );
-        await replyStartGreeting();
         return;
       }
 

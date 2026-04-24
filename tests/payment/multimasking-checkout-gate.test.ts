@@ -49,6 +49,8 @@ function mastersSnapshot(overrides: Partial<{ contact: unknown }> = {}) {
     rank: "masters" as const,
     accessRowCount: 2,
     contact: { id: contactId },
+    candidateRank: "masters" as const,
+    candidateAccessRowCount: 2,
     ...overrides,
   };
 }

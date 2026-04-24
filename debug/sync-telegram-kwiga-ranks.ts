@@ -57,7 +57,7 @@ async function main(): Promise<void> {
         );
       }
     } else {
-      await persistKwigaRankSnapshot(user, snapshot);
+      await persistKwigaRankSnapshot(user, snapshot, { force: true });
       updated += 1;
     }
   }

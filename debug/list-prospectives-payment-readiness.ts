@@ -47,7 +47,7 @@ async function main(): Promise<void> {
   for (const u of users) {
     const snapshot = await computeKwigaRankSnapshot(u);
     if (refresh) {
-      await persistKwigaRankSnapshot(u, snapshot);
+      await persistKwigaRankSnapshot(u, snapshot, { force: true });
     }
     if (snapshot.rank !== "prospectives") continue;
 
@@ -92,7 +92,7 @@ async function main(): Promise<void> {
   const fullyOk = rows.filter((r) => r.grantAfterPaymentOk && r.canShowPaymentMenu).length;
 
   console.log("=== Prospectives — готовність до оплати (MULTIMASKING / WayForPay) ===\n");
-  console.log(`Усього prospectives (за live-розрахунком): ${rows.length}`);
+  console.log(`Усього prospectives (за ефективним рангом після monotonic): ${rows.length}`);
   console.log(`Можуть отримати рахунок (правила прийняті): ${okMenu} / ${rows.length}`);
   console.log(`Після оплати grant технічно можливий (email + contact): ${okGrant} / ${rows.length}`);
   console.log(`Обидві умови: ${fullyOk} / ${rows.length}`);

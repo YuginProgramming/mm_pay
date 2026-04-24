@@ -67,9 +67,11 @@ async function main(): Promise<void> {
     email: email ?? "(немає)",
     contactId: snapshot.contact?.id ?? null,
     contactInDb: snapshot.contact !== null,
-    accessRowsTotal: snapshot.accessRowCount,
+    candidateAccessRows: snapshot.candidateAccessRowCount,
+    effectiveAccessRows: snapshot.accessRowCount,
     accessRowsNonRevoked: nonRevokedCount,
-    rankComputed: snapshot.rank,
+    candidateRank: snapshot.candidateRank,
+    effectiveRank: snapshot.rank,
     rankLineUa: formatKwigaRankLine(snapshot.rank),
     storedOnTelegramUserRow: {
       kwigaAudienceRank: user.kwigaAudienceRank ?? null,

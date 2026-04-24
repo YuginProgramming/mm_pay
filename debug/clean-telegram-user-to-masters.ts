@@ -144,7 +144,9 @@ async function main(): Promise<void> {
   }
 
   await tgUser.reload();
-  const snapshot = await computeKwigaRankSnapshot(tgUser);
+  const snapshot = await computeKwigaRankSnapshot(tgUser, {
+    bypassMonotonic: true,
+  });
   await persistKwigaRankSnapshot(tgUser, snapshot);
 
   if (snapshot.rank !== "masters") {
