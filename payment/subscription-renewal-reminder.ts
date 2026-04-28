@@ -71,7 +71,6 @@ export async function sendDueSubscriptionRenewalReminders(
 
   const candidates = await UserSubscription.findAll({
     where: {
-      endAt: { [Op.not]: null },
       status: { [Op.in]: ["active", "lapsed"] },
     },
     limit: 500,
