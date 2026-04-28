@@ -4,7 +4,12 @@ import { EmailChangeLog } from "./EmailChangeLog";
 import { AppSetting } from "./AppSetting";
 import { RulesConsent } from "./RulesConsent";
 import { KwigaProduct } from "./KwigaProduct";
+import { SubscriptionFlowSession } from "./SubscriptionFlowSession";
+import { SubscriptionPaymentOrder } from "./SubscriptionPaymentOrder";
+import { SubscriptionPlan } from "./SubscriptionPlan";
+import { SubscriptionRenewalReminderLog } from "./SubscriptionRenewalReminderLog";
 import { TelegramUser } from "./TelegramUser";
+import { UserSubscription } from "./UserSubscription";
 import { WayforpayPendingNotice } from "./WayforpayPendingNotice";
 
 export { defineAssociations } from "./associations";
@@ -21,7 +26,12 @@ export {
   KwigaProduct,
   AppSetting,
   RulesConsent,
+  SubscriptionFlowSession,
+  SubscriptionPaymentOrder,
+  SubscriptionPlan,
+  SubscriptionRenewalReminderLog,
   TelegramUser,
+  UserSubscription,
   WayforpayPendingNotice,
 };
 export * from "./access-queries";
@@ -32,6 +42,11 @@ export const models = {
   KwigaProduct,
   AppSetting,
   RulesConsent,
+  SubscriptionFlowSession,
+  SubscriptionPaymentOrder,
+  SubscriptionPlan,
+  SubscriptionRenewalReminderLog,
   TelegramUser,
+  UserSubscription,
   WayforpayPendingNotice,
 };

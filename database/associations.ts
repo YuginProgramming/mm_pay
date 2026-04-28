@@ -1,6 +1,8 @@
 import { Contact } from "./Contact";
 import { ContactProductAccess } from "./ContactProductAccess";
 import { KwigaProduct } from "./KwigaProduct";
+import { SubscriptionPlan } from "./SubscriptionPlan";
+import { UserSubscription } from "./UserSubscription";
 
 export function defineAssociations(): void {
   Contact.hasMany(ContactProductAccess, {
@@ -19,5 +21,14 @@ export function defineAssociations(): void {
   ContactProductAccess.belongsTo(KwigaProduct, {
     foreignKey: "kwiga_product_id",
     as: "kwigaProduct",
+  });
+
+  SubscriptionPlan.hasMany(UserSubscription, {
+    foreignKey: "plan_id",
+    as: "subscriptions",
+  });
+  UserSubscription.belongsTo(SubscriptionPlan, {
+    foreignKey: "plan_id",
+    as: "plan",
   });
 }

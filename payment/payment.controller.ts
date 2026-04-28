@@ -21,6 +21,19 @@ import {
   markPendingOrderTerminal,
   notifyPendingProcessingIfFirstTime,
 } from "./payment-pending-notify";
+import { getSubscriptionStatusForUserId } from "./subscription-status.service";
+import {
+  createSubscriptionCheckout,
+  renewSubscriptionCheckout,
+  recreateSubscriptionCheckout,
+  recoverSubscriptionCheckout,
+} from "./subscription-checkout.service";
+import { subscriptionFlags } from "./subscription-flags";
+import {
+  logSubscriptionStatusReadFailure,
+  logSubscriptionStatusReadSuccess,
+} from "./subscription-observability";
+import { reconcileSubscriptionOrderFromWebhook } from "./subscription-webhook-resolver";
 
 const parseWebhookBody = (body: unknown): WayForPayWebhookPayload => {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -79,6 +92,19 @@ const handleWayForPayWebhook = async (
         .status(400)
         .json("Corrupted webhook received. Webhook signature is not authentic.");
       return;
+    }
+
+    try {
+      const subscriptionResolve = await reconcileSubscriptionOrderFromWebhook(data);
+      if (subscriptionResolve.handled) {
+        console.log("[subscription] webhook resolved", {
+          orderReference: subscriptionResolve.orderReference,
+          status: subscriptionResolve.status,
+          updatedSubscription: subscriptionResolve.updatedSubscription,
+        });
+      }
+    } catch (subscriptionErr) {
+      console.error("[subscription] webhook resolver failed:", subscriptionErr);
     }
 
     if (isApprovedPayment(data) && metadata) {
@@ -153,6 +179,18 @@ const handleCreateCheckout = async (
   res: Response,
 ): Promise<void> => {
   try {
+    const legacyOverride =
+      String(process.env.LEGACY_WAYFORPAY_CHECKOUT_ENABLED ?? "")
+        .trim()
+        .toLowerCase() === "true";
+    if (subscriptionFlags.subscriptionModeEnabled && !legacyOverride) {
+      res.status(410).json({
+        error: "legacy checkout is deprecated in subscription mode",
+        reason: "legacy_checkout_disabled",
+      });
+      return;
+    }
+
     const price = Number(req.body?.price);
     const courseName = String(req.body?.courseName ?? "").trim();
     const chatId = String(req.body?.chatId ?? "").trim();
@@ -187,4 +225,207 @@ const handleCreateCheckout = async (
   }
 };
 
-export { handleWayForPayWebhook, handleCreateCheckout, parseWebhookBody };
+const handleGetSubscriptionStatus = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const userId = String(req.query.userId ?? "").trim();
+  try {
+    if (!userId) {
+      res.status(400).json({ error: "userId query param is required" });
+      return;
+    }
+
+    const status = await getSubscriptionStatusForUserId(userId);
+    await logSubscriptionStatusReadSuccess({
+      userId,
+      status: status.status,
+      planCode: status.planCode,
+      daysLeft: status.daysLeft,
+    });
+    res.status(200).json({ userId, ...status });
+  } catch (err) {
+    if (userId) {
+      try {
+        await logSubscriptionStatusReadFailure({ userId, error: err });
+      } catch (logErr) {
+        console.error("Subscription status failure log error:", logErr);
+      }
+    }
+    console.error("Get subscription status error:", err);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
+const handleCreateSubscriptionCheckout = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    if (!subscriptionFlags.subscriptionModeEnabled) {
+      res.status(403).json({
+        error: "subscription mode is disabled",
+        reason: "subscription_mode_disabled",
+      });
+      return;
+    }
+
+    const userId = String(req.body?.userId ?? "").trim();
+    const planCode = String(req.body?.planCode ?? "monthly_1m").trim();
+    const forceNew =
+      req.body?.forceNew === true ||
+      String(req.body?.forceNew ?? "")
+        .trim()
+        .toLowerCase() === "true";
+
+    if (!userId) {
+      res.status(400).json({ error: "userId is required" });
+      return;
+    }
+
+    const result = await createSubscriptionCheckout({
+      userId,
+      planCode,
+      forceNew,
+    });
+
+    if (!result.ok) {
+      const status = result.reason === "plan_not_found" ? 404 : 409;
+      res.status(status).json({
+        error: "cannot create subscription checkout",
+        ...result,
+      });
+      return;
+    }
+
+    res.status(200).json(result);
+  } catch (err) {
+    console.error("Create subscription checkout error:", err);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
+const handleRecoverSubscriptionCheckout = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    if (!subscriptionFlags.subscriptionReturnFlowEnabled) {
+      res.status(403).json({
+        error: "subscription return flow is disabled",
+        reason: "subscription_return_flow_disabled",
+      });
+      return;
+    }
+
+    const userId = String(req.query.userId ?? "").trim();
+    if (!userId) {
+      res.status(400).json({ error: "userId query param is required" });
+      return;
+    }
+
+    const result = await recoverSubscriptionCheckout(userId);
+    res.status(200).json(result);
+  } catch (err) {
+    console.error("Recover subscription checkout error:", err);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
+const handleRecreateSubscriptionCheckout = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    if (!subscriptionFlags.subscriptionReturnFlowEnabled) {
+      res.status(403).json({
+        error: "subscription return flow is disabled",
+        reason: "subscription_return_flow_disabled",
+      });
+      return;
+    }
+
+    const userId = String(req.body?.userId ?? "").trim();
+    const planCode = String(req.body?.planCode ?? "monthly_1m").trim();
+    if (!userId) {
+      res.status(400).json({ error: "userId is required" });
+      return;
+    }
+
+    const result = await recreateSubscriptionCheckout({ userId, planCode });
+    if (!result.ok) {
+      const status = result.reason === "plan_not_found" ? 404 : 409;
+      res.status(status).json({
+        error: "cannot recreate subscription checkout",
+        ...result,
+      });
+      return;
+    }
+
+    res.status(200).json(result);
+  } catch (err) {
+    console.error("Recreate subscription checkout error:", err);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
+const handleRenewSubscriptionCheckout = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    if (!subscriptionFlags.subscriptionModeEnabled) {
+      res.status(403).json({
+        error: "subscription mode is disabled",
+        reason: "subscription_mode_disabled",
+      });
+      return;
+    }
+
+    const userId = String(req.body?.userId ?? "").trim();
+    const planCode = String(req.body?.planCode ?? "monthly_1m").trim();
+    const forceNew =
+      req.body?.forceNew === true ||
+      String(req.body?.forceNew ?? "")
+        .trim()
+        .toLowerCase() === "true";
+
+    if (!userId) {
+      res.status(400).json({ error: "userId is required" });
+      return;
+    }
+
+    const result = await renewSubscriptionCheckout({
+      userId,
+      planCode,
+      forceNew,
+    });
+    if (!result.ok) {
+      const status = result.reason === "plan_not_found" ? 404 : 409;
+      res.status(status).json({
+        error: "cannot create renewal checkout",
+        ...result,
+      });
+      return;
+    }
+
+    res.status(200).json({
+      intent: "renewal",
+      ...result,
+    });
+  } catch (err) {
+    console.error("Renew subscription checkout error:", err);
+    res.status(500).json({ error: "Server Error" });
+  }
+};
+
+export {
+  handleWayForPayWebhook,
+  handleCreateCheckout,
+  handleCreateSubscriptionCheckout,
+  handleRenewSubscriptionCheckout,
+  handleRecoverSubscriptionCheckout,
+  handleRecreateSubscriptionCheckout,
+  handleGetSubscriptionStatus,
+  parseWebhookBody,
+};

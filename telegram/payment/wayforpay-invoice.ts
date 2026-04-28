@@ -21,6 +21,13 @@ import {
 } from "../profile/paid-chat-payment-eligibility";
 import { SUPPORT_CONTACT_SUFFIX_PLAIN_UA } from "../core/support";
 import { sparkleLabel } from "../core/sparkle-label";
+import { subscriptionFlags } from "../../payment/subscription-flags";
+import {
+  createSubscriptionCheckout,
+  renewSubscriptionCheckout,
+  recoverSubscriptionCheckout,
+  recreateSubscriptionCheckout,
+} from "../../payment/subscription-checkout.service";
 
 /**
  * Стабільний ідентифікатор callback: у старих чатах кнопки вже зберегли це значення.
@@ -35,6 +42,9 @@ const WFP_EMAIL_REQUIRED_INFO = "wfp_email_required_info";
 
 /** Активний payment_hook MULTIMASKING — повторна оплата не пропонується. */
 const WFP_ALREADY_ACTIVE_INFO = "wfp_already_active_info";
+const SUBSCRIPTION_CONTINUE_CHECKOUT_CALLBACK = "subscription_continue_checkout";
+const SUBSCRIPTION_RECREATE_CHECKOUT_CALLBACK = "subscription_recreate_checkout";
+const SUBSCRIPTION_RENEW_NOW_CALLBACK = "subscription_renew_now";
 
 /**
  * Довге повідомлення: кнопка «потрібен email», застаріла кнопка «Оплатити» без email у профілі.
@@ -105,6 +115,22 @@ export async function buildWayForPayInvoiceKeyboard(telegramId: string) {
     contact.id,
   );
   if (botPaySummary.active) {
+    if (subscriptionFlags.subscriptionModeEnabled) {
+      return Markup.inlineKeyboard([
+        [
+          Markup.button.callback(
+            sparkleLabel("Доступ уже активний"),
+            WFP_ALREADY_ACTIVE_INFO,
+          ),
+        ],
+        [
+          Markup.button.callback(
+            sparkleLabel("Продовжити підписку"),
+            SUBSCRIPTION_RENEW_NOW_CALLBACK,
+          ),
+        ],
+      ]);
+    }
     return Markup.inlineKeyboard([
       [
         Markup.button.callback(
@@ -119,6 +145,142 @@ export async function buildWayForPayInvoiceKeyboard(telegramId: string) {
 }
 
 export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
+  bot.action(SUBSCRIPTION_RENEW_NOW_CALLBACK, async (ctx) => {
+    try {
+      const chatId = ctx.from?.id;
+      if (chatId == null) return;
+      if (!isPrivateChat(ctx)) {
+        await ctx.answerCbQuery().catch(() => {});
+        return;
+      }
+      await ctx.answerCbQuery();
+
+      if (!subscriptionFlags.subscriptionModeEnabled) {
+        await ctx.reply(
+          "Режим підписок зараз вимкнено. Спробуйте пізніше або зверніться до підтримки.",
+        );
+        return;
+      }
+
+      const renewed = await renewSubscriptionCheckout({
+        userId: String(chatId),
+        planCode: "monthly_1m",
+        forceNew: false,
+      });
+      if (!renewed.ok) {
+        await ctx.reply(
+          renewed.reason === "plan_not_found"
+            ? "План підписки не знайдено. Зверніться до підтримки."
+            : "Не вдалося створити рахунок на продовження. Спробуйте пізніше.",
+        );
+        return;
+      }
+
+      await ctx.reply(
+        "Рахунок на продовження підписки сформовано.\n\n" +
+          `Номер замовлення: ${renewed.orderReference}`,
+        Markup.inlineKeyboard([
+          Markup.button.url(
+            sparkleLabel("Продовжити підписку"),
+            renewed.checkoutUrl,
+          ),
+        ]),
+      );
+    } catch (err) {
+      console.error("subscription renew callback:", err);
+      await ctx.answerCbQuery().catch(() => {});
+      await ctx.reply("Помилка при оформленні продовження. Спробуйте пізніше.");
+    }
+  });
+
+  bot.action(SUBSCRIPTION_CONTINUE_CHECKOUT_CALLBACK, async (ctx) => {
+    try {
+      const chatId = ctx.from?.id;
+      if (chatId == null) return;
+      if (!isPrivateChat(ctx)) {
+        await ctx.answerCbQuery().catch(() => {});
+        return;
+      }
+      await ctx.answerCbQuery();
+
+      const recovered = await recoverSubscriptionCheckout(String(chatId));
+      if (!recovered.hasActiveOrder) {
+        await ctx.reply(
+          "Активний рахунок не знайдено. Створіть новий через кнопку «Створити новий рахунок».",
+        );
+        return;
+      }
+      if (!recovered.checkoutUrl) {
+        await ctx.reply(
+          "Знайдено незавершений платіж, але посилання недоступне. Створіть новий рахунок.",
+          Markup.inlineKeyboard([
+            Markup.button.callback(
+              sparkleLabel("Створити новий рахунок"),
+              SUBSCRIPTION_RECREATE_CHECKOUT_CALLBACK,
+            ),
+          ]),
+        );
+        return;
+      }
+
+      await ctx.reply(
+        "Знайшли незавершену оплату. Продовжіть за наявним посиланням:\n\n" +
+          `Номер замовлення: ${recovered.orderReference}`,
+        Markup.inlineKeyboard([
+          Markup.button.url(
+            sparkleLabel("Продовжити оплату"),
+            recovered.checkoutUrl,
+          ),
+          Markup.button.callback(
+            sparkleLabel("Створити новий рахунок"),
+            SUBSCRIPTION_RECREATE_CHECKOUT_CALLBACK,
+          ),
+        ]),
+      );
+    } catch (err) {
+      console.error("subscription continue checkout callback:", err);
+      await ctx.answerCbQuery().catch(() => {});
+      await ctx.reply("Помилка при відновленні оплати. Спробуйте пізніше.");
+    }
+  });
+
+  bot.action(SUBSCRIPTION_RECREATE_CHECKOUT_CALLBACK, async (ctx) => {
+    try {
+      const chatId = ctx.from?.id;
+      if (chatId == null) return;
+      if (!isPrivateChat(ctx)) {
+        await ctx.answerCbQuery().catch(() => {});
+        return;
+      }
+      await ctx.answerCbQuery();
+
+      const recreated = await recreateSubscriptionCheckout({
+        userId: String(chatId),
+        planCode: "monthly_1m",
+      });
+      if (!recreated.ok) {
+        await ctx.reply(
+          recreated.reason === "plan_not_found"
+            ? "План підписки не знайдено. Зверніться до підтримки."
+            : "Не вдалося створити новий рахунок. Спробуйте пізніше.",
+        );
+        return;
+      }
+
+      await ctx.reply(
+        "Створено новий рахунок на підписку.\n\n" +
+          `Номер замовлення: ${recreated.orderReference}`,
+        Markup.inlineKeyboard([
+          Markup.button.url(sparkleLabel("Перейти до оплати"), recreated.checkoutUrl),
+        ]),
+      );
+    } catch (err) {
+      console.error("subscription recreate checkout callback:", err);
+      await ctx.answerCbQuery().catch(() => {});
+      await ctx.reply("Помилка при створенні нового рахунку. Спробуйте пізніше.");
+    }
+  });
+
   bot.action(WFP_ALREADY_ACTIVE_INFO, async (ctx) => {
     try {
       const chatId = ctx.from?.id;
@@ -274,15 +436,57 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
       await ctx.answerCbQuery();
 
       const price = await getMultimaskingCoursePriceUah();
-      const { createCheckoutForCourse } = await import(
-        "../../payment/payment.service"
-      );
+      let invoiceUrl: string;
+      let orderReference: string;
 
-      const { invoiceUrl, orderReference } = await createCheckoutForCourse(
-        price,
-        MULTIMASKING_PRODUCT_NAME,
-        String(chatId),
-      );
+      if (subscriptionFlags.subscriptionModeEnabled) {
+        if (subscriptionFlags.subscriptionReturnFlowEnabled) {
+          const recovered = await recoverSubscriptionCheckout(String(chatId));
+          if (recovered.hasActiveOrder) {
+            await ctx.reply(
+              "У вас уже є незавершена оплата. Оберіть дію:",
+              Markup.inlineKeyboard([
+                Markup.button.callback(
+                  sparkleLabel("Продовжити оплату"),
+                  SUBSCRIPTION_CONTINUE_CHECKOUT_CALLBACK,
+                ),
+                Markup.button.callback(
+                  sparkleLabel("Створити новий рахунок"),
+                  SUBSCRIPTION_RECREATE_CHECKOUT_CALLBACK,
+                ),
+              ]),
+            );
+            return;
+          }
+        }
+
+        const checkout = await createSubscriptionCheckout({
+          userId: String(chatId),
+          planCode: "monthly_1m",
+          forceNew: false,
+        });
+        if (!checkout.ok) {
+          await ctx.reply(
+            checkout.reason === "plan_not_found"
+              ? "План підписки не знайдено. Зверніться до підтримки."
+              : "Не вдалося створити рахунок. Спробуйте пізніше.",
+          );
+          return;
+        }
+        invoiceUrl = checkout.checkoutUrl;
+        orderReference = checkout.orderReference;
+      } else {
+        const { createCheckoutForCourse } = await import(
+          "../../payment/payment.service"
+        );
+        const legacy = await createCheckoutForCourse(
+          price,
+          MULTIMASKING_PRODUCT_NAME,
+          String(chatId),
+        );
+        invoiceUrl = legacy.invoiceUrl;
+        orderReference = legacy.orderReference;
+      }
 
       await ctx.reply(
         `Рахунок WayForPay на суму ${price} грн за доступ до навчального продукту ` +

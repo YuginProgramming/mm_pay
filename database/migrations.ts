@@ -485,6 +485,145 @@ async function addWayforpayOrderReferenceColumn(): Promise<void> {
   );
 }
 
+async function createSubscriptionCoreTables(): Promise<void> {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS subscription_plans (
+      id            SERIAL PRIMARY KEY,
+      code          VARCHAR(64) NOT NULL UNIQUE,
+      title         VARCHAR(255),
+      duration_days INTEGER NOT NULL,
+      price         NUMERIC(10, 2) NOT NULL,
+      currency      VARCHAR(8) NOT NULL DEFAULT 'UAH',
+      is_active     BOOLEAN NOT NULL DEFAULT true,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS user_subscriptions (
+      id                           SERIAL PRIMARY KEY,
+      user_id                      VARCHAR(64) NOT NULL,
+      plan_id                      INTEGER NOT NULL REFERENCES subscription_plans(id) ON DELETE RESTRICT,
+      status                       VARCHAR(32) NOT NULL DEFAULT 'active',
+      start_at                     TIMESTAMPTZ NOT NULL,
+      end_at                       TIMESTAMPTZ NOT NULL,
+      last_payment_order_reference VARCHAR(128),
+      created_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS user_subscriptions_user_status_end_idx
+      ON user_subscriptions (user_id, status, end_at);
+  `);
+
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS subscription_payment_orders (
+      id              SERIAL PRIMARY KEY,
+      order_reference VARCHAR(128) NOT NULL UNIQUE,
+      user_id         VARCHAR(64) NOT NULL,
+      plan_id         INTEGER NOT NULL REFERENCES subscription_plans(id) ON DELETE RESTRICT,
+      status          VARCHAR(32) NOT NULL,
+      amount          NUMERIC(10, 2) NOT NULL,
+      currency        VARCHAR(8) NOT NULL DEFAULT 'UAH',
+      provider        VARCHAR(32) NOT NULL DEFAULT 'wayforpay',
+      terminal_at     TIMESTAMPTZ,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS subscription_payment_orders_user_plan_status_idx
+      ON subscription_payment_orders (user_id, plan_id, status);
+  `);
+
+  await sequelize.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS subscription_payment_orders_active_uq
+      ON subscription_payment_orders (user_id, plan_id)
+      WHERE status IN ('created', 'pending', 'processing', 'suspended');
+  `);
+
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS subscription_flow_sessions (
+      id              SERIAL PRIMARY KEY,
+      user_id         VARCHAR(64) NOT NULL,
+      flow_type       VARCHAR(32) NOT NULL,
+      step            VARCHAR(64) NOT NULL,
+      order_reference VARCHAR(128),
+      expires_at      TIMESTAMPTZ,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS subscription_flow_sessions_user_idx
+      ON subscription_flow_sessions (user_id);
+  `);
+
+  console.log(
+    "Migration completed: subscription core tables/indexes (if missing).",
+  );
+}
+
+async function seedSubscriptionMonthlyPlan(): Promise<void> {
+  await sequelize.query(`
+    INSERT INTO subscription_plans (
+      code,
+      title,
+      duration_days,
+      price,
+      currency,
+      is_active
+    )
+    VALUES (
+      'monthly_1m',
+      'Підписка на 1 місяць',
+      30,
+      500.00,
+      'UAH',
+      true
+    )
+    ON CONFLICT (code) DO NOTHING;
+  `);
+  console.log("Migration completed: subscription_plans seed monthly_1m.");
+}
+
+async function addSubscriptionPaymentOrderCheckoutUrlColumn(): Promise<void> {
+  await sequelize.query(`
+    ALTER TABLE subscription_payment_orders
+    ADD COLUMN IF NOT EXISTS checkout_url TEXT;
+  `);
+  console.log(
+    "Migration completed: checkout_url on subscription_payment_orders (if missing).",
+  );
+}
+
+async function createSubscriptionRenewalReminderLogTable(): Promise<void> {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS subscription_renewal_reminder_log (
+      id                  SERIAL PRIMARY KEY,
+      user_id             VARCHAR(64) NOT NULL,
+      subscription_id     INTEGER NOT NULL,
+      alert_type          VARCHAR(64) NOT NULL,
+      dedupe_key          VARCHAR(512) NOT NULL,
+      subscription_end_at TIMESTAMPTZ,
+      created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (user_id, alert_type, dedupe_key)
+    );
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS subscription_renewal_reminder_log_created_at_idx
+      ON subscription_renewal_reminder_log (created_at DESC);
+  `);
+  console.log(
+    "Migration completed: subscription_renewal_reminder_log (if missing).",
+  );
+}
+
 async function runMigrations(): Promise<void> {
   try {
     await sequelize.authenticate();
@@ -501,6 +640,10 @@ async function runMigrations(): Promise<void> {
     await createWayforpayWebhookEventsTable();
     await createWayforpayPendingNoticesTable();
     await addWayforpayOrderReferenceColumn();
+    await createSubscriptionCoreTables();
+    await addSubscriptionPaymentOrderCheckoutUrlColumn();
+    await createSubscriptionRenewalReminderLogTable();
+    await seedSubscriptionMonthlyPlan();
     await createPaidChatJanitorAlertLogTable();
     await createPaidChatMemberStateTable();
     await seedPaidChatJanitorIntervalSetting();
