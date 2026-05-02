@@ -33,7 +33,10 @@
     "debug:paid-chat-allowlist": "ts-node debug/paid-chat-janitor-allowlist.ts",
     "debug:check-env": "ts-node debug/check-env-path.ts",
     "payment:server": "ts-node payment/http-server.ts",
-    "payment:server:build": "npm run build && node dist/payment/http-server.js"
+    "payment:server:build": "npm run build && node dist/payment/http-server.js",
+    "consultation:bot": "ts-node telegram/consultation/run-consultation-bot.ts",
+    "consultation:bot:prod": "npm run build && node dist/telegram/consultation/run-consultation-bot.js",
+    "consultation:track-messages": "ts-node telegram/consultation/track-group-messages.ts"
   },
   "keywords": [],
   "author": "",

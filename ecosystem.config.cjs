@@ -1,8 +1,10 @@
 /**
- * PM2: чотири процеси (Telegram, WayForPay webhook, KWIGA crawl, paid-chat janitor).
+ * PM2: пʼять процесів (Telegram, консультаційний бот, WayForPay webhook, KWIGA crawl, paid-chat janitor).
  * Після деплою: npm ci && npm run build
- * Старт (усі 4 процеси одразу): cd <repo> && pm2 start ecosystem.config.cjs
+ * Старт (усі процеси одразу): cd <repo> && pm2 start ecosystem.config.cjs
  * Група в PM2: namespace MM_project (не використовуйте --name на весь файл).
+ *
+ * Консультаційний бот: окремий токен CONSULTATION_BOT_TOKEN; див. TZ/consultation-sprints.md
  *
  * Підлаштуйте cwd, якщо репозиторій не в /var/www/mm_project.
  */
@@ -16,6 +18,16 @@ module.exports = {
       name: "mm-telegram",
       cwd: root,
       script: "dist/telegram/run-bot.js",
+      instances: 1,
+      autorestart: true,
+      max_restarts: 20,
+      min_uptime: "10s",
+    },
+    {
+      namespace: "MM_project",
+      name: "mm-consultation",
+      cwd: root,
+      script: "dist/telegram/consultation/run-consultation-bot.js",
       instances: 1,
       autorestart: true,
       max_restarts: 20,
