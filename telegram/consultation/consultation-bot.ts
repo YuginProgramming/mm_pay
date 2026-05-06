@@ -1,5 +1,7 @@
 // telegram/consultation/consultation-bot.ts
 import "dotenv/config";
+import * as fs from "fs";
+import * as path from "path";
 import { Telegraf, Markup } from "telegraf";
 
 const token = process.env.CONSULTATION_BOT_TOKEN;
@@ -14,6 +16,38 @@ if (!token) {
 const landingUrl = process.env.CONSULTATION_LANDING_URL?.trim() || undefined;
 const accountBotUrl = "https://t.me/multimasking_account_bot";
 
+type ConsultationMessage = {
+  id: string;
+  version: number;
+  title: string;
+  paragraphs: string[];
+  cta: {
+    text: string;
+    action: "payment_client" | "payment_master";
+  };
+};
+
+function readMessageJson(fileName: string): ConsultationMessage {
+  const candidatePaths = [
+    path.resolve(process.cwd(), "telegram/consultation/messages", fileName),
+    path.resolve(__dirname, "messages", fileName),
+  ];
+  for (const filePath of candidatePaths) {
+    if (fs.existsSync(filePath)) {
+      const raw = fs.readFileSync(filePath, "utf8");
+      return JSON.parse(raw) as ConsultationMessage;
+    }
+  }
+  throw new Error(`Message file not found: ${fileName}`);
+}
+
+function renderMessageText(payload: ConsultationMessage): string {
+  return [payload.title, ...payload.paragraphs].join("\n\n");
+}
+
+const clientMessage = readMessageJson("descr-client.json");
+const masterMessage = readMessageJson("descr-master.json");
+
 export const consultationBot = new Telegraf(token);
 
 const TELEGRAM_ALLOWED_UPDATES = [
@@ -27,6 +61,10 @@ const CB = {
   s1: "menu:s1",
   s10: "menu:s10",
   s2: "menu:s2",
+  s2Client: "menu:s2:client",
+  s2Master: "menu:s2:master",
+  s2ClientPay: "menu:s2:client:pay",
+  s2MasterPay: "menu:s2:master:pay",
   s20: "menu:s20",
 } as const;
 
@@ -53,9 +91,10 @@ const TEXT_S10 =
   "Цей блок у розробці.";
 
 const TEXT_S2 =
-  "Консультація\n\n" +
-  "Тут буде опис формату консультації та кнопка оплати. " +
-  "Далі — коротка анкета та звʼязок із менеджером (підключимо наступним кроком).";
+  "Консультація\n\n" + "Оберіть формат:";
+
+const TEXT_S2_CLIENT = renderMessageText(clientMessage);
+const TEXT_S2_MASTER = renderMessageText(masterMessage);
 
 const TEXT_S20 =
   "Хочу навчання\n\n" +
@@ -83,7 +122,52 @@ consultationBot.action(CB.s10, async (ctx) => {
 
 consultationBot.action(CB.s2, async (ctx) => {
   await ctx.answerCbQuery();
-  await ctx.editMessageText(TEXT_S2, backKeyboard());
+  await ctx.editMessageText(
+    TEXT_S2,
+    Markup.inlineKeyboard([
+      [Markup.button.callback("👤 Хочу результат для себе", CB.s2Client)],
+      [Markup.button.callback("🎓 Я працюю з клієнтами", CB.s2Master)],
+      [Markup.button.callback("« Назад до меню", CB.s1)],
+    ]),
+  );
+});
+
+consultationBot.action(CB.s2Client, async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.editMessageText(
+    TEXT_S2_CLIENT,
+    Markup.inlineKeyboard([
+      [Markup.button.callback(clientMessage.cta.text, CB.s2ClientPay)],
+      [Markup.button.callback("« Назад", CB.s2)],
+      [Markup.button.callback("« Назад до меню", CB.s1)],
+    ]),
+  );
+});
+
+consultationBot.action(CB.s2Master, async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.editMessageText(
+    TEXT_S2_MASTER,
+    Markup.inlineKeyboard([
+      [Markup.button.callback(masterMessage.cta.text, CB.s2MasterPay)],
+      [Markup.button.callback("« Назад", CB.s2)],
+      [Markup.button.callback("« Назад до меню", CB.s1)],
+    ]),
+  );
+});
+
+consultationBot.action(CB.s2ClientPay, async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.reply(
+    "Блок оплати персональної консультації буде підключено наступним кроком.",
+  );
+});
+
+consultationBot.action(CB.s2MasterPay, async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.reply(
+    "Блок оплати консультації для майстрів буде підключено наступним кроком.",
+  );
 });
 
 consultationBot.action(CB.s20, async (ctx) => {
