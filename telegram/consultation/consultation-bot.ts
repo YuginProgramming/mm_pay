@@ -1,7 +1,6 @@
 // telegram/consultation/consultation-bot.ts
 import "dotenv/config";
 import { Telegraf, Markup } from "telegraf";
-import { createForumTopic, sendMessageInTopic } from "./forum-api";
 
 const token = process.env.CONSULTATION_BOT_TOKEN;
 
@@ -11,24 +10,9 @@ if (!token) {
   );
 }
 
-/** Forum supergroup id (negative), e.g. -1001234567890 */
-const managerChatIdRaw = process.env.CONSULTATION_MANAGER_CHAT_ID;
-const managerChatId = managerChatIdRaw
-  ? Number(managerChatIdRaw)
-  : undefined;
-
-type Session =
-  | { step: "idle" }
-  | { step: "await_details"; intent: string };
-
-const sessions = new Map<number, Session>();
-
-const INTENTS: Record<string, string> = {
-  studied: "Вже навчався / навчалася",
-  training: "Хочу навчання",
-  diagnostics: "Потрібна діагностика",
-  other: "Інше",
-};
+/** Optional: URL for «Хочу навчання» (S20) — e.g. course landing page */
+const landingUrl = process.env.CONSULTATION_LANDING_URL?.trim() || undefined;
+const accountBotUrl = "https://t.me/multimasking_account_bot";
 
 export const consultationBot = new Telegraf(token);
 
@@ -39,105 +23,93 @@ const TELEGRAM_ALLOWED_UPDATES = [
   "my_chat_member",
 ] as const;
 
+const CB = {
+  s1: "menu:s1",
+  s10: "menu:s10",
+  s2: "menu:s2",
+  s20: "menu:s20",
+} as const;
+
+function mainMenuKeyboard() {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback("Я проходив навчання", CB.s10)],
+    [Markup.button.callback("Консультація", CB.s2)],
+    [Markup.button.callback("Хочу навчання", CB.s20)],
+  ]);
+}
+
+function backKeyboard() {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback("« Назад до меню", CB.s1)],
+  ]);
+}
+
+const TEXT_S1 =
+  "Головне меню — вибір сценарію.\n\nОберіть, що вам зараз потрібно:";
+
+const TEXT_S10 =
+  "Я проходив навчання\n\n" +
+  "Тут буде перехід до підписки та продовження роботи в академії. " +
+  "Цей блок у розробці.";
+
+const TEXT_S2 =
+  "Консультація\n\n" +
+  "Тут буде опис формату консультації та кнопка оплати. " +
+  "Далі — коротка анкета та звʼязок із менеджером (підключимо наступним кроком).";
+
+const TEXT_S20 =
+  "Хочу навчання\n\n" +
+  "Ознайомтеся з програмою на лендингу або поверніться до головного меню.";
+
 consultationBot.start(async (ctx) => {
-  const uid = ctx.from?.id;
-  if (!uid) return;
-  sessions.set(uid, { step: "idle" });
-  await ctx.reply(
-    "Консультація Multimasking.\n\nСпочатку коротка анкета — після неї менеджер зможе підключитися до вашого запиту.\n\nОберіть, що вам ближче:",
+  await ctx.reply(TEXT_S1, mainMenuKeyboard());
+});
+
+consultationBot.action(CB.s1, async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.editMessageText(TEXT_S1, mainMenuKeyboard());
+});
+
+consultationBot.action(CB.s10, async (ctx) => {
+  await ctx.answerCbQuery();
+  await ctx.editMessageText(
+    TEXT_S10,
     Markup.inlineKeyboard([
-      [
-        Markup.button.callback(INTENTS.studied, "intent:studied"),
-        Markup.button.callback(INTENTS.training, "intent:training"),
-      ],
-      [
-        Markup.button.callback(INTENTS.diagnostics, "intent:diagnostics"),
-        Markup.button.callback(INTENTS.other, "intent:other"),
-      ],
+      [Markup.button.url("Перейти в акаунт-бот", accountBotUrl)],
+      [Markup.button.callback("« Назад до меню", CB.s1)],
     ]),
   );
 });
 
-consultationBot.action(/^intent:(\w+)$/, async (ctx) => {
-  const uid = ctx.from?.id;
-  const intentKey = ctx.match[1];
-  if (!uid || !INTENTS[intentKey]) {
-    await ctx.answerCbQuery("Невідомий варіант");
-    return;
-  }
+consultationBot.action(CB.s2, async (ctx) => {
   await ctx.answerCbQuery();
-  sessions.set(uid, { step: "await_details", intent: intentKey });
-  await ctx.editMessageText(
-    `Обрано: ${INTENTS[intentKey]}\n\nОпишіть запит своїми словами (одне повідомлення). Після цього ми передаємо його команді.`,
-  );
+  await ctx.editMessageText(TEXT_S2, backKeyboard());
+});
+
+consultationBot.action(CB.s20, async (ctx) => {
+  await ctx.answerCbQuery();
+  const s20Body = landingUrl
+    ? TEXT_S20
+    : `${TEXT_S20}\n\n(Посилання на лендинг зʼявиться після налаштування CONSULTATION_LANDING_URL.)`;
+  const kb = landingUrl
+    ? Markup.inlineKeyboard([
+        [Markup.button.url("Відкрити лендинг", landingUrl)],
+        [Markup.button.callback("« Назад до меню", CB.s1)],
+      ])
+    : backKeyboard();
+  await ctx.editMessageText(s20Body, kb);
 });
 
 consultationBot.command("cancel", async (ctx) => {
-  const uid = ctx.from?.id;
-  if (uid) sessions.set(uid, { step: "idle" });
-  await ctx.reply("Анкету скинуто. Натисніть /start, щоб почати знову.");
-});
-
-consultationBot.on("text", async (ctx) => {
-  const uid = ctx.from?.id;
-  if (!uid) return;
-  const session = sessions.get(uid) ?? { step: "idle" };
-  if (session.step !== "await_details") {
-    await ctx.reply("Натисніть /start, щоб пройти анкету.");
-    return;
-  }
-
-  const details = ctx.message.text.trim();
-  if (!details) {
-    await ctx.reply("Надішліть непорожній текст.");
-    return;
-  }
-
-  const intentLabel = INTENTS[session.intent] ?? session.intent;
-  const username = ctx.from.username
-    ? `@${ctx.from.username}`
-    : "(без username)";
-  const summary =
-    `Нова консультація\n` +
-    `Користувач: ${username} (id ${uid})\n` +
-    `Намір: ${intentLabel}\n` +
-    `Запит:\n${details}`;
-
-  sessions.set(uid, { step: "idle" });
-
-  if (managerChatId === undefined || Number.isNaN(managerChatId)) {
-    await ctx.reply(
-      "Дякуємо! Ваш запит прийнято. Менеджер підключиться найближчим часом у цьому чаті.\n\n(Адміністратору: задайте CONSULTATION_MANAGER_CHAT_ID для створення тем у форумі.)",
-    );
-    console.warn(
-      "[consultation] CONSULTATION_MANAGER_CHAT_ID not set; skipping forum topic.",
-    );
-    return;
-  }
-
-  const topicTitle = `C ${uid} | ${intentLabel.slice(0, 40)}`;
-  try {
-    const { message_thread_id } = await createForumTopic(
-      token,
-      managerChatId,
-      topicTitle.slice(0, 128),
-    );
-    await sendMessageInTopic(token, managerChatId, message_thread_id, summary);
-    await ctx.reply(
-      "Дякуємо! Запит передано команді — менеджер відповість тут у боті, щойно буде можливість.",
-    );
-  } catch (e) {
-    console.error("[consultation] Forum handoff failed:", e);
-    await ctx.reply(
-      "Анкету збережено, але не вдалося створити тему для менеджерів. Команда все одно побачить це після налаштування. Дякуємо за терпіння!",
-    );
-  }
+  await ctx.reply(
+    "Меню скинуто. Натисніть /start, щоб відкрити головне меню.",
+  );
 });
 
 export async function launchConsultationBot(): Promise<void> {
   await consultationBot.telegram.setMyCommands([
-    { command: "start", description: "Почати анкету консультації" },
-    { command: "cancel", description: "Скинути анкету" },
+    { command: "start", description: "Головне меню" },
+    { command: "cancel", description: "Скинути й вийти" },
   ]);
 
   await consultationBot.launch({ allowedUpdates: [...TELEGRAM_ALLOWED_UPDATES] });

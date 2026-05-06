@@ -128,4 +128,26 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
       await ctx.reply("Помилка. Спробуй пізніше або /start.");
     }
   });
+
+  bot.command("consultation", async (ctx: Context) => {
+    try {
+      if (!ctx.from) return;
+      if (!isPrivateChat(ctx)) return;
+      await ctx.reply("Відкрити бот персональної консультації:", {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "Перейти в бот персональної консультації",
+                url: "https://t.me/mm_consultation_bot",
+              },
+            ],
+          ],
+        },
+      });
+    } catch (error) {
+      console.error("Error handling /consultation:", error);
+      await ctx.reply("Помилка. Спробуй пізніше.");
+    }
+  });
 }
