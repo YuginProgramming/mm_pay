@@ -1,4 +1,6 @@
 import { Contact } from "./Contact";
+import { ConsultationCase } from "./ConsultationCase";
+import { ConsultationIntakeSession } from "./ConsultationIntakeSession";
 import { ConsultationPaymentOrder } from "./ConsultationPaymentOrder";
 import { ContactProductAccess } from "./ContactProductAccess";
 import { EmailChangeLog } from "./EmailChangeLog";
@@ -24,6 +26,8 @@ export {
 } from "./app-settings-queries";
 export {
   Contact,
+  ConsultationCase,
+  ConsultationIntakeSession,
   ConsultationPaymentOrder,
   ContactProductAccess,
   EmailChangeLog,
@@ -41,6 +45,8 @@ export {
 export * from "./access-queries";
 export const models = {
   Contact,
+  ConsultationCase,
+  ConsultationIntakeSession,
   ConsultationPaymentOrder,
   ContactProductAccess,
   EmailChangeLog,

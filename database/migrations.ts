@@ -616,6 +616,48 @@ async function createConsultationPaymentOrdersTable(): Promise<void> {
   );
 }
 
+async function createConsultationCaseAndIntakeTables(): Promise<void> {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS consultation_cases (
+      id                SERIAL PRIMARY KEY,
+      consultation_id   VARCHAR(128) NOT NULL UNIQUE,
+      telegram_user_id  VARCHAR(64) NOT NULL,
+      telegram_chat_id  VARCHAR(64) NOT NULL,
+      status            VARCHAR(32) NOT NULL,
+      product_code      VARCHAR(64),
+      order_reference   VARCHAR(128),
+      manager_chat_id   VARCHAR(64),
+      message_thread_id VARCHAR(64),
+      created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS consultation_cases_user_status_idx
+      ON consultation_cases (telegram_user_id, status);
+  `);
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS consultation_intake_sessions (
+      id                 SERIAL PRIMARY KEY,
+      consultation_id    VARCHAR(128) NOT NULL UNIQUE,
+      telegram_user_id   VARCHAR(64) NOT NULL,
+      status             VARCHAR(32) NOT NULL,
+      step               VARCHAR(32) NOT NULL,
+      answers_json       JSONB NOT NULL DEFAULT '{}'::jsonb,
+      media_file_ids_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+      created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS consultation_intake_sessions_user_idx
+      ON consultation_intake_sessions (telegram_user_id);
+  `);
+  console.log(
+    "Migration completed: consultation_cases + consultation_intake_sessions tables (if missing).",
+  );
+}
+
 async function seedConsultationPriceSettings(): Promise<void> {
   await sequelize.query(`
     INSERT INTO app_settings (setting_key, setting_value, description_uk)
@@ -710,6 +752,7 @@ async function runMigrations(): Promise<void> {
     await addWayforpayOrderReferenceColumn();
     await createSubscriptionCoreTables();
     await createConsultationPaymentOrdersTable();
+    await createConsultationCaseAndIntakeTables();
     await addSubscriptionPaymentOrderCheckoutUrlColumn();
     await createSubscriptionRenewalReminderLogTable();
     await seedSubscriptionMonthlyPlan();

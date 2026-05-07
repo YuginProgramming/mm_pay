@@ -22,3 +22,9 @@ These notes are internal only and should not be sent to users.
 - Payment buttons now create one-time WayForPay checkouts for two products:
   - `consultation_client_one_time`
   - `consultation_master_one_time`
+- Next stage after payment success:
+  - start intake state machine in DM (`INTAKE_IN_PROGRESS`)
+  - complete Q-flow including Q4 media
+  - create forum topic and post final intake summary.
+- Topic title policy:
+  - `U<telegram_id> | <first+last or @username or tg_<id>>`.

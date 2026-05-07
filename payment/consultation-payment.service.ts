@@ -1,6 +1,8 @@
 import { Op, literal } from "sequelize";
 import { randomUUID } from "crypto";
+import { ConsultationCase } from "../database/ConsultationCase";
 import { ConsultationPaymentOrder } from "../database/ConsultationPaymentOrder";
+import { TelegramUser } from "../database/TelegramUser";
 import {
   getConsultationClientPriceUah,
   getConsultationMasterPriceUah,
@@ -19,6 +21,11 @@ import {
   notifyConsultationPaymentPending,
 } from "./consultation-payment-notify";
 import { putPendingOrder } from "./pending-orders";
+import {
+  createForumTopic,
+  sendMessageInTopic,
+} from "../telegram/consultation/forum-api";
+import { buildConsultationTopicTitle } from "../telegram/consultation/topic-title";
 
 const ACTIVE_ORDER_STATUSES = ["created", "pending", "processing", "suspended"];
 const TERMINAL_FAILURE = new Set(["Declined", "Voided", "Refunded", "Expired"]);
@@ -44,6 +51,33 @@ export type ConsultationCheckoutResult = {
   productCode: ConsultationProductCode;
   amountUah: number;
 };
+
+export type ConsultationAccessState =
+  | { status: "approved" }
+  | { status: "pending_with_url"; checkoutUrl: string }
+  | { status: "no_access" };
+
+export async function getConsultationAccessState(input: {
+  telegramUserId: string;
+  productCode: ConsultationProductCode;
+}): Promise<ConsultationAccessState> {
+  const latest = await ConsultationPaymentOrder.findOne({
+    where: {
+      telegramUserId: input.telegramUserId,
+      productCode: input.productCode,
+    },
+    order: literal("\"created_at\" DESC"),
+  });
+  if (!latest) return { status: "no_access" };
+  if (latest.status === "approved") return { status: "approved" };
+  if (
+    ["created", "pending", "processing", "suspended"].includes(latest.status) &&
+    latest.checkoutUrl
+  ) {
+    return { status: "pending_with_url", checkoutUrl: latest.checkoutUrl };
+  }
+  return { status: "no_access" };
+}
 
 export async function createConsultationCheckout(input: {
   telegramUserId: string;
@@ -167,6 +201,9 @@ export async function reconcileConsultationOrderFromWebhook(
       },
     );
     if (updated > 0) {
+      if (order.productCode === CONSULTATION_MASTER_PRODUCT_CODE) {
+        await startMasterForumFlow(order);
+      }
       await notifyConsultationPaymentApproved({
         chatId: order.telegramChatId,
         productCode: order.productCode,
@@ -240,4 +277,61 @@ export async function reconcileConsultationOrderFromWebhook(
     orderReference: order.orderReference,
     status: String(order.status),
   };
+}
+
+async function startMasterForumFlow(
+  order: ConsultationPaymentOrder,
+): Promise<void> {
+  const token = process.env.CONSULTATION_BOT_TOKEN;
+  const managerChatIdRaw = process.env.CONSULTATION_MANAGER_CHAT_ID;
+  const managerChatId = managerChatIdRaw ? Number(managerChatIdRaw) : NaN;
+  if (!token || !Number.isFinite(managerChatId)) {
+    console.warn(
+      "[consultation-payment] skip master forum flow: token/chat not configured",
+      { hasToken: Boolean(token), managerChatIdRaw },
+    );
+    return;
+  }
+
+  const user = await TelegramUser.findOne({
+    where: { telegramId: order.telegramUserId },
+  });
+  const topicName = buildConsultationTopicTitle({
+    telegramId: order.telegramUserId,
+    firstName: user?.firstName ?? null,
+    lastName: user?.lastName ?? null,
+    username: user?.username ?? null,
+  });
+  const { message_thread_id } = await createForumTopic(token, managerChatId, topicName);
+
+  const userIdentity =
+    user?.firstName || user?.lastName
+      ? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()
+      : user?.username
+        ? `@${user.username}`
+        : `tg_${order.telegramUserId}`;
+  await sendMessageInTopic(
+    token,
+    managerChatId,
+    message_thread_id,
+    [
+      "🎓 Нова консультація для майстра",
+      `Order: ${order.orderReference}`,
+      `User ID: ${order.telegramUserId}`,
+      `Identity: ${userIdentity}`,
+      `Chat ID: ${order.telegramChatId}`,
+      "Старт: прямий формат через форум (без intake-анкети).",
+    ].join("\n"),
+  );
+
+  await ConsultationCase.upsert({
+    consultationId: `master-${order.orderReference}`,
+    telegramUserId: order.telegramUserId,
+    telegramChatId: order.telegramChatId,
+    status: "ACTIVE_CONVERSATION",
+    productCode: order.productCode,
+    orderReference: order.orderReference,
+    managerChatId: String(managerChatId),
+    messageThreadId: String(message_thread_id),
+  });
 }

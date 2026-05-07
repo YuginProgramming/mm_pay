@@ -6,7 +6,11 @@ function productLabel(productCode: ConsultationProductCode): string {
     : "персональної консультації";
 }
 
-async function sendConsultationMessage(chatId: string, text: string): Promise<void> {
+async function sendConsultationMessage(
+  chatId: string,
+  text: string,
+  callbackDataButton?: { text: string; callbackData: string },
+): Promise<void> {
   const token = process.env.CONSULTATION_BOT_TOKEN;
   if (!token) {
     console.error("[consultation-payment] CONSULTATION_BOT_TOKEN is not set");
@@ -20,6 +24,20 @@ async function sendConsultationMessage(chatId: string, text: string): Promise<vo
       body: JSON.stringify({
         chat_id: chatId,
         text,
+        ...(callbackDataButton
+          ? {
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    {
+                      text: callbackDataButton.text,
+                      callback_data: callbackDataButton.callbackData,
+                    },
+                  ],
+                ],
+              },
+            }
+          : {}),
       }),
     },
   );
@@ -37,10 +55,20 @@ export async function notifyConsultationPaymentApproved(input: {
   productCode: ConsultationProductCode;
   orderReference: string;
 }): Promise<void> {
+  if (input.productCode === "consultation_client_one_time") {
+    await sendConsultationMessage(
+      input.chatId,
+      `Оплату ${productLabel(input.productCode)} підтверджено ✅\n\n` +
+        "Дякуємо! Розпочніть короткий intake-етап у цьому чаті.\n\n" +
+        `Номер замовлення: ${input.orderReference}`,
+      { text: "📋 Почати анкету", callbackData: "intake:start" },
+    );
+    return;
+  }
   await sendConsultationMessage(
     input.chatId,
     `Оплату ${productLabel(input.productCode)} підтверджено ✅\n\n` +
-      "Дякуємо! Наступний крок буде надіслано у цьому чаті.\n\n" +
+      "Дякуємо! Для вас запущено прямий формат через форум-групу, менеджер підключиться найближчим часом.\n\n" +
       `Номер замовлення: ${input.orderReference}`,
   );
 }
