@@ -34,6 +34,7 @@ import {
   logSubscriptionStatusReadSuccess,
 } from "./subscription-observability";
 import { reconcileSubscriptionOrderFromWebhook } from "./subscription-webhook-resolver";
+import { reconcileConsultationOrderFromWebhook } from "./consultation-payment.service";
 
 const parseWebhookBody = (body: unknown): WayForPayWebhookPayload => {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -107,13 +108,32 @@ const handleWayForPayWebhook = async (
       console.error("[subscription] webhook resolver failed:", subscriptionErr);
     }
 
-    if (isApprovedPayment(data) && metadata) {
+    try {
+      const consultationResolve = await reconcileConsultationOrderFromWebhook(data);
+      if (consultationResolve.handled) {
+        console.log("[consultation-payment] webhook resolved", {
+          orderReference: consultationResolve.orderReference,
+          status: consultationResolve.status,
+        });
+      }
+    } catch (consultationErr) {
+      console.error("[consultation-payment] webhook resolver failed:", consultationErr);
+    }
+
+    if (
+      isApprovedPayment(data) &&
+      metadata &&
+      metadata.courseName === MULTIMASKING_PRODUCT_NAME
+    ) {
       try {
         await processApprovedMultimaskingPayment(data, metadata);
       } catch (grantErr) {
         console.error("[payment] grant after approval failed:", grantErr);
       }
-    } else if (isPendingOrSuspendedPayment(data)) {
+    } else if (
+      isPendingOrSuspendedPayment(data) &&
+      metadata?.flowType !== "consultation_one_time"
+    ) {
       try {
         await notifyPendingProcessingIfFirstTime({
           orderReference: data.orderReference,
@@ -123,7 +143,11 @@ const handleWayForPayWebhook = async (
       } catch (pendingErr) {
         console.error("[payment] pending notify:", pendingErr);
       }
-    } else if (!isApprovedPayment(data) && isTerminalPaymentFailure(data)) {
+    } else if (
+      !isApprovedPayment(data) &&
+      isTerminalPaymentFailure(data) &&
+      metadata?.flowType !== "consultation_one_time"
+    ) {
       if (metadata) {
         console.log("[payment] terminal non-success webhook", {
           orderReference: data.orderReference,

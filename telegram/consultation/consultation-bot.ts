@@ -3,6 +3,11 @@ import "dotenv/config";
 import * as fs from "fs";
 import * as path from "path";
 import { Telegraf, Markup } from "telegraf";
+import {
+  CONSULTATION_CLIENT_PRODUCT_CODE,
+  CONSULTATION_MASTER_PRODUCT_CODE,
+} from "../../payment/consultation-product";
+import { createConsultationCheckout } from "../../payment/consultation-payment.service";
 
 const token = process.env.CONSULTATION_BOT_TOKEN;
 
@@ -158,16 +163,58 @@ consultationBot.action(CB.s2Master, async (ctx) => {
 
 consultationBot.action(CB.s2ClientPay, async (ctx) => {
   await ctx.answerCbQuery();
-  await ctx.reply(
-    "Блок оплати персональної консультації буде підключено наступним кроком.",
-  );
+  const fromId = ctx.from?.id;
+  const chatId = ctx.chat?.id;
+  if (!fromId || !chatId) {
+    await ctx.reply("Не вдалося визначити користувача для створення оплати.");
+    return;
+  }
+  try {
+    const checkout = await createConsultationCheckout({
+      telegramUserId: String(fromId),
+      telegramChatId: String(chatId),
+      productCode: CONSULTATION_CLIENT_PRODUCT_CODE,
+    });
+    await ctx.reply(
+      `Оплата персональної консультації готова.\nСума: ${checkout.amountUah} грн.`,
+      Markup.inlineKeyboard([
+        [Markup.button.url("💳 Перейти до оплати", checkout.checkoutUrl)],
+      ]),
+    );
+  } catch (error) {
+    console.error("[consultation] client checkout create failed:", error);
+    await ctx.reply(
+      "Не вдалося створити оплату. Спробуйте ще раз через кілька хвилин.",
+    );
+  }
 });
 
 consultationBot.action(CB.s2MasterPay, async (ctx) => {
   await ctx.answerCbQuery();
-  await ctx.reply(
-    "Блок оплати консультації для майстрів буде підключено наступним кроком.",
-  );
+  const fromId = ctx.from?.id;
+  const chatId = ctx.chat?.id;
+  if (!fromId || !chatId) {
+    await ctx.reply("Не вдалося визначити користувача для створення оплати.");
+    return;
+  }
+  try {
+    const checkout = await createConsultationCheckout({
+      telegramUserId: String(fromId),
+      telegramChatId: String(chatId),
+      productCode: CONSULTATION_MASTER_PRODUCT_CODE,
+    });
+    await ctx.reply(
+      `Оплата консультації для майстрів готова.\nСума: ${checkout.amountUah} грн.`,
+      Markup.inlineKeyboard([
+        [Markup.button.url("💳 Перейти до оплати", checkout.checkoutUrl)],
+      ]),
+    );
+  } catch (error) {
+    console.error("[consultation] master checkout create failed:", error);
+    await ctx.reply(
+      "Не вдалося створити оплату. Спробуйте ще раз через кілька хвилин.",
+    );
+  }
 });
 
 consultationBot.action(CB.s20, async (ctx) => {

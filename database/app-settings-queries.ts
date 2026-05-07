@@ -68,6 +68,7 @@ const PAID_CHAT_JANITOR_DEFAULT_SECONDS = 7200;
 const PAID_CHAT_JANITOR_MIN_SECONDS = 1;
 const INLINE_MENU_INACTIVITY_TIMEOUT_DEFAULT_SECONDS = 300;
 const INLINE_MENU_INACTIVITY_TIMEOUT_MIN_SECONDS = 1;
+const CONSULTATION_PRICE_DEFAULT_UAH = 1000;
 
 function readPaidChatJanitorIntervalMsFromEnv(): number | null {
   const raw = process.env[PAID_CHAT_JANITOR_INTERVAL_SECONDS_ENV]?.trim();
@@ -120,4 +121,30 @@ export async function getInlineMenuInactivityTimeoutSeconds(): Promise<number> {
     return INLINE_MENU_INACTIVITY_TIMEOUT_DEFAULT_SECONDS;
   }
   return sec;
+}
+
+function normalizePositiveIntOrFallback(value: number, fallback: number): number {
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+export async function getConsultationClientPriceUah(): Promise<number> {
+  const value = await getAppSettingInt(
+    APP_SETTING_KEYS.CONSULTATION_CLIENT_PRICE_UAH,
+    await getAppSettingInt(
+      APP_SETTING_KEYS.PERSONAL_CONSULTATION_PRICE_UAH,
+      CONSULTATION_PRICE_DEFAULT_UAH,
+    ),
+  );
+  return normalizePositiveIntOrFallback(value, CONSULTATION_PRICE_DEFAULT_UAH);
+}
+
+export async function getConsultationMasterPriceUah(): Promise<number> {
+  const value = await getAppSettingInt(
+    APP_SETTING_KEYS.CONSULTATION_MASTER_PRICE_UAH,
+    await getAppSettingInt(
+      APP_SETTING_KEYS.PERSONAL_CONSULTATION_PRICE_UAH,
+      CONSULTATION_PRICE_DEFAULT_UAH,
+    ),
+  );
+  return normalizePositiveIntOrFallback(value, CONSULTATION_PRICE_DEFAULT_UAH);
 }

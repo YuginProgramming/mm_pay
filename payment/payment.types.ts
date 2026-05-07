@@ -30,6 +30,8 @@ export type WayForPayWebhookPayload = {
 export type PaymentMetadata = {
   courseName: string;
   chatId: string;
+  flowType?: "legacy_course" | "consultation_one_time";
+  productCode?: string;
 };
 
 export type WayForPayAckResponse = {

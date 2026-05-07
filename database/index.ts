@@ -1,4 +1,5 @@
 import { Contact } from "./Contact";
+import { ConsultationPaymentOrder } from "./ConsultationPaymentOrder";
 import { ContactProductAccess } from "./ContactProductAccess";
 import { EmailChangeLog } from "./EmailChangeLog";
 import { AppSetting } from "./AppSetting";
@@ -15,12 +16,15 @@ import { WayforpayPendingNotice } from "./WayforpayPendingNotice";
 export { defineAssociations } from "./associations";
 export { APP_SETTING_KEYS, type AppSettingKey } from "./app-setting-keys";
 export {
+  getConsultationClientPriceUah,
+  getConsultationMasterPriceUah,
   getAppSettingInt,
   getAppSettingRaw,
   getAppSettingString,
 } from "./app-settings-queries";
 export {
   Contact,
+  ConsultationPaymentOrder,
   ContactProductAccess,
   EmailChangeLog,
   KwigaProduct,
@@ -37,6 +41,7 @@ export {
 export * from "./access-queries";
 export const models = {
   Contact,
+  ConsultationPaymentOrder,
   ContactProductAccess,
   EmailChangeLog,
   KwigaProduct,

@@ -150,6 +150,16 @@ async function createAppSettingsTable(): Promise<void> {
         'Ціна персональної консультації (грн); порожньо, доки не запущено'
       ),
       (
+        'consultation_client_price_uah',
+        '1000',
+        'Ціна персональної консультації для клієнта, грн'
+      ),
+      (
+        'consultation_master_price_uah',
+        '1000',
+        'Ціна консультації для майстрів, грн'
+      ),
+      (
         'target_group_id',
         '',
         'Telegram ID цільової групи (формат -100…); задати вручну UPDATE'
@@ -569,6 +579,64 @@ async function createSubscriptionCoreTables(): Promise<void> {
   );
 }
 
+async function createConsultationPaymentOrdersTable(): Promise<void> {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS consultation_payment_orders (
+      id                  SERIAL PRIMARY KEY,
+      order_reference     VARCHAR(128) NOT NULL UNIQUE,
+      telegram_user_id    VARCHAR(64) NOT NULL,
+      telegram_chat_id    VARCHAR(64) NOT NULL,
+      product_code        VARCHAR(64) NOT NULL,
+      status              VARCHAR(32) NOT NULL,
+      amount              NUMERIC(10, 2) NOT NULL,
+      currency            VARCHAR(8) NOT NULL DEFAULT 'UAH',
+      provider            VARCHAR(32) NOT NULL DEFAULT 'wayforpay',
+      checkout_url        TEXT,
+      terminal_at         TIMESTAMPTZ,
+      failure_reason_code VARCHAR(32),
+      created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS consultation_payment_orders_user_product_status_idx
+      ON consultation_payment_orders (telegram_user_id, product_code, status);
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS consultation_payment_orders_chat_idx
+      ON consultation_payment_orders (telegram_chat_id);
+  `);
+  await sequelize.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS consultation_payment_orders_active_uq
+      ON consultation_payment_orders (telegram_user_id, product_code)
+      WHERE status IN ('created', 'pending', 'processing', 'suspended');
+  `);
+  console.log(
+    "Migration completed: consultation_payment_orders table/indexes (if missing).",
+  );
+}
+
+async function seedConsultationPriceSettings(): Promise<void> {
+  await sequelize.query(`
+    INSERT INTO app_settings (setting_key, setting_value, description_uk)
+    VALUES
+      (
+        'consultation_client_price_uah',
+        '1000',
+        'Ціна персональної консультації для клієнта, грн'
+      ),
+      (
+        'consultation_master_price_uah',
+        '1000',
+        'Ціна консультації для майстрів, грн'
+      )
+    ON CONFLICT (setting_key) DO NOTHING;
+  `);
+  console.log(
+    "Migration completed: consultation price settings seed (if missing).",
+  );
+}
+
 async function seedSubscriptionMonthlyPlan(): Promise<void> {
   await sequelize.query(`
     INSERT INTO subscription_plans (
@@ -641,6 +709,7 @@ async function runMigrations(): Promise<void> {
     await createWayforpayPendingNoticesTable();
     await addWayforpayOrderReferenceColumn();
     await createSubscriptionCoreTables();
+    await createConsultationPaymentOrdersTable();
     await addSubscriptionPaymentOrderCheckoutUrlColumn();
     await createSubscriptionRenewalReminderLogTable();
     await seedSubscriptionMonthlyPlan();
@@ -649,6 +718,7 @@ async function runMigrations(): Promise<void> {
     await seedPaidChatJanitorIntervalSetting();
     await seedDebugTelegramUserIdMastersSetting();
     await seedInlineMenuInactivityTimeoutSetting();
+    await seedConsultationPriceSettings();
   } catch (error) {
     console.error("Migration failed:", error);
     process.exit(1);

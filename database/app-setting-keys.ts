@@ -7,6 +7,10 @@ export const APP_SETTING_KEYS = {
   MULTIMASKING_COURSE_PRICE_UAH: "multimasking_course_price_uah",
   /** Ціна персональної консультації, грн (майбутнє) */
   PERSONAL_CONSULTATION_PRICE_UAH: "personal_consultation_price_uah",
+  /** Ціна персональної консультації для клієнта, грн */
+  CONSULTATION_CLIENT_PRICE_UAH: "consultation_client_price_uah",
+  /** Ціна консультації для майстрів, грн */
+  CONSULTATION_MASTER_PRICE_UAH: "consultation_master_price_uah",
   /** Telegram ID групи (наприклад -100…) */
   TARGET_GROUP_ID: "target_group_id",
   /** Telegram user id тестового акаунта для дебагу (читає debug/add-testuser.ts) */

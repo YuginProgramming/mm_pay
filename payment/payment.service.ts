@@ -8,6 +8,7 @@ import type {
   WayForPayAckResponse,
   WayForPayWebhookPayload,
 } from "./payment.types";
+import { isConsultationProductCode } from "./consultation-product";
 
 const parseMetadataFromProductName = (name: string): PaymentMetadata => {
   const [courseNameRaw, chatIdRaw] = String(name ?? "").split(",");
@@ -19,7 +20,14 @@ const parseMetadataFromProductName = (name: string): PaymentMetadata => {
     throw new Error("[payment] Invalid metadata in product name");
   }
 
-  return { courseName, chatId };
+  return {
+    courseName,
+    chatId,
+    flowType: isConsultationProductCode(courseName)
+      ? "consultation_one_time"
+      : "legacy_course",
+    productCode: isConsultationProductCode(courseName) ? courseName : undefined,
+  };
 };
 
 const createCheckoutForCourse = async (

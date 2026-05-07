@@ -31,6 +31,8 @@
     "debug:seed-telegram-chats": "ts-node debug/seed-telegram-chat-ids-to-app-settings.ts",
     "debug:paid-chat-snapshot": "ts-node debug/paid-chat-janitor-snapshot.ts",
     "debug:paid-chat-allowlist": "ts-node debug/paid-chat-janitor-allowlist.ts",
+    "debug:list-consultation-orders": "ts-node debug/list-consultation-payment-orders.ts",
+    "debug:seed-consultation-prices": "ts-node debug/seed-consultation-prices.ts",
     "debug:check-env": "ts-node debug/check-env-path.ts",
     "payment:server": "ts-node payment/http-server.ts",
     "payment:server:build": "npm run build && node dist/payment/http-server.js",
