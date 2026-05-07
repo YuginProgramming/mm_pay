@@ -1,4 +1,4 @@
-import { Op } from "sequelize";
+import { Op, literal } from "sequelize";
 import { randomUUID } from "crypto";
 import { ConsultationPaymentOrder } from "../database/ConsultationPaymentOrder";
 import {
@@ -57,7 +57,7 @@ export async function createConsultationCheckout(input: {
       productCode: input.productCode,
       status: { [Op.in]: ACTIVE_ORDER_STATUSES },
     },
-    order: [["createdAt", "DESC"]],
+    order: literal("\"created_at\" DESC"),
   });
 
   if (existing && !input.forceNew && existing.checkoutUrl) {

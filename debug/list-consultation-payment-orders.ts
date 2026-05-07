@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { literal } from "sequelize";
 import { ConsultationPaymentOrder } from "../database/ConsultationPaymentOrder";
 import { sequelize } from "../database/db";
 
@@ -6,7 +7,7 @@ async function main(): Promise<void> {
   await sequelize.authenticate();
   const rows = await ConsultationPaymentOrder.findAll({
     limit: 50,
-    order: [["createdAt", "DESC"]],
+    order: literal("\"created_at\" DESC"),
   });
   for (const row of rows) {
     console.log(
