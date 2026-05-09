@@ -24,34 +24,18 @@ export function registerMenuHandlers(bot: Telegraf, input: {
   accountBotUrl: string;
   landingUrl?: string;
 }): void {
-  const ADMIN_CONTACT_TEXT = "Звʼязатися з адміністратором";
-  const ADMIN_CONTACT_URL = "https://t.me/YevhenDudar";
-
   const mainMenuKeyboard = () =>
     Markup.inlineKeyboard([
       [Markup.button.callback("Я проходив навчання", CB.s10)],
       [Markup.button.callback("Консультація", CB.s2)],
       [Markup.button.callback("Хочу навчання", CB.s20)],
+      [Markup.button.url("Звʼязатися з адміністратором", "https://t.me/YevhenDudar")],
     ]);
-
-  const footerKeyboard = () =>
-    Markup.keyboard([[ADMIN_CONTACT_TEXT]]).resize().persistent();
 
   const backKeyboard = () =>
     Markup.inlineKeyboard([[Markup.button.callback("« Назад до меню", CB.s1)]]);
 
-  bot.start(async (ctx) =>
-    ctx.reply(TEXT_S1, {
-      ...mainMenuKeyboard(),
-      ...footerKeyboard(),
-    }),
-  );
-  bot.hears(ADMIN_CONTACT_TEXT, async (ctx) =>
-    ctx.reply(
-      "Звʼязок з адміністратором:",
-      Markup.inlineKeyboard([[Markup.button.url(ADMIN_CONTACT_TEXT, ADMIN_CONTACT_URL)]]),
-    ),
-  );
+  bot.start(async (ctx) => ctx.reply(TEXT_S1, mainMenuKeyboard()));
   bot.command("cancel", async (ctx) =>
     ctx.reply("Меню скинуто. Натисніть /start, щоб відкрити головне меню."),
   );
