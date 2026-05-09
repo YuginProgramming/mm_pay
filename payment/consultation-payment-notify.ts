@@ -59,7 +59,9 @@ export async function notifyConsultationPaymentApproved(input: {
     await sendConsultationMessage(
       input.chatId,
       `Оплату ${productLabel(input.productCode)} підтверджено ✅\n\n` +
-        "Дякуємо! Розпочніть короткий intake-етап у цьому чаті.\n\n" +
+        "Дякуємо! Наступний крок — коротка анкета в цьому чаті.\n" +
+        "Натисніть «📋 Почати анкету», щоб ми підготували вашу консультацію.\n\n" +
+        "Після заповнення анкети менеджер відповість вам, щойно буде на звʼязку.\n\n" +
         `Номер замовлення: ${input.orderReference}`,
       { text: "📋 Почати анкету", callbackData: "intake:start" },
     );

@@ -18,6 +18,7 @@ import {
   clientMessage,
   masterMessage,
 } from "./content";
+import { consultationDebug } from "./debug-log";
 
 export function registerMenuHandlers(bot: Telegraf, input: {
   accountBotUrl: string;
@@ -28,6 +29,7 @@ export function registerMenuHandlers(bot: Telegraf, input: {
       [Markup.button.callback("Я проходив навчання", CB.s10)],
       [Markup.button.callback("Консультація", CB.s2)],
       [Markup.button.callback("Хочу навчання", CB.s20)],
+      [Markup.button.url("Звʼязатися з адміністратором", "https://t.me/YevhenDudar")],
     ]);
 
   const backKeyboard = () =>
@@ -72,6 +74,13 @@ export function registerMenuHandlers(bot: Telegraf, input: {
           productCode: CONSULTATION_CLIENT_PRODUCT_CODE,
         })
       : { status: "no_access" as const };
+    consultationDebug("menu.access_state", {
+      branch: "client",
+      fromId: fromId ?? null,
+      status: state.status,
+      hasCheckoutUrl:
+        state.status === "pending_with_url" ? Boolean(state.checkoutUrl) : false,
+    });
     const rows: any[] = [];
     let extra = "";
     if (state.status === "approved") {
@@ -99,6 +108,13 @@ export function registerMenuHandlers(bot: Telegraf, input: {
           productCode: CONSULTATION_MASTER_PRODUCT_CODE,
         })
       : { status: "no_access" as const };
+    consultationDebug("menu.access_state", {
+      branch: "master",
+      fromId: fromId ?? null,
+      status: state.status,
+      hasCheckoutUrl:
+        state.status === "pending_with_url" ? Boolean(state.checkoutUrl) : false,
+    });
     const rows: any[] = [];
     let extra = "";
     if (state.status === "approved") {
@@ -123,6 +139,12 @@ export function registerMenuHandlers(bot: Telegraf, input: {
     const chatId = ctx.chat?.id;
     if (!fromId || !chatId) return ctx.reply("Не вдалося визначити користувача для створення оплати.");
     try {
+      consultationDebug("menu.checkout_create.start", {
+        fromId,
+        chatId,
+        productCode,
+        label,
+      });
       const checkout = await createConsultationCheckout({
         telegramUserId: String(fromId),
         telegramChatId: String(chatId),
@@ -132,7 +154,20 @@ export function registerMenuHandlers(bot: Telegraf, input: {
         `Оплата ${label} готова.\nСума: ${checkout.amountUah} грн.`,
         Markup.inlineKeyboard([[Markup.button.url("💳 Перейти до оплати", checkout.checkoutUrl)]]),
       );
+      consultationDebug("menu.checkout_create.success", {
+        fromId,
+        chatId,
+        productCode,
+        amountUah: checkout.amountUah,
+        orderReference: checkout.orderReference,
+      });
     } catch (e) {
+      consultationDebug("menu.checkout_create.error", {
+        fromId,
+        chatId,
+        productCode,
+        error: e instanceof Error ? e.message : String(e),
+      });
       console.error("[consultation] checkout create failed:", e);
       await ctx.reply("Не вдалося створити оплату. Спробуйте ще раз через кілька хвилин.");
     }

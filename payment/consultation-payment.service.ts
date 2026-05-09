@@ -22,10 +22,11 @@ import {
 } from "./consultation-payment-notify";
 import { putPendingOrder } from "./pending-orders";
 import {
-  createForumTopic,
+  createForumTopicIdempotent,
   sendMessageInTopic,
 } from "../telegram/consultation/forum-api";
 import { buildConsultationTopicTitle } from "../telegram/consultation/topic-title";
+import { consultationDebug } from "../telegram/consultation/debug-log";
 
 const ACTIVE_ORDER_STATUSES = ["created", "pending", "processing", "suspended"];
 const TERMINAL_FAILURE = new Set(["Declined", "Voided", "Refunded", "Expired"]);
@@ -35,6 +36,8 @@ const PENDING_OR_SUSPENDED = new Set([
   "WaitingAuthComplete",
   "Suspended",
 ]);
+const TOPIC_RETRY_DELAYS_MS = [2 * 60 * 1000, 10 * 60 * 1000, 20 * 60 * 1000] as const;
+const scheduledTopicRetries = new Set<string>();
 
 export async function getConsultationPriceByProduct(
   productCode: ConsultationProductCode,
@@ -174,6 +177,21 @@ type ReconcileResult =
   | { handled: false; reason: "order_not_found" | "not_consultation_order" }
   | { handled: true; orderReference: string; status: string };
 
+type ReconcileCaseMappingsResult = {
+  scanned: number;
+  issues: number;
+  fixed: number;
+  rows: Array<{
+    consultationId: string;
+    telegramUserId: string;
+    orderReference: string | null;
+    hasManagerChatId: boolean;
+    hasMessageThreadId: boolean;
+    reason: string;
+    fixed: boolean;
+  }>;
+};
+
 export async function reconcileConsultationOrderFromWebhook(
   payload: WayForPayWebhookPayload,
 ): Promise<ReconcileResult> {
@@ -200,10 +218,8 @@ export async function reconcileConsultationOrderFromWebhook(
         },
       },
     );
+    await ensurePaidCaseTopicMapping(order);
     if (updated > 0) {
-      if (order.productCode === CONSULTATION_MASTER_PRODUCT_CODE) {
-        await startMasterForumFlow(order);
-      }
       await notifyConsultationPaymentApproved({
         chatId: order.telegramChatId,
         productCode: order.productCode,
@@ -279,9 +295,148 @@ export async function reconcileConsultationOrderFromWebhook(
   };
 }
 
-async function startMasterForumFlow(
+async function sendTelegramMessage(
+  token: string,
+  chatId: string | number,
+  text: string,
+): Promise<void> {
+  try {
+    const res = await fetch(
+      `https://api.telegram.org/bot${encodeURIComponent(token)}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text,
+        }),
+      },
+    );
+    if (!res.ok) {
+      console.error("[consultation-payment] sendTelegramMessage failed", {
+        chatId,
+        status: res.status,
+        body: await res.text(),
+      });
+    }
+  } catch (error) {
+    console.error("[consultation-payment] sendTelegramMessage exception", {
+      chatId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+export async function reconcileConsultationCaseMappings(input?: {
+  fix?: boolean;
+}): Promise<ReconcileCaseMappingsResult> {
+  const fix = input?.fix === true;
+  const rows: ReconcileCaseMappingsResult["rows"] = [];
+  let fixed = 0;
+  const cases = await ConsultationCase.findAll({
+    order: literal("\"updated_at\" DESC"),
+  });
+
+  for (const c of cases) {
+    const hasManagerChatId = Boolean(c.managerChatId && c.managerChatId.trim());
+    const hasMessageThreadId = Boolean(c.messageThreadId && c.messageThreadId.trim());
+    if (hasManagerChatId && hasMessageThreadId) {
+      continue;
+    }
+
+    const baseRow = {
+      consultationId: c.consultationId,
+      telegramUserId: c.telegramUserId,
+      orderReference: c.orderReference,
+      hasManagerChatId,
+      hasMessageThreadId,
+      reason: "incomplete_mapping",
+      fixed: false,
+    };
+
+    if (!fix) {
+      rows.push(baseRow);
+      continue;
+    }
+
+    let sourceOrder = c.orderReference
+      ? await ConsultationPaymentOrder.findOne({
+          where: {
+            orderReference: c.orderReference,
+            status: "approved",
+          },
+        })
+      : null;
+
+    if (!sourceOrder) {
+      sourceOrder = await ConsultationPaymentOrder.findOne({
+        where: {
+          telegramUserId: c.telegramUserId,
+          status: "approved",
+        },
+        order: literal("\"created_at\" DESC"),
+      });
+    }
+
+    if (sourceOrder && isConsultationProductCode(sourceOrder.productCode)) {
+      await ensurePaidCaseTopicMapping(sourceOrder);
+
+      const mapped = await ConsultationCase.findOne({
+        where: {
+          telegramUserId: c.telegramUserId,
+          managerChatId: { [Op.ne]: null },
+          messageThreadId: { [Op.ne]: null },
+        },
+        order: literal("\"updated_at\" DESC"),
+      });
+
+      if (mapped?.managerChatId && mapped?.messageThreadId) {
+        await c.update({
+          managerChatId: mapped.managerChatId,
+          messageThreadId: mapped.messageThreadId,
+          orderReference: c.orderReference ?? sourceOrder.orderReference,
+          productCode: c.productCode ?? sourceOrder.productCode,
+          status: "ACTIVE_CONVERSATION",
+        });
+        fixed += 1;
+        rows.push({
+          ...baseRow,
+          reason: "fixed_from_approved_order",
+          fixed: true,
+        });
+        consultationDebug("topic.reconcile.fixed", {
+          consultationId: c.consultationId,
+          telegramUserId: c.telegramUserId,
+          managerChatId: mapped.managerChatId,
+          messageThreadId: mapped.messageThreadId,
+          source: "reconcile_case_mappings",
+        });
+        continue;
+      }
+    }
+
+    rows.push({
+      ...baseRow,
+      reason: "no_fix_source",
+      fixed: false,
+    });
+  }
+
+  return {
+    scanned: cases.length,
+    issues: rows.length,
+    fixed,
+    rows,
+  };
+}
+
+async function ensurePaidCaseTopicMapping(
   order: ConsultationPaymentOrder,
 ): Promise<void> {
+  const consultationId = `${
+    order.productCode === CONSULTATION_MASTER_PRODUCT_CODE ? "master" : "client"
+  }-${order.orderReference}`;
+
   const token = process.env.CONSULTATION_BOT_TOKEN;
   const managerChatIdRaw = process.env.CONSULTATION_MANAGER_CHAT_ID;
   const managerChatId = managerChatIdRaw ? Number(managerChatIdRaw) : NaN;
@@ -290,6 +445,48 @@ async function startMasterForumFlow(
       "[consultation-payment] skip master forum flow: token/chat not configured",
       { hasToken: Boolean(token), managerChatIdRaw },
     );
+    return;
+  }
+
+  const existingMappedByOrder = await ConsultationCase.findOne({
+    where: {
+      orderReference: order.orderReference,
+      managerChatId: { [Op.ne]: null },
+      messageThreadId: { [Op.ne]: null },
+    },
+  });
+  if (existingMappedByOrder) {
+    return;
+  }
+
+  const mappedCaseForUser = await ConsultationCase.findOne({
+    where: {
+      telegramUserId: order.telegramUserId,
+      productCode: order.productCode,
+      managerChatId: { [Op.ne]: null },
+      messageThreadId: { [Op.ne]: null },
+    },
+    order: literal("\"updated_at\" DESC"),
+  });
+  if (mappedCaseForUser) {
+    await ConsultationCase.upsert({
+      consultationId: mappedCaseForUser.consultationId,
+      telegramUserId: mappedCaseForUser.telegramUserId,
+      telegramChatId: order.telegramChatId,
+      status: "ACTIVE_CONVERSATION",
+      productCode: order.productCode,
+      orderReference: order.orderReference,
+      managerChatId: mappedCaseForUser.managerChatId,
+      messageThreadId: mappedCaseForUser.messageThreadId,
+    });
+    consultationDebug("topic.reconcile.fixed", {
+      orderReference: order.orderReference,
+      consultationId: mappedCaseForUser.consultationId,
+      telegramUserId: order.telegramUserId,
+      managerChatId: mappedCaseForUser.managerChatId,
+      messageThreadId: mappedCaseForUser.messageThreadId,
+      source: "ensure_paid_case_topic_mapping",
+    });
     return;
   }
 
@@ -302,7 +499,14 @@ async function startMasterForumFlow(
     lastName: user?.lastName ?? null,
     username: user?.username ?? null,
   });
-  const { message_thread_id } = await createForumTopic(token, managerChatId, topicName);
+  consultationDebug("topic.create.start", {
+    consultationId,
+    orderReference: order.orderReference,
+    telegramUserId: order.telegramUserId,
+    managerChatId,
+    topicName,
+    source: "ensure_paid_case_topic_mapping",
+  });
 
   const userIdentity =
     user?.firstName || user?.lastName
@@ -310,28 +514,188 @@ async function startMasterForumFlow(
       : user?.username
         ? `@${user.username}`
         : `tg_${order.telegramUserId}`;
-  await sendMessageInTopic(
-    token,
-    managerChatId,
-    message_thread_id,
-    [
-      "🎓 Нова консультація для майстра",
-      `Order: ${order.orderReference}`,
-      `User ID: ${order.telegramUserId}`,
-      `Identity: ${userIdentity}`,
-      `Chat ID: ${order.telegramChatId}`,
-      "Старт: прямий формат через форум (без intake-анкети).",
-    ].join("\n"),
-  );
 
-  await ConsultationCase.upsert({
-    consultationId: `master-${order.orderReference}`,
-    telegramUserId: order.telegramUserId,
-    telegramChatId: order.telegramChatId,
-    status: "ACTIVE_CONVERSATION",
-    productCode: order.productCode,
-    orderReference: order.orderReference,
-    managerChatId: String(managerChatId),
-    messageThreadId: String(message_thread_id),
-  });
+  const finalizeTopicMapping = async (messageThreadId: number): Promise<void> => {
+    await sendMessageInTopic(
+      token,
+      managerChatId,
+      messageThreadId,
+      [
+        order.productCode === CONSULTATION_MASTER_PRODUCT_CODE
+          ? "🎓 Нова консультація для майстра"
+          : "👤 Нова персональна консультація",
+        `Order: ${order.orderReference}`,
+        `User ID: ${order.telegramUserId}`,
+        `Identity: ${userIdentity}`,
+        `Chat ID: ${order.telegramChatId}`,
+        order.productCode === CONSULTATION_MASTER_PRODUCT_CODE
+          ? "Старт: прямий формат через форум (без intake-анкети)."
+          : "Оплату підтверджено. Очікуємо заповнення intake-анкети клієнтом.",
+      ].join("\n"),
+    );
+
+    await ConsultationCase.upsert({
+      consultationId,
+      telegramUserId: order.telegramUserId,
+      telegramChatId: order.telegramChatId,
+      status: "ACTIVE_CONVERSATION",
+      productCode: order.productCode,
+      orderReference: order.orderReference,
+      managerChatId: String(managerChatId),
+      messageThreadId: String(messageThreadId),
+    });
+    console.log("[consultation-payment] created topic mapping for paid order", {
+      orderReference: order.orderReference,
+      consultationId,
+      managerChatId,
+      messageThreadId,
+      productCode: order.productCode,
+    });
+  };
+
+  const scheduleTopicCreationRetries = (initialError: unknown): void => {
+    const retryKey = `${managerChatId}:${consultationId}`;
+    if (scheduledTopicRetries.has(retryKey)) {
+      return;
+    }
+    scheduledTopicRetries.add(retryKey);
+    consultationDebug("topic.create.error", {
+      consultationId,
+      orderReference: order.orderReference,
+      telegramUserId: order.telegramUserId,
+      managerChatId,
+      topicName,
+      source: "ensure_paid_case_topic_mapping_retry_schedule",
+      error: initialError instanceof Error ? initialError.message : String(initialError),
+    });
+
+    TOPIC_RETRY_DELAYS_MS.forEach((delayMs, index) => {
+      const retryNo = index + 1;
+      setTimeout(() => {
+        void (async () => {
+          await sendTelegramMessage(
+            token,
+            order.telegramChatId,
+            `Виникла технічна затримка зі створенням теми консультації. Повторна спроба #${retryNo} зараз виконується.`,
+          );
+
+          consultationDebug("topic.create.start", {
+            consultationId,
+            orderReference: order.orderReference,
+            telegramUserId: order.telegramUserId,
+            managerChatId,
+            topicName,
+            source: "ensure_paid_case_topic_mapping_retry",
+            retryNo,
+            delayMs,
+          });
+
+          try {
+            const result = await createForumTopicIdempotent({
+              token,
+              chatId: managerChatId,
+              name: topicName,
+              consultationId,
+              findExistingThreadId: async () => {
+                const existingByConsultationId = await ConsultationCase.findOne({
+                  where: {
+                    consultationId,
+                    managerChatId: String(managerChatId),
+                    messageThreadId: { [Op.ne]: null },
+                  },
+                });
+                if (!existingByConsultationId?.messageThreadId) {
+                  return null;
+                }
+                return Number(existingByConsultationId.messageThreadId);
+              },
+            });
+            await finalizeTopicMapping(result.message_thread_id);
+            consultationDebug("topic.create.success", {
+              consultationId,
+              orderReference: order.orderReference,
+              telegramUserId: order.telegramUserId,
+              managerChatId,
+              messageThreadId: result.message_thread_id,
+              topicName,
+              source: "ensure_paid_case_topic_mapping_retry",
+              retryNo,
+            });
+            scheduledTopicRetries.delete(retryKey);
+          } catch (error) {
+            consultationDebug("topic.create.error", {
+              consultationId,
+              orderReference: order.orderReference,
+              telegramUserId: order.telegramUserId,
+              managerChatId,
+              topicName,
+              source: "ensure_paid_case_topic_mapping_retry",
+              retryNo,
+              error: error instanceof Error ? error.message : String(error),
+            });
+
+            const isLast = retryNo === TOPIC_RETRY_DELAYS_MS.length;
+            if (isLast) {
+              await sendTelegramMessage(
+                token,
+                order.telegramChatId,
+                "Не вдалося автоматично створити тему консультації після кількох спроб. Адміністратор вже повідомлений і зв'яжеться з вами.",
+              );
+              await sendTelegramMessage(
+                token,
+                managerChatId,
+                [
+                  "⚠️ Помилка створення теми консультації після 3 спроб",
+                  `Consultation ID: ${consultationId}`,
+                  `Order: ${order.orderReference}`,
+                  `User ID: ${order.telegramUserId}`,
+                  `Chat ID: ${order.telegramChatId}`,
+                  `Topic name: ${topicName}`,
+                  `Error: ${error instanceof Error ? error.message : String(error)}`,
+                ].join("\n"),
+              );
+              scheduledTopicRetries.delete(retryKey);
+            }
+          }
+        })();
+      }, delayMs);
+    });
+  };
+
+  let message_thread_id: number;
+  try {
+    const result = await createForumTopicIdempotent({
+      token,
+      chatId: managerChatId,
+      name: topicName,
+      consultationId,
+      findExistingThreadId: async () => {
+        const existingByConsultationId = await ConsultationCase.findOne({
+          where: {
+            consultationId,
+            managerChatId: String(managerChatId),
+            messageThreadId: { [Op.ne]: null },
+          },
+        });
+        if (!existingByConsultationId?.messageThreadId) {
+          return null;
+        }
+        return Number(existingByConsultationId.messageThreadId);
+      },
+    });
+    message_thread_id = result.message_thread_id;
+    consultationDebug("topic.create.success", {
+      consultationId,
+      orderReference: order.orderReference,
+      telegramUserId: order.telegramUserId,
+      managerChatId,
+      messageThreadId: message_thread_id,
+      topicName,
+      source: "ensure_paid_case_topic_mapping",
+    });
+  } catch (err) {
+    scheduleTopicCreationRetries(err);
+    return;
+  }
+  await finalizeTopicMapping(message_thread_id);
 }

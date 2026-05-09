@@ -7,6 +7,9 @@ import * as https from "https";
 
 type ApiOk<T> = { ok: true; result: T };
 type ApiErr = { ok: false; description?: string };
+type TopicCreateResult = { message_thread_id: number };
+type FindExistingThreadId = () => Promise<number | null>;
+const topicCreateInFlight = new Map<string, Promise<TopicCreateResult>>();
 
 function postJson<R>(path: string, body: object): Promise<R> {
   return new Promise((resolve, reject) => {
@@ -54,6 +57,40 @@ export async function createForumTopic(
     throw new Error(res.description ?? "createForumTopic failed");
   }
   return { message_thread_id: res.result.message_thread_id };
+}
+
+export async function createForumTopicIdempotent(input: {
+  token: string;
+  chatId: number;
+  name: string;
+  consultationId: string;
+  findExistingThreadId: FindExistingThreadId;
+}): Promise<TopicCreateResult> {
+  const existing = await input.findExistingThreadId();
+  if (existing != null) {
+    return { message_thread_id: existing };
+  }
+
+  const lockKey = `${input.chatId}:${input.consultationId}`;
+  const inFlight = topicCreateInFlight.get(lockKey);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const task = (async (): Promise<TopicCreateResult> => {
+    const retryExisting = await input.findExistingThreadId();
+    if (retryExisting != null) {
+      return { message_thread_id: retryExisting };
+    }
+    return createForumTopic(input.token, input.chatId, input.name);
+  })();
+
+  topicCreateInFlight.set(lockKey, task);
+  try {
+    return await task;
+  } finally {
+    topicCreateInFlight.delete(lockKey);
+  }
 }
 
 export async function sendMessageInTopic(

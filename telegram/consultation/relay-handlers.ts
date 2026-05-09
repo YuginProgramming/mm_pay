@@ -1,12 +1,22 @@
 import { Op, literal } from "sequelize";
 import { Telegraf } from "telegraf";
 import { ConsultationCase } from "../../database/ConsultationCase";
+import { consultationDebug } from "./debug-log";
 
-const ACTIVE_RELAY_STATUSES = [
-  "ACTIVE_CONVERSATION",
-  "WAITING_MANAGER",
-  "WAITING_CLIENT",
-] as const;
+type RelayDirection = "manager_to_client" | "client_to_manager" | "unknown";
+
+function previewText(msg: any): string {
+  if (typeof msg?.text === "string" && msg.text.trim()) {
+    return msg.text.trim().slice(0, 250);
+  }
+  if (typeof msg?.caption === "string" && msg.caption.trim()) {
+    return `[caption] ${msg.caption.trim().slice(0, 220)}`;
+  }
+  if (msg?.photo?.length) return "[photo]";
+  if (msg?.video?.file_id) return "[video]";
+  if (msg?.document?.file_id) return `[document] ${msg.document.file_name ?? ""}`;
+  return "[non-text]";
+}
 
 function parseManagerChatId(): number | null {
   const raw = process.env.CONSULTATION_MANAGER_CHAT_ID;
@@ -27,23 +37,36 @@ async function findCaseByTopic(input: {
   });
 }
 
-async function findActiveCaseByClient(
+async function findLatestCaseByClient(
   telegramUserId: string,
 ): Promise<ConsultationCase | null> {
   return ConsultationCase.findOne({
     where: {
       telegramUserId,
-      status: { [Op.in]: ACTIVE_RELAY_STATUSES as unknown as string[] },
+      managerChatId: { [Op.ne]: null },
+      messageThreadId: { [Op.ne]: null },
     },
     order: literal("\"updated_at\" DESC"),
   });
 }
 
+function detectDirection(input: {
+  chatId: number;
+  chatType: string;
+  managerChatId: number | null;
+  threadId: string | null;
+}): RelayDirection {
+  if (input.managerChatId && input.chatId === input.managerChatId && input.threadId) {
+    return "manager_to_client";
+  }
+  if (input.chatType === "private") {
+    return "client_to_manager";
+  }
+  return "unknown";
+}
+
 export function registerRelayHandlers(bot: Telegraf): void {
   bot.on("message", async (ctx) => {
-    const managerChatId = parseManagerChatId();
-    if (!managerChatId) return;
-
     const msg = ctx.message as any;
     const fromId = String(msg?.from?.id ?? "");
     const chatId = Number(msg?.chat?.id);
@@ -51,9 +74,49 @@ export function registerRelayHandlers(bot: Telegraf): void {
     const threadId =
       msg?.message_thread_id == null ? null : String(msg.message_thread_id);
     const text = typeof msg?.text === "string" ? msg.text.trim() : "";
+    const managerChatId = parseManagerChatId();
+    const direction = detectDirection({
+      chatId,
+      chatType,
+      managerChatId,
+      threadId,
+    });
+    const baseEvent = {
+      consultationId: null as string | null,
+      telegramUserId: fromId || null,
+      chatId: Number.isFinite(chatId) ? chatId : null,
+      threadId,
+      messageId: msg?.message_id ?? null,
+      direction,
+      fromUsername: msg?.from?.username ?? null,
+      fromIsBot: msg?.from?.is_bot ?? null,
+      senderChatId: msg?.sender_chat?.id ?? null,
+      senderChatTitle: msg?.sender_chat?.title ?? null,
+      senderChatType: msg?.sender_chat?.type ?? null,
+      managerChatIdConfigured: managerChatId,
+      textPreview: previewText(msg),
+    };
+
+    consultationDebug("relay.in", {
+      ...baseEvent,
+      chatType,
+    });
+    if (!managerChatId) {
+      consultationDebug("relay.skip", {
+        ...baseEvent,
+        reason: "manager_chat_not_configured",
+        reasonDetails: "CONSULTATION_MANAGER_CHAT_ID is missing or invalid.",
+      });
+      return;
+    }
 
     // Ignore bot-originated messages to prevent relay loops.
     if (msg?.from?.is_bot === true || String(ctx.botInfo?.id ?? "") === fromId) {
+      consultationDebug("relay.skip", {
+        ...baseEvent,
+        reason: "bot_originated",
+        reasonDetails: "Message sender is a bot or this bot instance.",
+      });
       return;
     }
 
@@ -63,28 +126,24 @@ export function registerRelayHandlers(bot: Telegraf): void {
         managerChatId: String(managerChatId),
         messageThreadId: threadId,
       });
-      if (!c) return;
-
-      if (text.startsWith("/close")) {
-        await c.update({ status: "COMPLETED" });
-        await ctx.telegram.sendMessage(
-          c.telegramChatId,
-          "✅ Консультацію завершено менеджером. Дякуємо!",
-        );
-        await ctx.reply("Статус кейсу: COMPLETED.");
+      if (!c) {
+        consultationDebug("relay.skip", {
+          ...baseEvent,
+          reason: "case_not_found_by_thread",
+          reasonDetails: "No consultation case found for manager chat and topic thread.",
+        });
         return;
       }
-      if (text.startsWith("/reopen")) {
-        await c.update({ status: "ACTIVE_CONVERSATION" });
-        await ctx.telegram.sendMessage(
-          c.telegramChatId,
-          "🔄 Консультацію поновлено менеджером. Можна продовжувати спілкування.",
-        );
-        await ctx.reply("Статус кейсу: ACTIVE_CONVERSATION.");
-        return;
-      }
+      const eventWithCase = {
+        ...baseEvent,
+        consultationId: c.consultationId,
+        telegramUserId: c.telegramUserId,
+      };
 
-      if (c.status === "COMPLETED" || c.status === "CANCELLED") return;
+      consultationDebug("relay.in", {
+        ...eventWithCase,
+        chatType,
+      });
 
       try {
         if (text.length > 0) {
@@ -93,6 +152,12 @@ export function registerRelayHandlers(bot: Telegraf): void {
           await ctx.telegram.copyMessage(c.telegramChatId, managerChatId, msg.message_id);
         }
         await c.update({ status: "WAITING_CLIENT" });
+        consultationDebug("relay.sent", {
+          ...eventWithCase,
+          destination: "client_dm",
+          destinationChatId: c.telegramChatId,
+          nextStatus: "WAITING_CLIENT",
+        });
         console.log("[consultation-relay] manager->client", {
           consultationId: c.consultationId,
           threadId,
@@ -100,6 +165,13 @@ export function registerRelayHandlers(bot: Telegraf): void {
           managerChatId,
         });
       } catch (err) {
+        consultationDebug("relay.error", {
+          ...eventWithCase,
+          destination: "client_dm",
+          reason: "telegram_send_failed",
+          reasonDetails: "Failed to deliver manager message to client DM.",
+          error: err instanceof Error ? err.message : String(err),
+        });
         console.error("[consultation-relay] manager->client failed", err);
         await ctx.reply(
           "Не вдалося доставити повідомлення клієнту (можливо, клієнт заборонив DM).",
@@ -108,13 +180,27 @@ export function registerRelayHandlers(bot: Telegraf): void {
       return;
     }
 
-    // Client -> manager relay (private DM while case is active).
+    // Client -> manager relay (private DM by latest mapped case).
     if (chatType === "private") {
-      // Ignore commands in DM relay channel.
-      if (text.startsWith("/")) return;
-
-      const c = await findActiveCaseByClient(fromId);
-      if (!c || !c.managerChatId || !c.messageThreadId) return;
+      const c = await findLatestCaseByClient(fromId);
+      if (!c || !c.managerChatId || !c.messageThreadId) {
+        consultationDebug("relay.skip", {
+          ...baseEvent,
+          reason: "case_not_found_by_user",
+          reasonDetails: "No mapped consultation case for private sender.",
+        });
+        return;
+      }
+      const eventWithCase = {
+        ...baseEvent,
+        consultationId: c.consultationId,
+        telegramUserId: c.telegramUserId,
+        threadId: c.messageThreadId,
+      };
+      consultationDebug("relay.in", {
+        ...eventWithCase,
+        chatType,
+      });
 
       try {
         if (text.length > 0) {
@@ -132,6 +218,12 @@ export function registerRelayHandlers(bot: Telegraf): void {
           );
         }
         await c.update({ status: "WAITING_MANAGER" });
+        consultationDebug("relay.sent", {
+          ...eventWithCase,
+          destination: "manager_thread",
+          destinationChatId: c.managerChatId,
+          nextStatus: "WAITING_MANAGER",
+        });
         console.log("[consultation-relay] client->manager", {
           consultationId: c.consultationId,
           threadId: c.messageThreadId,
@@ -139,11 +231,25 @@ export function registerRelayHandlers(bot: Telegraf): void {
           managerChatId: c.managerChatId,
         });
       } catch (err) {
+        consultationDebug("relay.error", {
+          ...eventWithCase,
+          destination: "manager_thread",
+          reason: "telegram_send_failed",
+          reasonDetails: "Failed to deliver client message to manager thread.",
+          error: err instanceof Error ? err.message : String(err),
+        });
         console.error("[consultation-relay] client->manager failed", err);
         await ctx.reply(
           "Не вдалося передати повідомлення менеджеру. Спробуйте ще раз через хвилину.",
         );
       }
+      return;
     }
+
+    consultationDebug("relay.skip", {
+      ...baseEvent,
+      reason: "unsupported_chat_context",
+      reasonDetails: "Message does not belong to manager topic relay or private DM relay.",
+    });
   });
 }
