@@ -184,11 +184,13 @@ export function registerIntakeHandlers(bot: Telegraf): void {
     await ctx.reply(`Q1 збережено: діагностика.\n\n${INTAKE_Q2_TEXT}`);
   });
 
-  bot.on("message", async (ctx) => {
+  bot.on("message", async (ctx, next) => {
     const fromId = ctx.from?.id;
-    if (!fromId) return;
+    if (!fromId) return next();
     const session = intakeSessions.get(fromId);
-    if (!session) return;
+    if (!session) return next();
+    // After intake DONE, relay and other middleware must still run (Telegraf chain).
+    if (session.step === "DONE") return next();
 
     if (session.step === "Q2" && "text" in ctx.message) {
       const next = moveToStep(
@@ -228,33 +230,37 @@ export function registerIntakeHandlers(bot: Telegraf): void {
       if ("photo" in ctx.message && ctx.message.photo?.length) {
         const fileId = ctx.message.photo[ctx.message.photo.length - 1]?.file_id;
         if (fileId) {
-          const next = addMediaFileId(session, fileId);
-          intakeSessions.set(fromId, next);
-          await persistSession(next);
+          const updated = addMediaFileId(session, fileId);
+          intakeSessions.set(fromId, updated);
+          await persistSession(updated);
           consultationDebug("intake.media_added", {
-            consultationId: next.consultationId,
+            consultationId: updated.consultationId,
             telegramUserId: String(fromId),
             mediaType: "photo",
-            mediaCount: next.mediaFileIds.length,
+            mediaCount: updated.mediaFileIds.length,
           });
           await ctx.reply("Фото додано. Можна ще файл або натисніть «✅ Завершити анкету».");
+          return;
         }
-        return;
+        return next();
       }
       if ("video" in ctx.message && ctx.message.video?.file_id) {
-        const next = addMediaFileId(session, ctx.message.video.file_id);
-        intakeSessions.set(fromId, next);
-        await persistSession(next);
+        const updated = addMediaFileId(session, ctx.message.video.file_id);
+        intakeSessions.set(fromId, updated);
+        await persistSession(updated);
         consultationDebug("intake.media_added", {
-          consultationId: next.consultationId,
+          consultationId: updated.consultationId,
           telegramUserId: String(fromId),
           mediaType: "video",
-          mediaCount: next.mediaFileIds.length,
+          mediaCount: updated.mediaFileIds.length,
         });
         await ctx.reply("Відео додано. Можна ще файл або натисніть «✅ Завершити анкету».");
         return;
       }
+      return next();
     }
+
+    return next();
   });
 
   bot.action(CB.intakeQ4Submit, async (ctx) => {
