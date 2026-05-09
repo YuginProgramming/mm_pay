@@ -19,3 +19,8 @@ TZ/
 debug/mm-*.log
 debug/*-error.log
 debug/*-out.log
+
+# Локальний трекер груп / нотатки деплою — не комітити
+consult-group-tracker-bot/
+consult-group-tracker-bot
+/deploy.md
