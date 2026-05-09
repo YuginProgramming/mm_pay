@@ -29,7 +29,6 @@ export function registerMenuHandlers(bot: Telegraf, input: {
       [Markup.button.callback("Я проходив навчання", CB.s10)],
       [Markup.button.callback("Консультація", CB.s2)],
       [Markup.button.callback("Хочу навчання", CB.s20)],
-      [Markup.button.url("Звʼязатися з адміністратором", "https://t.me/YevhenDudar")],
     ]);
 
   const backKeyboard = () =>
