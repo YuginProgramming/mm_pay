@@ -1,0 +1,20 @@
+---
+description: Project development vocabulary and terminology
+alwaysApply: true
+---
+
+# Telegram bot UI surfaces
+
+Use these terms consistently in code, docs, and reviews. UI copy may differ by language.
+
+## inline keyboard
+
+Buttons attached to a **message** in the chat (not under the text field). Telegram: `InlineKeyboardMarkup`, `callback_query`.
+
+## command menu
+
+Primary bot flows entered via **slash commands** (e.g. `/start`, `/profile`). Not the reply-keyboard row under the input.
+
+## reply keyboard
+
+Buttons shown **under the message input** (composer). Telegram: `ReplyKeyboardMarkup`. Same idea as “footer menu” in informal naming.

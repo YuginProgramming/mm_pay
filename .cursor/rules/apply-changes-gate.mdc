@@ -1,0 +1,16 @@
+---
+description: Require explicit APPLY CHANGES command before editing files
+alwaysApply: true
+---
+
+# Apply Changes Gate
+
+- Do not modify any files unless I explicitly say: "APPLY CHANGES".
+- Default behavior:
+  - Read and analyze freely.
+  - Propose diffs and patches only.
+  - Do not run file-writing commands, formatters, or generators that change files.
+- When I say "APPLY CHANGES":
+  - Apply only the agreed edits.
+  - Do not add unrelated refactors or extra changes.
+  - Summarize exactly what changed after edits are applied.
