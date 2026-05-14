@@ -239,7 +239,10 @@ export function registerIntakeHandlers(bot: Telegraf): void {
             mediaType: "photo",
             mediaCount: updated.mediaFileIds.length,
           });
-          await ctx.reply("Фото додано. Можна ще файл або натисніть «✅ Завершити анкету».");
+          await ctx.reply(
+            "Фото додано. Можна ще файл або натисніть «✅ Завершити анкету».",
+            intakeQ4Keyboard(),
+          );
           return;
         }
         return next();
@@ -254,7 +257,10 @@ export function registerIntakeHandlers(bot: Telegraf): void {
           mediaType: "video",
           mediaCount: updated.mediaFileIds.length,
         });
-        await ctx.reply("Відео додано. Можна ще файл або натисніть «✅ Завершити анкету».");
+        await ctx.reply(
+          "Відео додано. Можна ще файл або натисніть «✅ Завершити анкету».",
+          intakeQ4Keyboard(),
+        );
         return;
       }
       return next();
