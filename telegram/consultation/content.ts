@@ -43,6 +43,17 @@ export const TEXT_S2_MASTER = renderMessageText(masterMessage);
 export const TEXT_S20 =
   "Хочу навчання\n\nОзнайомтеся з програмою на лендингу або поверніться до головного меню.";
 
+export const PAYMENT_APPROVED_ASK_DISPLAY_NAME_SUFFIX =
+  "Напишіть своє імʼя та прізвище одним повідомленням (наприклад: Марія Коваленко).";
+
+export const CLIENT_POST_DISPLAY_NAME_TEXT =
+  "Дякуємо! Наступний крок — коротка анкета в цьому чаті.\n" +
+  "Натисніть «📋 Почати анкету», щоб ми підготували вашу консультацію.\n\n" +
+  "Після заповнення анкети менеджер відповість вам, щойно буде на звʼязку.";
+
+export const MASTER_POST_DISPLAY_NAME_TEXT =
+  "Дякуємо! Для вас запущено прямий формат через форум-групу, менеджер підключиться найближчим часом.";
+
 export const INTAKE_Q1_TEXT = "📋 Intake розпочато.\n\nQ1: Оберіть крок:";
 export const INTAKE_Q2_TEXT = "Q2: Опишіть вашу головну ціль одним повідомленням.";
 export const INTAKE_Q3_TEXT =

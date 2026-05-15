@@ -93,6 +93,23 @@ export async function createForumTopicIdempotent(input: {
   }
 }
 
+export async function editForumTopic(
+  token: string,
+  chatId: number,
+  messageThreadId: number,
+  name: string,
+): Promise<void> {
+  const path = `/bot${token}/editForumTopic`;
+  const res = await postJson<ApiOk<unknown> | ApiErr>(path, {
+    chat_id: chatId,
+    message_thread_id: messageThreadId,
+    name,
+  });
+  if (!res.ok) {
+    throw new Error((res as ApiErr).description ?? "editForumTopic failed");
+  }
+}
+
 export async function sendMessageInTopic(
   token: string,
   chatId: number,

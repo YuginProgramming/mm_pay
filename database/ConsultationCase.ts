@@ -11,6 +11,7 @@ export interface ConsultationCaseAttributes {
   orderReference: string | null;
   managerChatId: string | null;
   messageThreadId: string | null;
+  displayName: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -22,6 +23,7 @@ type Creation = Optional<
   | "orderReference"
   | "managerChatId"
   | "messageThreadId"
+  | "displayName"
   | "createdAt"
   | "updatedAt"
 >;
@@ -39,6 +41,7 @@ export class ConsultationCase
   declare orderReference: string | null;
   declare managerChatId: string | null;
   declare messageThreadId: string | null;
+  declare displayName: string | null;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
 }
@@ -78,6 +81,11 @@ ConsultationCase.init(
       type: DataTypes.STRING(64),
       allowNull: true,
       field: "message_thread_id",
+    },
+    displayName: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+      field: "display_name",
     },
   },
   {

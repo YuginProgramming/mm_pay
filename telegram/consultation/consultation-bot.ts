@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { Telegraf } from "telegraf";
+import { registerDisplayNameHandlers } from "./display-name-handlers";
 import { registerMenuHandlers } from "./menu-handlers";
 import { registerIntakeHandlers } from "./intake-handlers";
 import { registerRelayHandlers } from "./relay-handlers";
@@ -39,6 +40,7 @@ const TELEGRAM_ALLOWED_UPDATES = [
 ] as const;
 
 registerMenuHandlers(consultationBot, { accountBotUrl, landingUrl });
+registerDisplayNameHandlers(consultationBot);
 registerIntakeHandlers(consultationBot);
 registerRelayHandlers(consultationBot);
 registerConsultationTraceHandlers(consultationBot, token, {

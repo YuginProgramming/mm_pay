@@ -25,6 +25,7 @@ import {
   createForumTopicIdempotent,
   sendMessageInTopic,
 } from "../telegram/consultation/forum-api";
+import { ConsultationCaseStatus } from "../telegram/consultation/consultation-case-status";
 import { buildConsultationTopicTitle } from "../telegram/consultation/topic-title";
 import { consultationDebug } from "../telegram/consultation/debug-log";
 
@@ -469,15 +470,22 @@ async function ensurePaidCaseTopicMapping(
     order: literal("\"updated_at\" DESC"),
   });
   if (mappedCaseForUser) {
+    const hasDisplayName = Boolean(mappedCaseForUser.displayName?.trim());
+    const reusedStatus = !hasDisplayName
+      ? ConsultationCaseStatus.AWAITING_DISPLAY_NAME
+      : order.productCode === CONSULTATION_MASTER_PRODUCT_CODE
+        ? ConsultationCaseStatus.ACTIVE_CONVERSATION
+        : ConsultationCaseStatus.AWAITING_INTAKE;
     await ConsultationCase.upsert({
       consultationId: mappedCaseForUser.consultationId,
       telegramUserId: mappedCaseForUser.telegramUserId,
       telegramChatId: order.telegramChatId,
-      status: "ACTIVE_CONVERSATION",
+      status: reusedStatus,
       productCode: order.productCode,
       orderReference: order.orderReference,
       managerChatId: mappedCaseForUser.managerChatId,
       messageThreadId: mappedCaseForUser.messageThreadId,
+      displayName: mappedCaseForUser.displayName,
     });
     consultationDebug("topic.reconcile.fixed", {
       orderReference: order.orderReference,
@@ -530,7 +538,7 @@ async function ensurePaidCaseTopicMapping(
         `Chat ID: ${order.telegramChatId}`,
         order.productCode === CONSULTATION_MASTER_PRODUCT_CODE
           ? "Старт: прямий формат через форум (без intake-анкети)."
-          : "Оплату підтверджено. Очікуємо заповнення intake-анкети клієнтом.",
+          : "Очікуємо імʼя клієнта та заповнення intake-анкети.",
       ].join("\n"),
     );
 
@@ -538,7 +546,7 @@ async function ensurePaidCaseTopicMapping(
       consultationId,
       telegramUserId: order.telegramUserId,
       telegramChatId: order.telegramChatId,
-      status: "ACTIVE_CONVERSATION",
+      status: ConsultationCaseStatus.AWAITING_DISPLAY_NAME,
       productCode: order.productCode,
       orderReference: order.orderReference,
       managerChatId: String(managerChatId),

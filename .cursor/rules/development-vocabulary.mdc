@@ -18,3 +18,11 @@ Primary bot flows entered via **slash commands** (e.g. `/start`, `/profile`). No
 ## reply keyboard
 
 Buttons shown **under the message input** (composer). Telegram: `ReplyKeyboardMarkup`. Same idea as “footer menu” in informal naming.
+
+## flow map
+
+A visual map of how a process unfolds over time (actors, steps, branches). In this project, prefer **Mermaid** in chat (`sequenceDiagram`, `flowchart`, etc.) when the user asks for a flow map, mind map of a flow, or interaction diagram.
+
+**User phrases:** “flow map”, “show the flow”, “mind map of the flow”, “sequence for …”.
+
+**Not:** Telegram UI surfaces (inline keyboard, command menu, reply keyboard).

@@ -37,3 +37,13 @@ export function buildConsultationTopicTitle(input: TopicTitleInput): string {
   // Telegram topic names have length limits; keep safe cap.
   return truncate(`${prefix} | ${identity}`, 120);
 }
+
+export function buildConsultationTopicTitleFromDisplayName(
+  telegramId: string | number,
+  displayName: string,
+): string {
+  const tgId = String(telegramId).trim();
+  const prefix = `U${tgId}`;
+  const identity = compactSpaces(displayName) || `tg_${tgId}`;
+  return truncate(`${prefix} | ${identity}`, 120);
+}

@@ -1,4 +1,7 @@
+import { ConsultationCase } from "../database/ConsultationCase";
 import type { ConsultationProductCode } from "./consultation-product";
+import { PAYMENT_APPROVED_ASK_DISPLAY_NAME_SUFFIX } from "../telegram/consultation/content";
+import { sendPostDisplayNameFollowUp } from "../telegram/consultation/display-name-handlers";
 
 function productLabel(productCode: ConsultationProductCode): string {
   return productCode === "consultation_master_one_time"
@@ -55,23 +58,21 @@ export async function notifyConsultationPaymentApproved(input: {
   productCode: ConsultationProductCode;
   orderReference: string;
 }): Promise<void> {
-  if (input.productCode === "consultation_client_one_time") {
-    await sendConsultationMessage(
-      input.chatId,
-      `Оплату ${productLabel(input.productCode)} підтверджено ✅\n\n` +
-        "Дякуємо! Наступний крок — коротка анкета в цьому чаті.\n" +
-        "Натисніть «📋 Почати анкету», щоб ми підготували вашу консультацію.\n\n" +
-        "Після заповнення анкети менеджер відповість вам, щойно буде на звʼязку.\n\n" +
-        `Номер замовлення: ${input.orderReference}`,
-      { text: "📋 Почати анкету", callbackData: "intake:start" },
-    );
+  const existingCase = await ConsultationCase.findOne({
+    where: { orderReference: input.orderReference },
+  });
+  if (existingCase?.displayName?.trim()) {
+    await sendPostDisplayNameFollowUp({
+      chatId: input.chatId,
+      productCode: existingCase.productCode,
+    });
     return;
   }
+
   await sendConsultationMessage(
     input.chatId,
     `Оплату ${productLabel(input.productCode)} підтверджено ✅\n\n` +
-      "Дякуємо! Для вас запущено прямий формат через форум-групу, менеджер підключиться найближчим часом.\n\n" +
-      `Номер замовлення: ${input.orderReference}`,
+      PAYMENT_APPROVED_ASK_DISPLAY_NAME_SUFFIX,
   );
 }
 

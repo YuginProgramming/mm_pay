@@ -153,4 +153,21 @@ describe("consultation relay handlers", () => {
     expect(ctx.telegram.sendMessage).not.toHaveBeenCalled();
     expect(ctx.reply).not.toHaveBeenCalled();
   });
+
+  it("does not relay client text while awaiting display name", async () => {
+    findOne.mockResolvedValue({
+      consultationId: "client-order-1",
+      telegramChatId: "6956239629",
+      managerChatId: "-1003907688133",
+      messageThreadId: "93",
+      status: "AWAITING_DISPLAY_NAME",
+      update: vi.fn(),
+    } as any);
+    const handler = setupBotAndHandler();
+    const ctx = clientCtx({ text: "Марія Коваленко", userId: 6956239629 });
+
+    await handler(ctx);
+
+    expect(ctx.telegram.sendMessage).not.toHaveBeenCalled();
+  });
 });

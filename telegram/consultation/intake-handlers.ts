@@ -1,9 +1,6 @@
-import { randomUUID } from "crypto";
-import { Op, literal } from "sequelize";
 import { Markup, Telegraf } from "telegraf";
 import { ConsultationCase } from "../../database/ConsultationCase";
 import { ConsultationIntakeSession } from "../../database/ConsultationIntakeSession";
-import { TelegramUser } from "../../database/TelegramUser";
 import { CONSULTATION_CLIENT_PRODUCT_CODE } from "../../payment/consultation-product";
 import { getConsultationAccessState } from "../../payment/consultation-payment.service";
 import { CB } from "./callbacks";
@@ -13,7 +10,7 @@ import {
   INTAKE_Q3_TEXT,
   INTAKE_Q4_TEXT,
 } from "./content";
-import { createForumTopicIdempotent, sendMessageInTopic } from "./forum-api";
+import { sendMessageInTopic } from "./forum-api";
 import {
   createIntakeSession,
   addMediaFileId,
@@ -21,7 +18,8 @@ import {
   moveToStep,
   type IntakeSession,
 } from "./intake-state";
-import { buildConsultationTopicTitle } from "./topic-title";
+import { ConsultationCaseStatus } from "./consultation-case-status";
+import { findPaidClientCaseForIntake } from "./display-name-handlers";
 import { consultationDebug } from "./debug-log";
 
 const intakeSessions = new Map<number, IntakeSession>();
@@ -110,8 +108,17 @@ export function registerIntakeHandlers(bot: Telegraf): void {
       );
       return;
     }
+    const paidCase = await findPaidClientCaseForIntake(String(fromId));
+    if (!paidCase) {
+      await ctx.reply(
+        "Спочатку оплатіть консультацію та вкажіть імʼя після підтвердження оплати. " +
+          "Якщо оплата вже була — напишіть імʼя та прізвище одним повідомленням.",
+      );
+      return;
+    }
+
     const session = createIntakeSession({
-      consultationId: `pay-${fromId}-${Date.now()}`,
+      consultationId: paidCase.consultationId,
       telegramUserId: String(fromId),
     });
     intakeSessions.set(
@@ -119,12 +126,7 @@ export function registerIntakeHandlers(bot: Telegraf): void {
       session,
     );
     await persistSession(session);
-    await ConsultationCase.upsert({
-      consultationId: session.consultationId,
-      telegramUserId: String(fromId),
-      telegramChatId: String(ctx.chat?.id ?? fromId),
-      status: "INTAKE_IN_PROGRESS",
-    });
+    await paidCase.update({ status: ConsultationCaseStatus.INTAKE_IN_PROGRESS });
     consultationDebug("intake.session_started", {
       source: "callback",
       consultationId: session.consultationId,
@@ -318,96 +320,28 @@ export function registerIntakeHandlers(bot: Telegraf): void {
       return;
     }
 
-    let messageThreadIdToUse: number | null = null;
-    const existingMappedCase = await ConsultationCase.findOne({
-      where: {
-        telegramUserId: String(fromId),
-        managerChatId: String(managerChatId),
-        messageThreadId: { [Op.ne]: null },
-      },
-      order: literal("\"updated_at\" DESC"),
+    const paidCase = await ConsultationCase.findOne({
+      where: { consultationId: session.consultationId },
     });
-    if (existingMappedCase?.messageThreadId) {
-      messageThreadIdToUse = Number(existingMappedCase.messageThreadId);
-      consultationDebug("intake.topic_reused", {
+    if (!paidCase?.messageThreadId) {
+      consultationDebug("intake.submit_blocked", {
         consultationId: session.consultationId,
         telegramUserId: String(fromId),
-        managerChatId,
-        messageThreadId: messageThreadIdToUse,
-        sourceConsultationId: existingMappedCase.consultationId,
+        reason: "no_manager_topic",
       });
-      consultationDebug("topic.reconcile.fixed", {
-        consultationId: session.consultationId,
-        telegramUserId: String(fromId),
-        managerChatId,
-        messageThreadId: messageThreadIdToUse,
-        source: "intake_submit_reuse_existing",
-      });
-    } else {
-      const user = await TelegramUser.findOne({
-        where: { telegramId: String(fromId) },
-      });
-      const topicName = buildConsultationTopicTitle({
-        telegramId: fromId,
-        firstName: user?.firstName ?? null,
-        lastName: user?.lastName ?? null,
-        username: user?.username ?? null,
-      });
-      consultationDebug("topic.create.start", {
-        consultationId: session.consultationId,
-        telegramUserId: String(fromId),
-        managerChatId,
-        topicName,
-        source: "intake_submit",
-      });
-      try {
-        const { message_thread_id } = await createForumTopicIdempotent({
-          token,
-          chatId: managerChatId,
-          name: topicName,
-          consultationId: session.consultationId,
-          findExistingThreadId: async () => {
-            const existingByConsultationId = await ConsultationCase.findOne({
-              where: {
-                consultationId: session.consultationId,
-                managerChatId: String(managerChatId),
-                messageThreadId: { [Op.ne]: null },
-              },
-            });
-            if (!existingByConsultationId?.messageThreadId) {
-              return null;
-            }
-            return Number(existingByConsultationId.messageThreadId);
-          },
-        });
-        messageThreadIdToUse = message_thread_id;
-        consultationDebug("topic.create.success", {
-          consultationId: session.consultationId,
-          telegramUserId: String(fromId),
-          managerChatId,
-          messageThreadId: message_thread_id,
-          topicName,
-          source: "intake_submit",
-        });
-        consultationDebug("intake.topic_created", {
-          consultationId: session.consultationId,
-          telegramUserId: String(fromId),
-          managerChatId,
-          messageThreadId: message_thread_id,
-          topicName,
-        });
-      } catch (err) {
-        consultationDebug("topic.create.error", {
-          consultationId: session.consultationId,
-          telegramUserId: String(fromId),
-          managerChatId,
-          topicName,
-          source: "intake_submit",
-          error: err instanceof Error ? err.message : String(err),
-        });
-        throw err;
-      }
+      await ctx.reply(
+        "Тема консультації ще не готова. Зачекайте або зверніться до підтримки.",
+      );
+      return;
     }
+    const messageThreadIdToUse = Number(paidCase.messageThreadId);
+    consultationDebug("intake.topic_reused", {
+      consultationId: session.consultationId,
+      telegramUserId: String(fromId),
+      managerChatId,
+      messageThreadId: messageThreadIdToUse,
+      sourceConsultationId: paidCase.consultationId,
+    });
 
     const summary = [
       "📋 Intake завершено (client flow)",
@@ -419,20 +353,13 @@ export function registerIntakeHandlers(bot: Telegraf): void {
       `Media count: ${session.mediaFileIds.length}`,
       `Media IDs: ${session.mediaFileIds.join(", ")}`,
     ].join("\n");
-    if (!messageThreadIdToUse) {
-      throw new Error("Failed to resolve manager topic thread id for intake submit.");
-    }
     await sendMessageInTopic(token, managerChatId, messageThreadIdToUse, summary);
 
     const done = moveToStep(session, "DONE");
     intakeSessions.set(fromId, done);
     await persistSession(done);
     await ConsultationCase.update(
-      {
-        status: "ACTIVE_CONVERSATION",
-        managerChatId: String(managerChatId),
-        messageThreadId: String(messageThreadIdToUse),
-      },
+      { status: ConsultationCaseStatus.ACTIVE_CONVERSATION },
       { where: { consultationId: session.consultationId } },
     );
     consultationDebug("intake.submit_done", {

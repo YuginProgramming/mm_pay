@@ -1,6 +1,7 @@
 import { Op, literal } from "sequelize";
 import { Telegraf } from "telegraf";
 import { ConsultationCase } from "../../database/ConsultationCase";
+import { isClientRelayBlockedStatus } from "./consultation-case-status";
 import { consultationDebug } from "./debug-log";
 
 type RelayDirection = "manager_to_client" | "client_to_manager" | "unknown";
@@ -201,6 +202,15 @@ export function registerRelayHandlers(bot: Telegraf): void {
         ...eventWithCase,
         chatType,
       });
+
+      if (isClientRelayBlockedStatus(c.status)) {
+        consultationDebug("relay.skip", {
+          ...eventWithCase,
+          reason: "awaiting_onboarding",
+          reasonDetails: `Case status ${c.status} blocks client relay until name/intake done.`,
+        });
+        return;
+      }
 
       try {
         if (text.length > 0) {

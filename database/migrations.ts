@@ -702,6 +702,16 @@ async function seedSubscriptionMonthlyPlan(): Promise<void> {
   console.log("Migration completed: subscription_plans seed monthly_1m.");
 }
 
+async function addConsultationCaseDisplayNameColumn(): Promise<void> {
+  await sequelize.query(`
+    ALTER TABLE consultation_cases
+    ADD COLUMN IF NOT EXISTS display_name VARCHAR(128);
+  `);
+  console.log(
+    "Migration completed: display_name on consultation_cases (if missing).",
+  );
+}
+
 async function addSubscriptionPaymentOrderCheckoutUrlColumn(): Promise<void> {
   await sequelize.query(`
     ALTER TABLE subscription_payment_orders
@@ -753,6 +763,7 @@ async function runMigrations(): Promise<void> {
     await createSubscriptionCoreTables();
     await createConsultationPaymentOrdersTable();
     await createConsultationCaseAndIntakeTables();
+    await addConsultationCaseDisplayNameColumn();
     await addSubscriptionPaymentOrderCheckoutUrlColumn();
     await createSubscriptionRenewalReminderLogTable();
     await seedSubscriptionMonthlyPlan();
