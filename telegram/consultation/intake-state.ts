@@ -9,13 +9,22 @@ export type IntakeStatus =
 
 export type IntakeStep = "Q1" | "Q2" | "Q3" | "Q4_MEDIA" | "DONE";
 
+export type IntakeMediaKind = "photo" | "video";
+
+export type IntakeMediaItem = {
+  kind: IntakeMediaKind;
+  fileId: string;
+  messageId: number;
+  chatId: string;
+};
+
 export type IntakeSession = {
   consultationId: string;
   telegramUserId: string;
   status: IntakeStatus;
   step: IntakeStep;
   answers: Record<string, string>;
-  mediaFileIds: string[];
+  mediaItems: IntakeMediaItem[];
   updatedAtIso: string;
 };
 
@@ -33,7 +42,7 @@ export function createIntakeSession(input: {
     status: "INTAKE_IN_PROGRESS",
     step: "Q1",
     answers: {},
-    mediaFileIds: [],
+    mediaItems: [],
     updatedAtIso: nowIso(),
   };
 }
@@ -53,13 +62,13 @@ export function markAnswer(
   };
 }
 
-export function addMediaFileId(
+export function addIntakeMedia(
   session: IntakeSession,
-  fileId: string,
+  item: IntakeMediaItem,
 ): IntakeSession {
   return {
     ...session,
-    mediaFileIds: [...session.mediaFileIds, fileId],
+    mediaItems: [...session.mediaItems, item],
     updatedAtIso: nowIso(),
   };
 }

@@ -8,7 +8,7 @@ export interface ConsultationIntakeSessionAttributes {
   status: string;
   step: string;
   answersJson: Record<string, string>;
-  mediaFileIdsJson: string[];
+  mediaFileIdsJson: unknown[];
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -28,7 +28,7 @@ export class ConsultationIntakeSession
   declare status: string;
   declare step: string;
   declare answersJson: Record<string, string>;
-  declare mediaFileIdsJson: string[];
+  declare mediaFileIdsJson: unknown[];
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
 }

@@ -10,10 +10,10 @@ import {
   INTAKE_Q3_TEXT,
   INTAKE_Q4_TEXT,
 } from "./content";
-import { sendMessageInTopic } from "./forum-api";
+import { copyMessageToTopic, sendMessageInTopic } from "./forum-api";
 import {
   createIntakeSession,
-  addMediaFileId,
+  addIntakeMedia,
   markAnswer,
   moveToStep,
   type IntakeSession,
@@ -44,14 +44,14 @@ async function persistSession(session: IntakeSession): Promise<void> {
     status: session.status,
     step: session.step,
     answersJson: session.answers,
-    mediaFileIdsJson: session.mediaFileIds,
+    mediaFileIdsJson: session.mediaItems,
   });
   consultationDebug("intake.persisted", {
     consultationId: session.consultationId,
     telegramUserId: session.telegramUserId,
     step: session.step,
     status: session.status,
-    mediaCount: session.mediaFileIds.length,
+    mediaCount: session.mediaItems.length,
     answerKeys: Object.keys(session.answers),
   });
 }
@@ -229,17 +229,29 @@ export function registerIntakeHandlers(bot: Telegraf): void {
     }
 
     if (session.step === "Q4_MEDIA") {
+      const sourceChatId = ctx.chat?.id;
+      const sourceMessageId = ctx.message.message_id;
+      if (sourceChatId == null || sourceMessageId == null) {
+        return next();
+      }
+
       if ("photo" in ctx.message && ctx.message.photo?.length) {
         const fileId = ctx.message.photo[ctx.message.photo.length - 1]?.file_id;
         if (fileId) {
-          const updated = addMediaFileId(session, fileId);
+          const updated = addIntakeMedia(session, {
+            kind: "photo",
+            fileId,
+            messageId: sourceMessageId,
+            chatId: String(sourceChatId),
+          });
           intakeSessions.set(fromId, updated);
           await persistSession(updated);
           consultationDebug("intake.media_added", {
             consultationId: updated.consultationId,
             telegramUserId: String(fromId),
             mediaType: "photo",
-            mediaCount: updated.mediaFileIds.length,
+            mediaCount: updated.mediaItems.length,
+            messageId: sourceMessageId,
           });
           await ctx.reply(
             "Фото додано. Можна ще файл або натисніть «✅ Завершити анкету».",
@@ -250,14 +262,20 @@ export function registerIntakeHandlers(bot: Telegraf): void {
         return next();
       }
       if ("video" in ctx.message && ctx.message.video?.file_id) {
-        const updated = addMediaFileId(session, ctx.message.video.file_id);
+        const updated = addIntakeMedia(session, {
+          kind: "video",
+          fileId: ctx.message.video.file_id,
+          messageId: sourceMessageId,
+          chatId: String(sourceChatId),
+        });
         intakeSessions.set(fromId, updated);
         await persistSession(updated);
         consultationDebug("intake.media_added", {
           consultationId: updated.consultationId,
           telegramUserId: String(fromId),
           mediaType: "video",
-          mediaCount: updated.mediaFileIds.length,
+          mediaCount: updated.mediaItems.length,
+          messageId: sourceMessageId,
         });
         await ctx.reply(
           "Відео додано. Можна ще файл або натисніть «✅ Завершити анкету».",
@@ -283,7 +301,7 @@ export function registerIntakeHandlers(bot: Telegraf): void {
       await ctx.reply("Intake сесія не знайдена. Натисніть /intake_start_test.");
       return;
     }
-    if (session.mediaFileIds.length < 1) {
+    if (session.mediaItems.length < 1) {
       consultationDebug("intake.submit_blocked", {
         consultationId: session.consultationId,
         telegramUserId: String(fromId),
@@ -350,10 +368,47 @@ export function registerIntakeHandlers(bot: Telegraf): void {
       `Q1: ${session.answers.q1 ?? "-"}`,
       `Q2: ${session.answers.q2_goal ?? "-"}`,
       `Q3: ${session.answers.q3_problem ?? "-"}`,
-      `Media count: ${session.mediaFileIds.length}`,
-      `Media IDs: ${session.mediaFileIds.join(", ")}`,
+      `Media count: ${session.mediaItems.length}`,
     ].join("\n");
     await sendMessageInTopic(token, managerChatId, messageThreadIdToUse, summary);
+
+    let mediaForwarded = 0;
+    for (const [index, item] of session.mediaItems.entries()) {
+      try {
+        await copyMessageToTopic({
+          token,
+          destChatId: managerChatId,
+          fromChatId: Number(item.chatId),
+          messageId: item.messageId,
+          messageThreadId: messageThreadIdToUse,
+        });
+        mediaForwarded += 1;
+        consultationDebug("intake.media_forwarded", {
+          consultationId: session.consultationId,
+          telegramUserId: String(fromId),
+          index,
+          kind: item.kind,
+          messageId: item.messageId,
+        });
+      } catch (err) {
+        consultationDebug("intake.media_forward_failed", {
+          consultationId: session.consultationId,
+          telegramUserId: String(fromId),
+          index,
+          kind: item.kind,
+          messageId: item.messageId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+    if (mediaForwarded < session.mediaItems.length) {
+      await sendMessageInTopic(
+        token,
+        managerChatId,
+        messageThreadIdToUse,
+        `⚠️ Не вдалося переслати ${session.mediaItems.length - mediaForwarded} з ${session.mediaItems.length} файлів анкети.`,
+      );
+    }
 
     const done = moveToStep(session, "DONE");
     intakeSessions.set(fromId, done);
@@ -367,7 +422,8 @@ export function registerIntakeHandlers(bot: Telegraf): void {
       telegramUserId: String(fromId),
       managerChatId,
       messageThreadId: messageThreadIdToUse,
-      mediaCount: done.mediaFileIds.length,
+      mediaCount: done.mediaItems.length,
+      mediaForwarded,
     });
 
     await ctx.reply("✅ Анкету завершено. Менеджер вже бачить ваш кейс і підключиться в цьому чаті.");

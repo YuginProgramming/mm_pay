@@ -110,6 +110,25 @@ export async function editForumTopic(
   }
 }
 
+export async function copyMessageToTopic(input: {
+  token: string;
+  destChatId: number;
+  fromChatId: number;
+  messageId: number;
+  messageThreadId: number;
+}): Promise<void> {
+  const path = `/bot${input.token}/copyMessage`;
+  const res = await postJson<ApiOk<unknown> | ApiErr>(path, {
+    chat_id: input.destChatId,
+    from_chat_id: input.fromChatId,
+    message_id: input.messageId,
+    message_thread_id: input.messageThreadId,
+  });
+  if (!res.ok) {
+    throw new Error((res as ApiErr).description ?? "copyMessage failed");
+  }
+}
+
 export async function sendMessageInTopic(
   token: string,
   chatId: number,
