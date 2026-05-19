@@ -149,8 +149,14 @@ export function registerMenuHandlers(bot: Telegraf, input: {
         telegramChatId: String(chatId),
         productCode: productCode as any,
       });
+      const amountLine =
+        productCode === CONSULTATION_MASTER_PRODUCT_CODE
+          ? "Сума: 100 €"
+          : productCode === CONSULTATION_CLIENT_PRODUCT_CODE
+            ? "Сума: 50 €"
+            : `Сума: ${checkout.amountUah} грн.`;
       await ctx.reply(
-        `Оплата ${label} готова.\nСума: ${checkout.amountUah} грн.`,
+        `Оплата ${label} готова.\n${amountLine}`,
         Markup.inlineKeyboard([[Markup.button.url("💳 Перейти до оплати", checkout.checkoutUrl)]]),
       );
       consultationDebug("menu.checkout_create.success", {
