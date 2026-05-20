@@ -36,7 +36,8 @@ export const TEXT_S1 =
   "Головне меню — вибір сценарію.\n\nОберіть, що вам зараз потрібно:";
 export const TEXT_S10 =
   "Я проходив навчання\n\n" +
-  "Тут буде перехід до підписки та продовження роботи в академії. Цей блок у розробці.";
+  "Підписка та продовження роботи в академії — в акаунт-боті MULTIMASKING.\n" +
+  "Натисніть кнопку нижче, щоб перейти.";
 export const TEXT_S2 = "Консультація\n\nОберіть формат:";
 export const TEXT_S2_CLIENT = renderMessageText(clientMessage);
 export const TEXT_S2_MASTER = renderMessageText(masterMessage);
