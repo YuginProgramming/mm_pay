@@ -1,6 +1,7 @@
 import { literal, Op } from "sequelize";
 import { SubscriptionPaymentOrder } from "../database/SubscriptionPaymentOrder";
 import { SubscriptionPlan } from "../database/SubscriptionPlan";
+import { getMultimaskingCoursePriceUah } from "./multimasking-price";
 import { MULTIMASKING_PRODUCT_NAME } from "./multimasking-product";
 import { createCheckoutForCourse } from "./payment.service";
 
@@ -108,8 +109,10 @@ export async function createSubscriptionCheckout(
     );
   }
 
+  const priceUah = await getMultimaskingCoursePriceUah();
+
   const { orderReference, invoiceUrl } = await createCheckoutForCourse(
-    Number(plan.price),
+    priceUah,
     MULTIMASKING_PRODUCT_NAME,
     input.userId,
   );
@@ -119,7 +122,7 @@ export async function createSubscriptionCheckout(
     userId: input.userId,
     planId: plan.id,
     status: "created",
-    amount: String(plan.price),
+    amount: String(priceUah),
     currency: plan.currency,
     provider: "wayforpay",
     checkoutUrl: invoiceUrl,
