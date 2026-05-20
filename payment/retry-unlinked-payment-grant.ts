@@ -1,3 +1,4 @@
+import { literal } from "sequelize";
 import { ContactProductAccess } from "../database/ContactProductAccess";
 import type { TelegramUser } from "../database/TelegramUser";
 import { WayforpayWebhookEvent } from "../database/WayforpayWebhookEvent";
@@ -22,7 +23,7 @@ export async function retryUnlinkedApprovedPaymentsForTelegramUser(
       transactionStatus: "Approved",
       signatureValid: true,
     },
-    order: [["createdAt", "ASC"]],
+    order: literal('"created_at" ASC'),
   });
 
   let granted = 0;

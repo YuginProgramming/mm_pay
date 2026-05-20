@@ -1,4 +1,4 @@
-import { Op } from "sequelize";
+import { literal, Op } from "sequelize";
 import { SubscriptionPaymentOrder } from "../database/SubscriptionPaymentOrder";
 import { SubscriptionPlan } from "../database/SubscriptionPlan";
 import { MULTIMASKING_PRODUCT_NAME } from "./multimasking-product";
@@ -74,7 +74,7 @@ export async function createSubscriptionCheckout(
       planId: plan.id,
       status: { [Op.in]: ACTIVE_ORDER_STATUSES },
     },
-    order: [["createdAt", "DESC"]],
+    order: literal('"created_at" DESC'),
   });
 
   if (existing && !input.forceNew) {
@@ -143,7 +143,7 @@ export async function recoverSubscriptionCheckout(
       userId,
       status: { [Op.in]: ACTIVE_ORDER_STATUSES },
     },
-    order: [["createdAt", "DESC"]],
+    order: literal('"created_at" DESC'),
   });
 
   if (!existing) {

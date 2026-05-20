@@ -100,6 +100,11 @@ WayforpayWebhookEvent.init(
       allowNull: false,
       field: "raw_payload",
     },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      field: "created_at",
+    },
   },
   {
     sequelize,
