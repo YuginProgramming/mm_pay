@@ -40,8 +40,13 @@ export const TEXT_S10 =
 export const TEXT_S2 = "Консультація\n\nОберіть формат:";
 export const TEXT_S2_CLIENT = renderMessageText(clientMessage);
 export const TEXT_S2_MASTER = renderMessageText(masterMessage);
+export const DEFAULT_CONSULTATION_LANDING_URL =
+  "https://multimasking.kwiga.com/ua";
+
 export const TEXT_S20 =
-  "Хочу навчання\n\nОзнайомтеся з програмою на лендингу або поверніться до головного меню.";
+  "Хочу навчання\n\n" +
+  "Програми та умови навчання — на сайті MULTIMASKING.\n" +
+  "Натисніть кнопку нижче, щоб відкрити сторінку.";
 
 export const PAYMENT_APPROVED_ASK_DISPLAY_NAME_SUFFIX =
   "Напишіть своє імʼя та прізвище одним повідомленням (наприклад: Марія Коваленко).";

@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { Telegraf } from "telegraf";
 import { registerDisplayNameHandlers } from "./display-name-handlers";
+import { DEFAULT_CONSULTATION_LANDING_URL } from "./content";
 import { registerMenuHandlers } from "./menu-handlers";
 import { registerIntakeHandlers } from "./intake-handlers";
 import { registerRelayHandlers } from "./relay-handlers";
@@ -15,7 +16,8 @@ if (!token) {
   );
 }
 
-const landingUrl = process.env.CONSULTATION_LANDING_URL?.trim() || undefined;
+const landingUrl =
+  process.env.CONSULTATION_LANDING_URL?.trim() || DEFAULT_CONSULTATION_LANDING_URL;
 const accountBotUrl = "https://t.me/multimasking_account_bot";
 const managerChatIdRaw = process.env.CONSULTATION_MANAGER_CHAT_ID?.trim() || "";
 

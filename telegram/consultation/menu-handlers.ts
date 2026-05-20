@@ -22,7 +22,7 @@ import { consultationDebug } from "./debug-log";
 
 export function registerMenuHandlers(bot: Telegraf, input: {
   accountBotUrl: string;
-  landingUrl?: string;
+  landingUrl: string;
 }): void {
   const mainMenuKeyboard = () =>
     Markup.inlineKeyboard([
@@ -30,9 +30,6 @@ export function registerMenuHandlers(bot: Telegraf, input: {
       [Markup.button.callback("Консультація", CB.s2)],
       [Markup.button.callback("Хочу навчання", CB.s20)],
     ]);
-
-  const backKeyboard = () =>
-    Markup.inlineKeyboard([[Markup.button.callback("« Назад до меню", CB.s1)]]);
 
   bot.start(async (ctx) => ctx.reply(TEXT_S1, mainMenuKeyboard()));
   bot.command("cancel", async (ctx) =>
@@ -189,15 +186,12 @@ export function registerMenuHandlers(bot: Telegraf, input: {
 
   bot.action(CB.s20, async (ctx) => {
     await ctx.answerCbQuery();
-    const body = input.landingUrl
-      ? TEXT_S20
-      : `${TEXT_S20}\n\n(Посилання на лендинг зʼявиться після налаштування CONSULTATION_LANDING_URL.)`;
-    const kb = input.landingUrl
-      ? Markup.inlineKeyboard([
-          [Markup.button.url("Відкрити лендинг", input.landingUrl)],
-          [Markup.button.callback("« Назад до меню", CB.s1)],
-        ])
-      : backKeyboard();
-    await ctx.editMessageText(body, kb);
+    await ctx.editMessageText(
+      TEXT_S20,
+      Markup.inlineKeyboard([
+        [Markup.button.url("Відкрити сайт", input.landingUrl)],
+        [Markup.button.callback("« Назад до меню", CB.s1)],
+      ]),
+    );
   });
 }
