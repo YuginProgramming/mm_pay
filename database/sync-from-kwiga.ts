@@ -221,6 +221,14 @@ async function upsertKwigaProduct(p: ApiProduct, transaction: Transaction): Prom
   return row.id;
 }
 
+export async function syncKwigaContactProductsToDb(
+  kwigaContactExternalId: number,
+  contactDbId: number,
+): Promise<void> {
+  const products = await fetchContactProducts(kwigaContactExternalId);
+  await syncProductsAndAccess(contactDbId, products);
+}
+
 async function syncProductsAndAccess(contactDbId: number, products: ApiProduct[]): Promise<void> {
   const now = new Date();
 
