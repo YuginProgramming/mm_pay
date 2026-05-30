@@ -275,7 +275,7 @@ async function syncProductsAndAccess(contactDbId: number, products: ApiProduct[]
           },
           {
             transaction: t,
-            conflictFields: ["externalSubscriptionId"] as unknown as (keyof ContactProductAccessAttributes)[],
+            conflictFields: ["external_subscription_id"] as unknown as (keyof ContactProductAccessAttributes)[],
           },
         );
       }

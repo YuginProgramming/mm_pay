@@ -1,0 +1,2373 @@
+{
+  "mode": "apply",
+  "generatedAt": "2026-05-27T14:14:24.620Z",
+  "filters": {
+    "limit": 100,
+    "userId": null,
+    "email": null,
+    "includeLapsed": false,
+    "syncLocal": false,
+    "fallbackDays": 30
+  },
+  "counters": {
+    "scanned": 55,
+    "noEmail": 0,
+    "noContact": 1,
+    "noProducts": 0,
+    "skippedValid": 25,
+    "granted": 178,
+    "noOffer": 2,
+    "failures": 0,
+    "fallbackUsed": 178,
+    "filteredOut": 0
+  },
+  "users": [
+    {
+      "userSubscriptionId": 1,
+      "userId": "6956239629",
+      "status": "active",
+      "localEndAt": "2026-06-20T04:38:48.190Z",
+      "email": "smith@example.com",
+      "kwigaContactId": null,
+      "actions": [
+        {
+          "kind": "skip_no_contact",
+          "note": "No Kwiga contact by email"
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 2,
+      "userId": "1095246988",
+      "status": "active",
+      "localEndAt": "2026-06-20T07:00:56.455Z",
+      "email": "roksolana.tyrik@gmail.com",
+      "kwigaContactId": 2100885,
+      "actions": [
+        {
+          "kind": "skip_valid",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "targetEndAt": "2026-06-20T07:00:56.455Z",
+          "currentEndAt": "2026-06-26T13:48:58.000Z"
+        },
+        {
+          "kind": "skip_valid",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "targetEndAt": "2026-06-20T07:00:56.455Z",
+          "currentEndAt": "2026-06-26T13:49:00.000Z"
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 3,
+      "userId": "1088414275",
+      "status": "active",
+      "localEndAt": "2026-06-20T07:01:40.484Z",
+      "email": "ola212087@gmail.com",
+      "kwigaContactId": 2100851,
+      "actions": [
+        {
+          "kind": "skip_valid",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "targetEndAt": "2026-06-20T07:01:40.484Z",
+          "currentEndAt": "2026-06-26T13:49:01.000Z"
+        },
+        {
+          "kind": "skip_valid",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "targetEndAt": "2026-06-20T07:01:40.484Z",
+          "currentEndAt": "2026-06-26T13:49:02.000Z"
+        },
+        {
+          "kind": "skip_valid",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "targetEndAt": "2026-06-20T07:01:40.484Z",
+          "currentEndAt": "2026-06-26T13:49:03.000Z"
+        },
+        {
+          "kind": "skip_valid",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "targetEndAt": "2026-06-20T07:01:40.484Z",
+          "currentEndAt": "2026-06-26T13:49:04.000Z"
+        },
+        {
+          "kind": "skip_valid",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "targetEndAt": "2026-06-20T07:01:40.484Z",
+          "currentEndAt": "2026-06-26T13:49:05.000Z"
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 4,
+      "userId": "1352182743",
+      "status": "active",
+      "localEndAt": "2026-06-20T07:04:46.650Z",
+      "email": "svitlanaafanasieva435@gmail.com",
+      "kwigaContactId": 2101459,
+      "actions": [
+        {
+          "kind": "skip_valid",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "targetEndAt": "2026-06-20T07:04:46.650Z",
+          "currentEndAt": "2026-06-26T13:51:56.000Z"
+        },
+        {
+          "kind": "skip_valid",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "targetEndAt": "2026-06-20T07:04:46.650Z",
+          "currentEndAt": "2026-06-26T13:51:57.000Z"
+        },
+        {
+          "kind": "skip_valid",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "targetEndAt": "2026-06-20T07:04:46.650Z",
+          "currentEndAt": "2026-06-26T13:51:58.000Z"
+        },
+        {
+          "kind": "skip_valid",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "targetEndAt": "2026-06-20T07:04:46.650Z",
+          "currentEndAt": "2026-06-26T13:51:59.000Z"
+        },
+        {
+          "kind": "skip_valid",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "targetEndAt": "2026-06-20T07:04:46.650Z",
+          "currentEndAt": "2026-06-26T13:52:00.000Z"
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 5,
+      "userId": "5312601783",
+      "status": "active",
+      "localEndAt": "2026-06-20T07:08:47.571Z",
+      "email": "sokachmorika87@icloud.com",
+      "kwigaContactId": 2037644,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 522065,
+          "targetEndAt": "2026-06-20T07:08:47.571Z",
+          "currentEndAt": "2026-04-01T09:38:00.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:03:32.950Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 525819,
+          "targetEndAt": "2026-06-20T07:08:47.571Z",
+          "currentEndAt": null,
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:03:36.208Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 6,
+      "userId": "741153972",
+      "status": "active",
+      "localEndAt": "2026-06-20T07:09:03.270Z",
+      "email": "monika.adolfovna@gmail.com",
+      "kwigaContactId": 2101374,
+      "actions": [
+        {
+          "kind": "skip_valid",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "targetEndAt": "2026-06-20T07:09:03.270Z",
+          "currentEndAt": "2026-06-26T13:52:03.000Z"
+        },
+        {
+          "kind": "skip_valid",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "targetEndAt": "2026-06-20T07:09:03.270Z",
+          "currentEndAt": "2026-06-26T13:52:03.000Z"
+        },
+        {
+          "kind": "skip_valid",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "targetEndAt": "2026-06-20T07:09:03.270Z",
+          "currentEndAt": "2026-06-26T13:52:04.000Z"
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 7,
+      "userId": "512173730",
+      "status": "active",
+      "localEndAt": "2026-06-20T07:17:31.182Z",
+      "email": "tanya2011.2011tanya@gmail.com",
+      "kwigaContactId": 2100798,
+      "actions": [
+        {
+          "kind": "skip_valid",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "targetEndAt": "2026-06-20T07:17:31.182Z",
+          "currentEndAt": "2026-06-26T13:52:27.000Z"
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-20T07:17:31.182Z",
+          "currentEndAt": "2026-04-19T17:46:13.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:03:40.154Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-20T07:17:31.182Z",
+          "currentEndAt": "2026-04-19T17:49:47.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:03:43.390Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-20T07:17:31.182Z",
+          "currentEndAt": "2026-04-19T17:52:33.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:03:46.661Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-20T07:17:31.182Z",
+          "currentEndAt": "2026-04-19T17:55:53.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:03:49.833Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 8,
+      "userId": "1565672485",
+      "status": "active",
+      "localEndAt": "2026-06-20T07:26:49.954Z",
+      "email": "suskovavalentina7@gmail.com",
+      "kwigaContactId": 2100825,
+      "actions": [
+        {
+          "kind": "skip_valid",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "targetEndAt": "2026-06-20T07:26:49.954Z",
+          "currentEndAt": "2026-06-26T13:52:27.000Z"
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-20T07:26:49.954Z",
+          "currentEndAt": "2026-06-19T17:46:21.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:03:54.810Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-20T07:26:49.954Z",
+          "currentEndAt": "2026-06-19T17:49:51.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:03:58.776Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-20T07:26:49.954Z",
+          "currentEndAt": "2026-06-19T17:55:56.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:04:03.509Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 9,
+      "userId": "728306384",
+      "status": "active",
+      "localEndAt": "2026-06-20T07:50:59.545Z",
+      "email": "kristinabevzuk5@gmail.com",
+      "kwigaContactId": 2100893,
+      "actions": [
+        {
+          "kind": "skip_valid",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "targetEndAt": "2026-06-20T07:50:59.545Z",
+          "currentEndAt": "2026-06-26T13:52:28.000Z"
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 10,
+      "userId": "712378531",
+      "status": "active",
+      "localEndAt": "2026-06-20T07:55:30.194Z",
+      "email": "redmi4200417@gmail.com",
+      "kwigaContactId": 2100934,
+      "actions": [
+        {
+          "kind": "skip_valid",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "targetEndAt": "2026-06-20T07:55:30.194Z",
+          "currentEndAt": "2026-06-26T13:52:29.000Z"
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-20T07:55:30.194Z",
+          "currentEndAt": "2026-06-19T17:46:21.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:04:08.887Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-20T07:55:30.194Z",
+          "currentEndAt": "2026-06-19T17:50:02.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:04:12.366Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-20T07:55:30.194Z",
+          "currentEndAt": "2026-06-19T17:52:39.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:04:15.513Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-20T07:55:30.194Z",
+          "currentEndAt": "2026-06-19T17:56:00.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:04:18.957Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 11,
+      "userId": "427038978",
+      "status": "active",
+      "localEndAt": "2026-06-20T08:07:31.444Z",
+      "email": "tgaevskaya0911@gmail.com",
+      "kwigaContactId": 2100908,
+      "actions": [
+        {
+          "kind": "skip_valid",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "targetEndAt": "2026-06-20T08:07:31.444Z",
+          "currentEndAt": "2026-06-26T13:52:29.000Z"
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-20T08:07:31.444Z",
+          "currentEndAt": "2026-04-19T17:46:19.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:04:23.255Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-20T08:07:31.444Z",
+          "currentEndAt": "2026-04-19T17:49:54.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:04:26.342Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-20T08:07:31.444Z",
+          "currentEndAt": "2026-04-19T17:52:36.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:04:29.783Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-20T08:07:31.444Z",
+          "currentEndAt": "2026-04-19T17:55:57.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:04:32.948Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 12,
+      "userId": "921125141",
+      "status": "active",
+      "localEndAt": "2026-06-20T08:08:01.630Z",
+      "email": "demchukjulia07@gmail.com",
+      "kwigaContactId": 2101520,
+      "actions": [
+        {
+          "kind": "skip_valid",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "targetEndAt": "2026-06-20T08:08:01.630Z",
+          "currentEndAt": "2026-06-26T13:52:30.000Z"
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-20T08:08:01.630Z",
+          "currentEndAt": "2026-04-19T17:46:49.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:04:37.018Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 13,
+      "userId": "5005514579",
+      "status": "active",
+      "localEndAt": "2026-06-20T08:11:24.550Z",
+      "email": "mashatelyuk@gmail.com",
+      "kwigaContactId": 2101204,
+      "actions": [
+        {
+          "kind": "skip_valid",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "targetEndAt": "2026-06-20T08:11:24.550Z",
+          "currentEndAt": "2026-06-26T13:52:31.000Z"
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-20T08:11:24.550Z",
+          "currentEndAt": "2026-04-19T17:46:34.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:04:40.777Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-20T08:11:24.550Z",
+          "currentEndAt": "2026-04-19T17:50:02.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:04:43.905Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-20T08:11:24.550Z",
+          "currentEndAt": "2026-04-19T17:52:43.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:04:47.294Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-20T08:11:24.550Z",
+          "currentEndAt": "2026-04-19T17:56:07.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:04:50.768Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 14,
+      "userId": "688223857",
+      "status": "active",
+      "localEndAt": "2026-06-20T08:18:07.219Z",
+      "email": "tanechka8497@gmail.com",
+      "kwigaContactId": 2101492,
+      "actions": [
+        {
+          "kind": "skip_valid",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "targetEndAt": "2026-06-20T08:18:07.219Z",
+          "currentEndAt": "2026-06-26T13:52:31.000Z"
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-20T08:18:07.219Z",
+          "currentEndAt": "2026-04-19T17:46:49.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:04:54.905Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-20T08:18:07.219Z",
+          "currentEndAt": "2026-04-19T17:50:14.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:04:58.293Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-20T08:18:07.219Z",
+          "currentEndAt": "2026-04-19T17:53:00.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:05:01.500Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-20T08:18:07.219Z",
+          "currentEndAt": "2026-04-19T17:56:22.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:05:04.896Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 15,
+      "userId": "501022022",
+      "status": "active",
+      "localEndAt": "2026-06-20T08:39:46.274Z",
+      "email": "kissves@ukr.net",
+      "kwigaContactId": 2101003,
+      "actions": [
+        {
+          "kind": "skip_valid",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "targetEndAt": "2026-06-20T08:39:46.274Z",
+          "currentEndAt": "2026-06-26T13:52:32.000Z"
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 16,
+      "userId": "185449991",
+      "status": "active",
+      "localEndAt": "2026-06-20T10:13:19.955Z",
+      "email": "vea2106@gmail.com",
+      "kwigaContactId": 2101370,
+      "actions": [
+        {
+          "kind": "skip_no_offer",
+          "productId": 98371,
+          "productTitle": "MULTIMASKING (Українська версія)",
+          "targetEndAt": "2026-06-20T10:13:19.955Z",
+          "currentEndAt": null,
+          "note": "No offer_id found in product subscriptions"
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-20T10:13:19.955Z",
+          "currentEndAt": "2026-04-18T11:00:22.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:05:09.568Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-20T10:13:19.955Z",
+          "currentEndAt": "2026-04-19T17:46:45.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:05:13.603Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-20T10:13:19.955Z",
+          "currentEndAt": "2026-04-19T17:50:06.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:05:18.209Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-20T10:13:19.955Z",
+          "currentEndAt": "2026-04-19T17:52:49.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:05:23.154Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-20T10:13:19.955Z",
+          "currentEndAt": "2026-04-19T17:56:15.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:05:26.814Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 17,
+      "userId": "496744056",
+      "status": "active",
+      "localEndAt": "2026-06-20T12:02:15.547Z",
+      "email": "umihaylenko2795@gmail.com",
+      "kwigaContactId": 2101575,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-20T12:02:15.547Z",
+          "currentEndAt": "2026-04-18T11:00:52.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:05:31.156Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-20T12:02:15.547Z",
+          "currentEndAt": "2026-04-19T17:46:57.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:05:34.702Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-20T12:02:15.547Z",
+          "currentEndAt": "2026-05-16T10:31:34.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:05:37.963Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 629523,
+          "targetEndAt": "2026-06-20T12:02:15.547Z",
+          "currentEndAt": null,
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:05:41.735Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 18,
+      "userId": "765840563",
+      "status": "active",
+      "localEndAt": "2026-06-20T12:02:15.948Z",
+      "email": "t-pelykh@ukr.net",
+      "kwigaContactId": 2101343,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-20T12:02:15.948Z",
+          "currentEndAt": "2026-04-18T11:00:19.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:05:45.573Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-20T12:02:15.948Z",
+          "currentEndAt": "2026-06-13T09:46:58.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:05:49.024Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 19,
+      "userId": "1365989985",
+      "status": "active",
+      "localEndAt": "2026-06-20T15:56:48.508Z",
+      "email": "annahouse.studio@gmail.com",
+      "kwigaContactId": 2101178,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-20T15:56:48.508Z",
+          "currentEndAt": "2026-04-18T10:59:54.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:05:52.930Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-20T15:56:48.508Z",
+          "currentEndAt": "2026-04-19T17:46:37.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:05:56.233Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-20T15:56:48.508Z",
+          "currentEndAt": "2026-04-19T17:50:01.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:05:59.463Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-20T15:56:48.508Z",
+          "currentEndAt": "2026-04-19T17:52:50.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:06:02.886Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-20T15:56:48.508Z",
+          "currentEndAt": "2026-04-19T17:56:05.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:06:06.446Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 20,
+      "userId": "774191457",
+      "status": "active",
+      "localEndAt": "2026-06-20T16:54:33.551Z",
+      "email": "plastotm@gmail.com",
+      "kwigaContactId": 2162638,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-20T16:54:33.551Z",
+          "currentEndAt": "2026-05-20T14:28:55.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:06:10.570Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-20T16:54:33.551Z",
+          "currentEndAt": "2026-06-13T09:52:32.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:06:13.920Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 629522,
+          "targetEndAt": "2026-06-20T16:54:33.551Z",
+          "currentEndAt": null,
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:06:17.372Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 21,
+      "userId": "1136188565",
+      "status": "active",
+      "localEndAt": "2026-06-20T18:35:43.374Z",
+      "email": "vanbreda78@gmail.com",
+      "kwigaContactId": 2162647,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-20T18:35:43.374Z",
+          "currentEndAt": "2026-06-20T14:33:09.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:06:21.221Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 22,
+      "userId": "528706251",
+      "status": "active",
+      "localEndAt": "2026-06-20T20:19:24.195Z",
+      "email": "glasha194@gmail.com",
+      "kwigaContactId": 2100896,
+      "actions": [
+        {
+          "kind": "skip_no_offer",
+          "productId": 98371,
+          "productTitle": "MULTIMASKING (Українська версія)",
+          "targetEndAt": "2026-06-20T20:19:24.195Z",
+          "currentEndAt": null,
+          "note": "No offer_id found in product subscriptions"
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-20T20:19:24.195Z",
+          "currentEndAt": "2026-04-18T10:59:22.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:06:25.903Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-20T20:19:24.195Z",
+          "currentEndAt": "2026-04-19T17:46:24.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:06:29.293Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-20T20:19:24.195Z",
+          "currentEndAt": "2026-04-19T17:49:52.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:06:33.300Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-20T20:19:24.195Z",
+          "currentEndAt": "2026-04-19T17:52:43.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:06:37.390Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-20T20:19:24.195Z",
+          "currentEndAt": "2026-04-19T17:56:05.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:06:40.955Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 23,
+      "userId": "706216079",
+      "status": "active",
+      "localEndAt": "2026-06-20T20:19:25.679Z",
+      "email": "stefaniukliliana@gmail.com",
+      "kwigaContactId": 2100912,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-20T20:19:25.679Z",
+          "currentEndAt": "2026-04-18T10:59:23.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:06:45.010Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-20T20:19:25.679Z",
+          "currentEndAt": "2026-04-19T17:46:20.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:06:48.299Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-20T20:19:25.679Z",
+          "currentEndAt": "2026-04-19T17:49:55.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:06:51.580Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-20T20:19:25.679Z",
+          "currentEndAt": "2026-04-19T17:52:42.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:06:54.749Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-20T20:19:25.679Z",
+          "currentEndAt": "2026-04-19T17:56:04.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:06:58.365Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 24,
+      "userId": "962895492",
+      "status": "active",
+      "localEndAt": "2026-06-20T23:23:51.791Z",
+      "email": "natalizinoveva923@gmail.com",
+      "kwigaContactId": 2100876,
+      "actions": [
+        {
+          "kind": "skip_valid",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "targetEndAt": "2026-06-20T23:23:51.791Z",
+          "currentEndAt": "2026-06-26T11:54:35.000Z"
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-20T23:23:51.791Z",
+          "currentEndAt": "2026-06-19T17:46:18.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:07:02.234Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-20T23:23:51.791Z",
+          "currentEndAt": "2026-06-19T17:49:53.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:07:05.691Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-20T23:23:51.791Z",
+          "currentEndAt": "2026-06-19T17:52:41.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:07:08.865Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-20T23:23:51.791Z",
+          "currentEndAt": "2026-06-19T17:55:56.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:07:12.026Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 25,
+      "userId": "2060624091",
+      "status": "active",
+      "localEndAt": "2026-06-21T04:05:30.778Z",
+      "email": "nn8395748@gmail.com",
+      "kwigaContactId": 2101089,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-21T04:05:30.778Z",
+          "currentEndAt": "2026-04-18T10:59:44.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:07:16.036Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-21T04:05:30.778Z",
+          "currentEndAt": "2026-04-19T17:46:27.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:07:19.461Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-21T04:05:30.778Z",
+          "currentEndAt": "2026-04-19T17:50:02.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:07:22.740Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 26,
+      "userId": "649590002",
+      "status": "active",
+      "localEndAt": "2026-06-21T04:45:49.879Z",
+      "email": "parfenovalarisa6@gmail.com",
+      "kwigaContactId": 2100838,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-21T04:45:49.879Z",
+          "currentEndAt": "2026-04-18T10:59:16.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:07:26.727Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-21T04:45:49.879Z",
+          "currentEndAt": "2026-04-19T17:46:20.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:07:30.331Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-21T04:45:49.879Z",
+          "currentEndAt": "2026-04-19T17:49:55.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:07:33.554Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-21T04:45:49.879Z",
+          "currentEndAt": "2026-04-19T17:52:37.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:07:36.765Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-21T04:45:49.879Z",
+          "currentEndAt": "2026-04-19T17:55:58.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:07:39.923Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 27,
+      "userId": "1662832948",
+      "status": "active",
+      "localEndAt": "2026-06-21T07:35:56.638Z",
+      "email": "parhisenko1980@gmail.com",
+      "kwigaContactId": 2037632,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 522033,
+          "targetEndAt": "2026-06-21T07:35:56.638Z",
+          "currentEndAt": "2026-03-28T09:39:00.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:07:44.739Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-21T07:35:56.638Z",
+          "currentEndAt": "2026-06-13T09:45:29.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:07:48.163Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 28,
+      "userId": "604478955",
+      "status": "active",
+      "localEndAt": "2026-06-21T07:41:30.481Z",
+      "email": "ksu10111975@gmail.com",
+      "kwigaContactId": 2101653,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-21T07:41:30.481Z",
+          "currentEndAt": "2026-04-18T11:01:04.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:07:53.011Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-21T07:41:30.481Z",
+          "currentEndAt": "2026-04-19T17:46:47.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:07:56.735Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 29,
+      "userId": "1518400584",
+      "status": "active",
+      "localEndAt": "2026-06-21T09:13:44.009Z",
+      "email": "victoria.pererva@yahoo.de",
+      "kwigaContactId": 2037676,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 522082,
+          "targetEndAt": "2026-06-21T09:13:44.009Z",
+          "currentEndAt": "2026-04-16T08:36:00.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:00.304Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 526807,
+          "targetEndAt": "2026-06-21T09:13:44.009Z",
+          "currentEndAt": null,
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:03.392Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99850,
+          "productTitle": "Інтенсив про целюліт (Українська версія)",
+          "offerId": 553684,
+          "targetEndAt": "2026-06-21T09:13:44.009Z",
+          "currentEndAt": "2026-04-20T09:09:00.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:06.680Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 30,
+      "userId": "486310510",
+      "status": "active",
+      "localEndAt": "2026-06-21T10:07:16.727Z",
+      "email": "miss.anuta2017@gmail.com",
+      "kwigaContactId": 2101509,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-21T10:07:16.727Z",
+          "currentEndAt": "2026-04-18T11:00:43.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:10.255Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-21T10:07:16.727Z",
+          "currentEndAt": "2026-04-19T17:46:50.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:13.497Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-21T10:07:16.727Z",
+          "currentEndAt": "2026-04-19T17:50:16.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:16.953Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-21T10:07:16.727Z",
+          "currentEndAt": "2026-04-19T17:52:52.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:20.434Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-21T10:07:16.727Z",
+          "currentEndAt": "2026-04-19T17:56:24.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:23.683Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 31,
+      "userId": "790490445",
+      "status": "active",
+      "localEndAt": "2026-06-21T10:42:13.901Z",
+      "email": "ushatyuk@ukr.net",
+      "kwigaContactId": 2101392,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-21T10:42:13.901Z",
+          "currentEndAt": "2026-04-18T11:00:25.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:27.749Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-21T10:42:13.901Z",
+          "currentEndAt": "2026-04-19T17:46:38.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:30.992Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-21T10:42:13.901Z",
+          "currentEndAt": "2026-04-19T17:50:14.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:34.214Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-21T10:42:13.901Z",
+          "currentEndAt": "2026-04-19T17:52:48.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:37.602Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-21T10:42:13.901Z",
+          "currentEndAt": "2026-04-19T17:56:15.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:41.127Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 32,
+      "userId": "1135131993",
+      "status": "active",
+      "localEndAt": "2026-06-21T10:55:07.567Z",
+      "email": "starinkasveta@gmail.com",
+      "kwigaContactId": 2101514,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-21T10:55:07.567Z",
+          "currentEndAt": "2026-04-18T11:00:44.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:45.121Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-21T10:55:07.567Z",
+          "currentEndAt": "2026-04-19T17:46:44.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:48.359Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-21T10:55:07.567Z",
+          "currentEndAt": "2026-04-19T17:50:08.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:51.990Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-21T10:55:07.567Z",
+          "currentEndAt": "2026-04-19T17:52:56.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:55.250Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-21T10:55:07.567Z",
+          "currentEndAt": "2026-04-19T17:56:14.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:08:58.629Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 33,
+      "userId": "578866602",
+      "status": "active",
+      "localEndAt": "2026-06-21T13:17:14.405Z",
+      "email": "maldiivabali@gmail.com",
+      "kwigaContactId": 2104104,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-21T13:17:14.405Z",
+          "currentEndAt": "2026-04-19T17:46:40.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:09:03.522Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-21T13:17:14.405Z",
+          "currentEndAt": "2026-04-19T17:50:10.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:09:07.254Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-21T13:17:14.405Z",
+          "currentEndAt": "2026-04-19T17:52:48.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:09:10.482Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-21T13:17:14.405Z",
+          "currentEndAt": "2026-04-19T17:56:12.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:09:13.746Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 34,
+      "userId": "791347419",
+      "status": "active",
+      "localEndAt": "2026-06-21T13:31:03.369Z",
+      "email": "alisha069@gmail.com",
+      "kwigaContactId": 2100850,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-21T13:31:03.369Z",
+          "currentEndAt": "2026-04-18T10:59:17.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:09:17.626Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-21T13:31:03.369Z",
+          "currentEndAt": "2026-04-19T17:46:15.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:09:20.933Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-21T13:31:03.369Z",
+          "currentEndAt": "2026-04-19T17:49:52.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:09:24.148Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-21T13:31:03.369Z",
+          "currentEndAt": "2026-04-19T17:52:37.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:09:27.674Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-21T13:31:03.369Z",
+          "currentEndAt": "2026-04-19T17:55:57.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:09:31.265Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 35,
+      "userId": "7051742313",
+      "status": "active",
+      "localEndAt": "2026-06-21T13:33:08.342Z",
+      "email": "kseniazoloto777@gmail.com",
+      "kwigaContactId": 2101130,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-21T13:33:08.342Z",
+          "currentEndAt": "2026-04-18T10:59:48.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:09:35.478Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-21T13:33:08.342Z",
+          "currentEndAt": "2026-04-19T17:46:30.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:09:39.037Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-21T13:33:08.342Z",
+          "currentEndAt": "2026-04-19T17:50:02.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:09:42.435Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-21T13:33:08.342Z",
+          "currentEndAt": "2026-04-19T17:52:46.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:09:45.904Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-21T13:33:08.342Z",
+          "currentEndAt": "2026-04-19T17:56:10.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:09:49.420Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 36,
+      "userId": "683874298",
+      "status": "active",
+      "localEndAt": "2026-06-21T15:42:59.654Z",
+      "email": "burlakovaolena16@gmail.com",
+      "kwigaContactId": 2063988,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 525611,
+          "targetEndAt": "2026-06-21T15:42:59.654Z",
+          "currentEndAt": "2026-04-04T08:33:00.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:09:53.661Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-21T15:42:59.654Z",
+          "currentEndAt": "2026-06-13T09:57:04.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:09:56.935Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99850,
+          "productTitle": "Інтенсив про целюліт (Українська версія)",
+          "offerId": 620928,
+          "targetEndAt": "2026-06-21T15:42:59.654Z",
+          "currentEndAt": null,
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:10:00.426Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 37,
+      "userId": "934938924",
+      "status": "active",
+      "localEndAt": "2026-06-21T17:44:33.837Z",
+      "email": "djurainna@gmail.com",
+      "kwigaContactId": 2101099,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-21T17:44:33.837Z",
+          "currentEndAt": "2026-04-18T10:59:45.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:10:04.207Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-21T17:44:33.837Z",
+          "currentEndAt": "2026-04-19T17:46:32.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:10:07.510Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-21T17:44:33.837Z",
+          "currentEndAt": "2026-04-19T17:49:56.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:10:10.906Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-21T17:44:33.837Z",
+          "currentEndAt": "2026-04-19T17:52:41.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:10:15.067Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-21T17:44:33.837Z",
+          "currentEndAt": "2026-04-19T17:56:04.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:10:19.141Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 38,
+      "userId": "182148168",
+      "status": "active",
+      "localEndAt": "2026-06-22T07:42:15.181Z",
+      "email": "inna145@gmail.com",
+      "kwigaContactId": 2100844,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-22T07:42:15.181Z",
+          "currentEndAt": "2026-04-18T10:59:17.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:10:24.982Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-22T07:42:15.181Z",
+          "currentEndAt": "2026-04-19T17:46:17.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:10:28.936Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-22T07:42:15.181Z",
+          "currentEndAt": "2026-04-19T17:49:49.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:10:32.495Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-22T07:42:15.181Z",
+          "currentEndAt": "2026-04-19T17:56:01.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:10:35.776Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 39,
+      "userId": "331429571",
+      "status": "active",
+      "localEndAt": "2026-06-22T08:48:50.894Z",
+      "email": "shokolaka386@gmail.com",
+      "kwigaContactId": 2100881,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-22T08:48:50.894Z",
+          "currentEndAt": "2026-04-18T10:59:20.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:10:39.890Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-22T08:48:50.894Z",
+          "currentEndAt": "2026-04-19T17:46:23.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:10:43.218Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-22T08:48:50.894Z",
+          "currentEndAt": "2026-04-19T17:49:59.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:10:46.832Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-22T08:48:50.894Z",
+          "currentEndAt": "2026-04-19T17:52:42.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:10:50.109Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-22T08:48:50.894Z",
+          "currentEndAt": "2026-04-19T17:56:04.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:10:53.698Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 40,
+      "userId": "480356214",
+      "status": "active",
+      "localEndAt": "2026-06-22T09:13:56.018Z",
+      "email": "malanchyklo@ukr.net",
+      "kwigaContactId": 2101643,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-22T09:13:56.018Z",
+          "currentEndAt": "2026-04-18T11:01:02.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:10:57.733Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-22T09:13:56.018Z",
+          "currentEndAt": "2026-04-19T17:46:52.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:11:00.864Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 41,
+      "userId": "747828216",
+      "status": "active",
+      "localEndAt": "2026-06-22T11:08:50.731Z",
+      "email": "katalinaa1991@gmail.com",
+      "kwigaContactId": 2101295,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-22T11:08:50.731Z",
+          "currentEndAt": "2026-04-18T11:00:12.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:11:04.677Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-22T11:08:50.731Z",
+          "currentEndAt": "2026-04-19T17:46:42.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:11:08.114Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-22T11:08:50.731Z",
+          "currentEndAt": "2026-04-19T17:50:03.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:11:11.554Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-22T11:08:50.731Z",
+          "currentEndAt": "2026-04-19T17:52:46.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:11:14.825Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-22T11:08:50.731Z",
+          "currentEndAt": "2026-04-19T17:56:15.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:11:18.363Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 42,
+      "userId": "521815662",
+      "status": "active",
+      "localEndAt": "2026-06-22T17:05:13.469Z",
+      "email": "sofiavoznenko@gmail.com",
+      "kwigaContactId": 2101558,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-22T17:05:13.469Z",
+          "currentEndAt": "2026-04-18T11:00:50.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:11:22.282Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-22T17:05:13.469Z",
+          "currentEndAt": "2026-04-19T17:46:54.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:11:25.819Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-22T17:05:13.469Z",
+          "currentEndAt": "2026-04-19T17:50:12.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:11:29.002Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-22T17:05:13.469Z",
+          "currentEndAt": "2026-04-19T17:52:57.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:11:32.788Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-22T17:05:13.469Z",
+          "currentEndAt": "2026-04-19T17:56:20.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:11:36.631Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 43,
+      "userId": "1383794250",
+      "status": "active",
+      "localEndAt": "2026-06-22T17:19:18.260Z",
+      "email": "marina_ivanischeva@ukr.net",
+      "kwigaContactId": 2037641,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 522061,
+          "targetEndAt": "2026-06-22T17:19:18.260Z",
+          "currentEndAt": "2026-03-28T09:39:00.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:11:41.304Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 44,
+      "userId": "8713796845",
+      "status": "active",
+      "localEndAt": "2026-06-23T04:45:22.240Z",
+      "email": "svetik30g@gmail.com",
+      "kwigaContactId": 2100880,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-23T04:45:22.240Z",
+          "currentEndAt": "2026-04-18T10:59:20.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:11:45.507Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-23T04:45:22.240Z",
+          "currentEndAt": "2026-04-19T17:46:17.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:11:48.928Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-23T04:45:22.240Z",
+          "currentEndAt": "2026-04-19T17:49:53.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:11:52.314Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-23T04:45:22.240Z",
+          "currentEndAt": "2026-04-19T17:52:35.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:11:55.719Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-23T04:45:22.240Z",
+          "currentEndAt": "2026-04-19T17:55:57.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:11:59.234Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 45,
+      "userId": "7537783591",
+      "status": "active",
+      "localEndAt": "2026-06-23T05:04:13.186Z",
+      "email": "mrnshutenko89@gmail.com",
+      "kwigaContactId": 2101064,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-23T05:04:13.186Z",
+          "currentEndAt": "2026-04-18T10:59:41.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:12:03.050Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-23T05:04:13.186Z",
+          "currentEndAt": "2026-04-19T17:46:25.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:12:06.403Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-23T05:04:13.186Z",
+          "currentEndAt": "2026-04-19T17:50:00.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:12:09.801Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-23T05:04:13.186Z",
+          "currentEndAt": "2026-04-19T17:52:46.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:12:13.366Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-23T05:04:13.186Z",
+          "currentEndAt": "2026-04-19T17:56:09.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:12:16.810Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 46,
+      "userId": "734104287",
+      "status": "active",
+      "localEndAt": "2026-06-23T07:13:40.956Z",
+      "email": "nkasyanova80@gmail.com",
+      "kwigaContactId": 2101132,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-23T07:13:40.956Z",
+          "currentEndAt": "2026-04-18T10:59:48.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:12:21.151Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-23T07:13:40.956Z",
+          "currentEndAt": "2026-04-19T17:46:31.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:12:24.483Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-23T07:13:40.956Z",
+          "currentEndAt": "2026-04-19T17:49:58.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:12:27.897Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-23T07:13:40.956Z",
+          "currentEndAt": "2026-04-19T17:52:42.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:12:31.100Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-23T07:13:40.956Z",
+          "currentEndAt": "2026-04-19T17:56:05.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:12:34.649Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 47,
+      "userId": "297098152",
+      "status": "active",
+      "localEndAt": "2026-06-24T05:27:49.395Z",
+      "email": "iradchenko66@gmail.com",
+      "kwigaContactId": 2101478,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-24T05:27:49.395Z",
+          "currentEndAt": "2026-04-18T11:00:38.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:12:38.968Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-24T05:27:49.395Z",
+          "currentEndAt": "2026-04-19T17:46:51.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:12:42.346Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-24T05:27:49.395Z",
+          "currentEndAt": "2026-04-19T17:50:12.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:12:45.623Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-24T05:27:49.395Z",
+          "currentEndAt": "2026-04-19T17:52:58.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:12:49.114Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-24T05:27:49.395Z",
+          "currentEndAt": "2026-04-19T17:56:18.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:12:53.152Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 48,
+      "userId": "843148738",
+      "status": "active",
+      "localEndAt": "2026-06-24T12:56:16.307Z",
+      "email": "kleors@ukr.net",
+      "kwigaContactId": 2101431,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-24T12:56:16.307Z",
+          "currentEndAt": "2026-04-18T11:00:32.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:12:58.911Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-24T12:56:16.307Z",
+          "currentEndAt": "2026-04-19T17:46:47.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:13:02.419Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 49,
+      "userId": "5559803223",
+      "status": "active",
+      "localEndAt": "2026-06-24T14:54:21.750Z",
+      "email": "krylovych.viktoria@gmail.com",
+      "kwigaContactId": 2101678,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-24T14:54:21.750Z",
+          "currentEndAt": "2026-04-18T11:01:10.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:13:06.094Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-24T14:54:21.750Z",
+          "currentEndAt": "2026-04-19T17:46:57.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:13:09.383Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-24T14:54:21.750Z",
+          "currentEndAt": "2026-04-19T17:56:23.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:13:12.456Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 50,
+      "userId": "5441728045",
+      "status": "active",
+      "localEndAt": "2026-06-24T18:53:15.590Z",
+      "email": "alena.demyan2015@gmail.com",
+      "kwigaContactId": 2101430,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-24T18:53:15.590Z",
+          "currentEndAt": "2026-06-18T11:00:32.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:13:16.208Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-24T18:53:15.590Z",
+          "currentEndAt": "2026-06-19T17:46:55.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:13:19.425Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 51,
+      "userId": "892660913",
+      "status": "active",
+      "localEndAt": "2026-06-24T19:22:17.856Z",
+      "email": "swetlanavx@gmail.com",
+      "kwigaContactId": 2101676,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-24T19:22:17.856Z",
+          "currentEndAt": "2026-04-18T11:01:09.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:13:22.987Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 52,
+      "userId": "601989511",
+      "status": "active",
+      "localEndAt": "2026-06-24T19:23:08.493Z",
+      "email": "marinnelly@ukr.net",
+      "kwigaContactId": 2101285,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-24T19:23:08.493Z",
+          "currentEndAt": "2026-04-18T11:00:10.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:13:26.617Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-24T19:23:08.493Z",
+          "currentEndAt": "2026-04-19T17:46:35.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:13:30.075Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-24T19:23:08.493Z",
+          "currentEndAt": "2026-04-19T17:50:07.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:13:33.221Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-24T19:23:08.493Z",
+          "currentEndAt": "2026-04-19T17:52:46.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:13:36.414Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-24T19:23:08.493Z",
+          "currentEndAt": "2026-04-19T17:56:10.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:13:39.862Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 53,
+      "userId": "5535832299",
+      "status": "active",
+      "localEndAt": "2026-06-24T23:40:15.659Z",
+      "email": "kovalinna1310@gmail.com",
+      "kwigaContactId": 2101608,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-24T23:40:15.659Z",
+          "currentEndAt": "2026-04-18T11:00:57.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:13:43.780Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-24T23:40:15.659Z",
+          "currentEndAt": "2026-04-19T17:46:48.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:13:47.246Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 548427,
+          "targetEndAt": "2026-06-24T23:40:15.659Z",
+          "currentEndAt": "2026-04-19T17:50:14.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:13:50.494Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-24T23:40:15.659Z",
+          "currentEndAt": "2026-04-19T17:52:57.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:13:53.970Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-24T23:40:15.659Z",
+          "currentEndAt": "2026-04-19T17:56:25.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:13:57.614Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 54,
+      "userId": "998027068",
+      "status": "active",
+      "localEndAt": "2026-06-25T06:57:10.310Z",
+      "email": "maydanyuk13@ukr.net",
+      "kwigaContactId": 2101316,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-25T06:57:10.310Z",
+          "currentEndAt": "2026-04-18T11:00:15.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:14:01.669Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 98420,
+          "productTitle": "Multimasking Методологія (Українська версія)",
+          "offerId": 548419,
+          "targetEndAt": "2026-06-25T06:57:10.310Z",
+          "currentEndAt": "2026-04-19T17:46:38.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:14:05.012Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99760,
+          "productTitle": "Miltimasking PRO Адреналіновий тип фігури (Українська версія)",
+          "offerId": 555606,
+          "targetEndAt": "2026-06-25T06:57:10.310Z",
+          "currentEndAt": "2026-04-23T19:40:00.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:14:08.828Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99761,
+          "productTitle": "Multimasking PRO Щитоподібний тип фігури (Українська версія)",
+          "offerId": 548441,
+          "targetEndAt": "2026-06-25T06:57:10.310Z",
+          "currentEndAt": "2026-05-16T10:28:41.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:14:12.429Z)."
+        },
+        {
+          "kind": "grant_offer",
+          "productId": 99762,
+          "productTitle": "Multimasking PRO Яєчниковий тип фігури (Українська версія)",
+          "offerId": 548456,
+          "targetEndAt": "2026-06-25T06:57:10.310Z",
+          "currentEndAt": "2026-04-19T17:56:12.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:14:16.650Z)."
+        }
+      ]
+    },
+    {
+      "userSubscriptionId": 55,
+      "userId": "519728442",
+      "status": "active",
+      "localEndAt": "2026-06-25T10:18:52.432Z",
+      "email": "anet708@ukr.net",
+      "kwigaContactId": 2162642,
+      "actions": [
+        {
+          "kind": "grant_offer",
+          "productId": 98251,
+          "productTitle": "Multimasking Базовий (Українська версія)",
+          "offerId": 548416,
+          "targetEndAt": "2026-06-25T10:18:52.432Z",
+          "currentEndAt": "2026-06-20T14:30:33.000Z",
+          "note": "Exact target date cannot be set via API; offer-based grant used (fallback intent: 2026-06-26T14:14:21.454Z)."
+        }
+      ]
+    }
+  ]
+}
