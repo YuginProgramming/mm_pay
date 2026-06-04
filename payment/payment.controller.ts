@@ -13,6 +13,12 @@ import {
 } from "./payment.service";
 import { notifyTerminalPaymentFailureIfFirstTime } from "./payment-failure-notify";
 import { processApprovedMultimaskingPayment } from "./grant-multimasking-access";
+import { SubscriptionPaymentOrder } from "../database/SubscriptionPaymentOrder";
+import { SubscriptionPlan } from "../database/SubscriptionPlan";
+import {
+  handleTestAutoApprovedPayment,
+  isTestAutoSubscriptionPlanCode,
+} from "./testauto-webhook.service";
 import { gateMultimaskingCheckoutForTelegramId } from "./multimasking-checkout-eligibility";
 import { MULTIMASKING_PRODUCT_NAME } from "./multimasking-product";
 import { logPaymentEvent } from "./payment-events";
@@ -95,8 +101,11 @@ const handleWayForPayWebhook = async (
       return;
     }
 
+    let subscriptionResolve: Awaited<
+      ReturnType<typeof reconcileSubscriptionOrderFromWebhook>
+    > = { handled: false, reason: "order_not_found" };
     try {
-      const subscriptionResolve = await reconcileSubscriptionOrderFromWebhook(data);
+      subscriptionResolve = await reconcileSubscriptionOrderFromWebhook(data);
       if (subscriptionResolve.handled) {
         console.log("[subscription] webhook resolved", {
           orderReference: subscriptionResolve.orderReference,
@@ -126,7 +135,25 @@ const handleWayForPayWebhook = async (
       metadata.courseName === MULTIMASKING_PRODUCT_NAME
     ) {
       try {
-        await processApprovedMultimaskingPayment(data, metadata);
+        const subOrder = await SubscriptionPaymentOrder.findOne({
+          where: { orderReference: data.orderReference },
+        });
+        const plan =
+          subOrder != null
+            ? await SubscriptionPlan.findByPk(subOrder.planId, { attributes: ["code"] })
+            : null;
+
+        if (
+          subOrder &&
+          plan &&
+          isTestAutoSubscriptionPlanCode(plan.code) &&
+          subscriptionResolve.handled &&
+          subscriptionResolve.status === "approved"
+        ) {
+          await handleTestAutoApprovedPayment(data, metadata, subOrder, subOrder.planId);
+        } else {
+          await processApprovedMultimaskingPayment(data, metadata);
+        }
       } catch (grantErr) {
         console.error("[payment] grant after approval failed:", grantErr);
       }

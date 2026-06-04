@@ -65,6 +65,13 @@ function formatDaysDurationUa(n: number): string {
   return `${n} днів`;
 }
 
+export type MultimaskingGrantOptions = {
+  /** Override `paid_chat_access_days` (e.g. `/testauto` uses test period). */
+  accessDays?: number;
+  /** If set, send this text instead of the standard success message with group links. */
+  successMessageText?: string;
+};
+
 /**
  * Після верифікації підпису webhook: запис у БД (термін — `app_settings.paid_chat_access_days`) + повідомлення в чат.
  * Ідемпотентно за payload.orderReference.
@@ -72,6 +79,7 @@ function formatDaysDurationUa(n: number): string {
 export async function processApprovedMultimaskingPayment(
   payload: WayForPayWebhookPayload,
   metadata: PaymentMetadata,
+  options?: MultimaskingGrantOptions,
 ): Promise<void> {
   const orderReference = payload.orderReference;
   const chatId = metadata.chatId.trim();
@@ -183,7 +191,10 @@ export async function processApprovedMultimaskingPayment(
     return;
   }
 
-  const accessDays = await getPaidChatAccessDays();
+  const accessDays =
+    options?.accessDays != null && options.accessDays >= 1
+      ? Math.floor(options.accessDays)
+      : await getPaidChatAccessDays();
   const startAt = new Date();
   const endAt = new Date(startAt);
   endAt.setUTCDate(endAt.getUTCDate() + accessDays);
@@ -208,7 +219,9 @@ export async function processApprovedMultimaskingPayment(
       startAt,
       endAt,
       paidAt: new Date(),
-      subscriptionStateTitle: `Оплата WayForPay · ${formatDaysDurationUa(accessDays)}`,
+      subscriptionStateTitle: options?.accessDays
+        ? `Тест /testauto · ${formatDaysDurationUa(accessDays)}`
+        : `Оплата WayForPay · ${formatDaysDurationUa(accessDays)}`,
       countAvailableDays: accessDays,
       countLeftDays: null,
       orderId: null,
@@ -243,6 +256,11 @@ export async function processApprovedMultimaskingPayment(
     candidateRank: postGrantSnapshot.candidateRank,
     accessRowCount: postGrantSnapshot.accessRowCount,
   });
+
+  if (options?.successMessageText) {
+    await sendTelegramBotMessage(chatId, options.successMessageText);
+    return;
+  }
 
   const commonHead =
     "Вітаємо! Ви здійснили оплату у розмірі " +

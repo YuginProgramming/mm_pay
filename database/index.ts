@@ -14,6 +14,7 @@ import { SubscriptionRenewalReminderLog } from "./SubscriptionRenewalReminderLog
 import { TelegramUser } from "./TelegramUser";
 import { UserSubscription } from "./UserSubscription";
 import { WayforpayPendingNotice } from "./WayforpayPendingNotice";
+import { YearlyAutoRenewSubscription } from "./YearlyAutoRenewSubscription";
 
 export { defineAssociations } from "./associations";
 export { APP_SETTING_KEYS, type AppSettingKey } from "./app-setting-keys";
@@ -41,6 +42,7 @@ export {
   TelegramUser,
   UserSubscription,
   WayforpayPendingNotice,
+  YearlyAutoRenewSubscription,
 };
 export * from "./access-queries";
 export const models = {
@@ -60,4 +62,5 @@ export const models = {
   TelegramUser,
   UserSubscription,
   WayforpayPendingNotice,
+  YearlyAutoRenewSubscription,
 };

@@ -46,3 +46,7 @@ const createInvoice = async (input: CreateInvoiceInput): Promise<{ invoiceUrl: s
 };
 
 export { wfp, createInvoice };
+export {
+  createWayforpayInvoiceWithRegular,
+  formatWayforpayDateNextUtc,
+} from "./wayforpay-invoice";

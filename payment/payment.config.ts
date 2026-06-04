@@ -7,6 +7,12 @@ type PaymentConfig = {
   isProduction: boolean;
 };
 
+/** Cabinet MERCHANT PASSWORD — `regularApi` (STATUS / REMOVE). Optional until recurring ops used. */
+export function getWayforpayMerchantPassword(): string | null {
+  const value = process.env.WFP_MERCHANT_PASSWORD?.trim();
+  return value ? value : null;
+}
+
 const requireEnv = (name: string): string => {
   const value = process.env[name];
   if (!value || value.trim() === "") {

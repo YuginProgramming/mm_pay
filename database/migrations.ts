@@ -702,6 +702,89 @@ async function seedSubscriptionMonthlyPlan(): Promise<void> {
   console.log("Migration completed: subscription_plans seed monthly_1m.");
 }
 
+async function seedSubscriptionTestPlan(): Promise<void> {
+  await sequelize.query(`
+    INSERT INTO subscription_plans (
+      code,
+      title,
+      duration_days,
+      price,
+      currency,
+      is_active
+    )
+    VALUES (
+      'yearly_12m_test',
+      'Тест автопродовження (/testauto)',
+      1,
+      5.00,
+      'UAH',
+      true
+    )
+    ON CONFLICT (code) DO NOTHING;
+  `);
+  console.log("Migration completed: subscription_plans seed yearly_12m_test.");
+}
+
+async function seedYearlySubscriptionTestSettings(): Promise<void> {
+  await sequelize.query(`
+    INSERT INTO app_settings (setting_key, setting_value, description_uk)
+    VALUES
+      (
+        'yearly_subscription_test_price_uah',
+        '5',
+        'Сума тестового автоплатежу /testauto, грн'
+      ),
+      (
+        'yearly_subscription_test_period_days',
+        '1',
+        'Днів доступу після тестової оплати /testauto'
+      ),
+      (
+        'yearly_subscription_test_regular_mode',
+        'daily',
+        'WayForPay regularMode для /testauto (швидке повторне списання)'
+      )
+    ON CONFLICT (setting_key) DO NOTHING;
+  `);
+  console.log(
+    "Migration completed: yearly subscription test app_settings seed (if missing).",
+  );
+}
+
+async function createYearlyAutoRenewSubscriptionsTable(): Promise<void> {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS yearly_auto_renew_subscriptions (
+      id                                  SERIAL PRIMARY KEY,
+      user_id                             VARCHAR(64) NOT NULL,
+      plan_id                             INTEGER NOT NULL REFERENCES subscription_plans(id) ON DELETE RESTRICT,
+      wayforpay_recurring_order_reference VARCHAR(128),
+      payment_token                       TEXT,
+      auto_renew_enabled                  BOOLEAN NOT NULL DEFAULT true,
+      next_charge_at                      TIMESTAMPTZ,
+      last_charge_status                  VARCHAR(32),
+      cancelled_at                        TIMESTAMPTZ,
+      created_at                          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at                          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS yearly_auto_renew_subscriptions_user_id_idx
+      ON yearly_auto_renew_subscriptions (user_id);
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS yearly_auto_renew_subscriptions_renew_schedule_idx
+      ON yearly_auto_renew_subscriptions (auto_renew_enabled, next_charge_at);
+  `);
+  await sequelize.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS yearly_auto_renew_subscriptions_wfp_order_ref_uq
+      ON yearly_auto_renew_subscriptions (wayforpay_recurring_order_reference)
+      WHERE wayforpay_recurring_order_reference IS NOT NULL;
+  `);
+  console.log(
+    "Migration completed: yearly_auto_renew_subscriptions table (if missing).",
+  );
+}
+
 async function addConsultationCaseDisplayNameColumn(): Promise<void> {
   await sequelize.query(`
     ALTER TABLE consultation_cases
@@ -767,6 +850,9 @@ async function runMigrations(): Promise<void> {
     await addSubscriptionPaymentOrderCheckoutUrlColumn();
     await createSubscriptionRenewalReminderLogTable();
     await seedSubscriptionMonthlyPlan();
+    await seedSubscriptionTestPlan();
+    await seedYearlySubscriptionTestSettings();
+    await createYearlyAutoRenewSubscriptionsTable();
     await createPaidChatJanitorAlertLogTable();
     await createPaidChatMemberStateTable();
     await seedPaidChatJanitorIntervalSetting();

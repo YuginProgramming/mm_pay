@@ -3,6 +3,7 @@ import { ContactProductAccess } from "./ContactProductAccess";
 import { KwigaProduct } from "./KwigaProduct";
 import { SubscriptionPlan } from "./SubscriptionPlan";
 import { UserSubscription } from "./UserSubscription";
+import { YearlyAutoRenewSubscription } from "./YearlyAutoRenewSubscription";
 
 export function defineAssociations(): void {
   Contact.hasMany(ContactProductAccess, {
@@ -28,6 +29,15 @@ export function defineAssociations(): void {
     as: "subscriptions",
   });
   UserSubscription.belongsTo(SubscriptionPlan, {
+    foreignKey: "plan_id",
+    as: "plan",
+  });
+
+  SubscriptionPlan.hasMany(YearlyAutoRenewSubscription, {
+    foreignKey: "plan_id",
+    as: "yearlyAutoRenewSubscriptions",
+  });
+  YearlyAutoRenewSubscription.belongsTo(SubscriptionPlan, {
     foreignKey: "plan_id",
     as: "plan",
   });

@@ -25,6 +25,8 @@ export type WayForPayWebhookPayload = {
   reasonCode: number | string;
   /** Invoice payment notifications often omit this; use pending order map instead. */
   products?: ProductLine[];
+  /** Card token for recurring payments (WayForPay webhook). */
+  recToken?: string;
 };
 
 export type PaymentMetadata = {
