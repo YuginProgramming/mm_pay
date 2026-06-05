@@ -66,10 +66,12 @@ function formatDaysDurationUa(n: number): string {
 }
 
 export type MultimaskingGrantOptions = {
-  /** Override `paid_chat_access_days` (e.g. `/testauto` uses test period). */
+  /** Override `paid_chat_access_days` (e.g. subscription auto flow). */
   accessDays?: number;
   /** If set, send this text instead of the standard success message with group links. */
   successMessageText?: string;
+  /** Override `subscriptionStateTitle` snapshot in contact_product_access. */
+  subscriptionStateLabel?: string;
 };
 
 /**
@@ -219,9 +221,11 @@ export async function processApprovedMultimaskingPayment(
       startAt,
       endAt,
       paidAt: new Date(),
-      subscriptionStateTitle: options?.accessDays
-        ? `Тест /testauto · ${formatDaysDurationUa(accessDays)}`
-        : `Оплата WayForPay · ${formatDaysDurationUa(accessDays)}`,
+      subscriptionStateTitle:
+        options?.subscriptionStateLabel ??
+        (options?.accessDays
+          ? `Автопродовження · ${formatDaysDurationUa(accessDays)}`
+          : `Оплата WayForPay · ${formatDaysDurationUa(accessDays)}`),
       countAvailableDays: accessDays,
       countLeftDays: null,
       orderId: null,

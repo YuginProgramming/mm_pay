@@ -3,19 +3,21 @@ import { literal, Op } from "sequelize";
 import { SubscriptionPaymentOrder } from "../database/SubscriptionPaymentOrder";
 import { SubscriptionPlan } from "../database/SubscriptionPlan";
 import { MULTIMASKING_PRODUCT_NAME } from "./multimasking-product";
+import { putPendingOrder, takePendingOrder } from "./pending-orders";
 import {
+  createWayforpayPurchaseWithRegular,
   formatWayforpayDateNextUtc,
-  createWayforpayInvoiceWithRegular,
-} from "./wayforpay-invoice";
+} from "./wayforpay-purchase";
 import {
-  getYearlySubscriptionTestPriceUah,
-  getYearlySubscriptionTestRegularMode,
-  YEARLY_SUBSCRIPTION_TEST_PLAN_CODE,
-} from "./yearly-subscription-test-settings";
+  getSubscriptionAutoPriceUah,
+  getSubscriptionAutoRegularCount,
+  getSubscriptionAutoRegularMode,
+  SUBSCRIPTION_AUTO_PLAN_CODE,
+} from "./subscription-auto-settings";
 
 const ACTIVE_ORDER_STATUSES = ["created", "pending", "processing", "suspended"];
 
-export type TestAutoRenewCheckoutResult =
+export type SubscriptionAutoCheckoutResult =
   | {
       ok: true;
       reused: true;
@@ -39,18 +41,18 @@ export type TestAutoRenewCheckoutResult =
       orderReference?: string;
     };
 
-export async function createTestAutoRenewCheckout(
+export async function createSubscriptionAutoCheckout(
   userId: string,
   options?: { forceNew?: boolean },
-): Promise<TestAutoRenewCheckoutResult> {
+): Promise<SubscriptionAutoCheckoutResult> {
   const plan = await SubscriptionPlan.findOne({
-    where: { code: YEARLY_SUBSCRIPTION_TEST_PLAN_CODE, isActive: true },
+    where: { code: SUBSCRIPTION_AUTO_PLAN_CODE, isActive: true },
   });
   if (!plan) {
     return {
       ok: false,
       reason: "plan_not_found",
-      planCode: YEARLY_SUBSCRIPTION_TEST_PLAN_CODE,
+      planCode: SUBSCRIPTION_AUTO_PLAN_CODE,
     };
   }
 
@@ -97,49 +99,62 @@ export async function createTestAutoRenewCheckout(
     );
   }
 
-  const priceUah = await getYearlySubscriptionTestPriceUah();
-  const regularMode = await getYearlySubscriptionTestRegularMode();
+  const priceUah = await getSubscriptionAutoPriceUah();
+  const regularMode = await getSubscriptionAutoRegularMode();
+  const regularCount = await getSubscriptionAutoRegularCount();
   const orderReference = randomUUID();
 
-  const { invoiceUrl } = await createWayforpayInvoiceWithRegular({
-    orderReference,
-    courseName: MULTIMASKING_PRODUCT_NAME,
+  await putPendingOrder(orderReference, {
     chatId: userId,
-    price: priceUah,
-    regular: {
+    courseName: MULTIMASKING_PRODUCT_NAME,
+  });
+
+  try {
+    const { checkoutUrl } = await createWayforpayPurchaseWithRegular({
+      orderReference,
+      courseName: MULTIMASKING_PRODUCT_NAME,
+      chatId: userId,
+      price: priceUah,
+      regular: {
+        regularMode,
+        regularAmount: priceUah,
+        dateNext: formatWayforpayDateNextUtc(1),
+        regularBehavior: "preset",
+        regularOn: 1,
+        ...(regularCount != null ? { regularCount } : {}),
+      },
+    });
+
+    await SubscriptionPaymentOrder.create({
+      orderReference,
+      userId,
+      planId: plan.id,
+      status: "created",
+      amount: String(priceUah),
+      currency: plan.currency,
+      provider: "wayforpay",
+      checkoutUrl,
+      terminalAt: null,
+    });
+
+    console.log("[subscription-auto] purchase checkout created", {
+      userId,
+      orderReference,
+      priceUah,
       regularMode,
-      regularAmount: priceUah,
-      dateNext: formatWayforpayDateNextUtc(1),
-      regularBehavior: "preset",
-      regularOn: 1,
-    },
-  });
+      regularCount,
+    });
 
-  await SubscriptionPaymentOrder.create({
-    orderReference,
-    userId,
-    planId: plan.id,
-    status: "created",
-    amount: String(priceUah),
-    currency: plan.currency,
-    provider: "wayforpay",
-    checkoutUrl: invoiceUrl,
-    terminalAt: null,
-  });
-
-  console.log("[testauto] checkout created", {
-    userId,
-    orderReference,
-    priceUah,
-    regularMode,
-  });
-
-  return {
-    ok: true,
-    reused: false,
-    orderReference,
-    checkoutUrl: invoiceUrl,
-    planCode: plan.code,
-    priceUah,
-  };
+    return {
+      ok: true,
+      reused: false,
+      orderReference,
+      checkoutUrl,
+      planCode: plan.code,
+      priceUah,
+    };
+  } catch (err) {
+    await takePendingOrder(orderReference);
+    throw err;
+  }
 }

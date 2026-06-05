@@ -16,9 +16,9 @@ import { processApprovedMultimaskingPayment } from "./grant-multimasking-access"
 import { SubscriptionPaymentOrder } from "../database/SubscriptionPaymentOrder";
 import { SubscriptionPlan } from "../database/SubscriptionPlan";
 import {
-  handleTestAutoApprovedPayment,
-  isTestAutoSubscriptionPlanCode,
-} from "./testauto-webhook.service";
+  handleSubscriptionAutoApprovedPayment,
+  isSubscriptionAutoPlanCode,
+} from "./subscription-auto-webhook.service";
 import { gateMultimaskingCheckoutForTelegramId } from "./multimasking-checkout-eligibility";
 import { MULTIMASKING_PRODUCT_NAME } from "./multimasking-product";
 import { logPaymentEvent } from "./payment-events";
@@ -146,11 +146,11 @@ const handleWayForPayWebhook = async (
         if (
           subOrder &&
           plan &&
-          isTestAutoSubscriptionPlanCode(plan.code) &&
+          isSubscriptionAutoPlanCode(plan.code) &&
           subscriptionResolve.handled &&
           subscriptionResolve.status === "approved"
         ) {
-          await handleTestAutoApprovedPayment(data, metadata, subOrder, subOrder.planId);
+          await handleSubscriptionAutoApprovedPayment(data, metadata, subOrder, subOrder.planId);
         } else {
           await processApprovedMultimaskingPayment(data, metadata);
         }

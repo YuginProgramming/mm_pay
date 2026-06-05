@@ -45,12 +45,14 @@ export const APP_SETTING_KEYS = {
    */
   INLINE_MENU_INACTIVITY_TIMEOUT_SECONDS:
     "inline_menu_inactivity_timeout_seconds",
-  /** `/testauto`: сума тестового автоплатежу WayForPay, грн */
-  YEARLY_SUBSCRIPTION_TEST_PRICE_UAH: "yearly_subscription_test_price_uah",
-  /** `/testauto`: днів доступу після тестової оплати */
-  YEARLY_SUBSCRIPTION_TEST_PERIOD_DAYS: "yearly_subscription_test_period_days",
-  /** `/testauto`: WayForPay regularMode (напр. daily) */
-  YEARLY_SUBSCRIPTION_TEST_REGULAR_MODE: "yearly_subscription_test_regular_mode",
+  /** `/subauto`: сума Purchase з regular, грн */
+  SUBSCRIPTION_AUTO_PRICE_UAH: "subscription_auto_price_uah",
+  /** `/subauto`: днів доступу після кожної успішної оплати */
+  SUBSCRIPTION_AUTO_ACCESS_DAYS: "subscription_auto_access_days",
+  /** `/subauto`: WayForPay regularMode (напр. daily, monthly) */
+  SUBSCRIPTION_AUTO_REGULAR_MODE: "subscription_auto_regular_mode",
+  /** `/subauto`: кількість регулярних списань (regularCount) */
+  SUBSCRIPTION_AUTO_REGULAR_COUNT: "subscription_auto_regular_count",
 } as const;
 
 export type AppSettingKey =

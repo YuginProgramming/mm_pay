@@ -1,10 +1,10 @@
 import { Context, Markup, Telegraf } from "telegraf";
 import { gateMultimaskingCheckoutForTelegramId } from "../../payment/multimasking-checkout-eligibility";
-import { createTestAutoRenewCheckout } from "../../payment/testauto-checkout.service";
+import { createSubscriptionAutoCheckout } from "../../payment/subscription-auto-checkout.service";
 import {
-  getYearlySubscriptionTestPeriodDays,
-  getYearlySubscriptionTestPriceUah,
-} from "../../payment/yearly-subscription-test-settings";
+  getSubscriptionAutoAccessDays,
+  getSubscriptionAutoPriceUah,
+} from "../../payment/subscription-auto-settings";
 import { isPrivateChat } from "../core/chat-guards";
 import { StartContext, trackTelegramUser } from "../core/user-tracking";
 import {
@@ -40,8 +40,8 @@ async function gateFailureMessageUa(
   }
 }
 
-export function registerTestAutoHandlers(bot: Telegraf<StartContext>): void {
-  bot.command("testauto", async (ctx: Context) => {
+export function registerSubscriptionAutoHandlers(bot: Telegraf<StartContext>): void {
+  bot.command("subauto", async (ctx: Context) => {
     try {
       if (!ctx.from) return;
       if (!isPrivateChat(ctx)) return;
@@ -61,32 +61,31 @@ export function registerTestAutoHandlers(bot: Telegraf<StartContext>): void {
         return;
       }
 
-      const checkout = await createTestAutoRenewCheckout(telegramId);
+      const checkout = await createSubscriptionAutoCheckout(telegramId);
       if (!checkout.ok) {
-        console.error("[testauto] checkout failed", {
+        console.error("[subscription-auto] checkout failed", {
           telegramId,
           reason: checkout.reason,
           orderReference: checkout.orderReference,
         });
         if (checkout.reason === "plan_not_found") {
           await ctx.reply(
-            "Тестовий план не знайдено в БД. Запустіть міграції (yearly_12m_test).",
+            "План subscription_auto не знайдено в БД. Запустіть міграції.",
           );
           return;
         }
         await ctx.reply(
-          "Не вдалося створити тестове замовлення. Спробуйте пізніше або зверніться до підтримки.",
+          "Не вдалося створити замовлення. Спробуйте пізніше або зверніться до підтримки.",
         );
         return;
       }
 
-      const testPrice =
-        checkout.priceUah ?? (await getYearlySubscriptionTestPriceUah());
-      const testDays = await getYearlySubscriptionTestPeriodDays();
+      const priceUah = checkout.priceUah ?? (await getSubscriptionAutoPriceUah());
+      const accessDays = await getSubscriptionAutoAccessDays();
 
       await ctx.reply(
-        "Тест автопродовження WayForPay.\n\n" +
-          `Сума: ${testPrice} грн. Після оплати — доступ на **${testDays}** дн. (тест).\n` +
+        "Автопродовження WayForPay (Purchase + regular).\n\n" +
+          `Сума: ${priceUah} грн. Після оплати — доступ на **${accessDays}** дн.\n` +
           `Номер замовлення: ${checkout.orderReference}` +
           (checkout.reused ? "\n\n(використано наявне незавершене замовлення)" : ""),
         {
@@ -97,7 +96,7 @@ export function registerTestAutoHandlers(bot: Telegraf<StartContext>): void {
         },
       );
     } catch (error) {
-      console.error("Error handling /testauto:", error);
+      console.error("Error handling /subauto:", error);
       await ctx.reply("Помилка. Спробуйте пізніше.");
     }
   });

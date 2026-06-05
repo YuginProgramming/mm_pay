@@ -26,6 +26,7 @@ import { readRecentPaymentEvents } from "./payment-events";
 import { startPendingPaymentReminderLoop } from "./pending-payment-reminder";
 import { startSubscriptionRenewalReminderLoop } from "./subscription-renewal-reminder";
 import { subscriptionFlags } from "./subscription-flags";
+import { handleWayforpayPurchaseCheckoutPage } from "./purchase-checkout-page";
 
 const app = express();
 const port = Number(process.env.PAYMENT_HTTP_PORT ?? process.env.PORT ?? "3000");
@@ -62,6 +63,10 @@ app.get("/payment-events", async (req, res) => {
 });
 app.get("/subscription/status", handleGetSubscriptionStatus);
 app.get("/subscription/checkout/recover", handleRecoverSubscriptionCheckout);
+
+app.get("/wayforpay/purchase/:orderReference", (req, res) => {
+  void handleWayforpayPurchaseCheckoutPage(req, res);
+});
 
 app.post("/wayforpay/webhook", (req, res) => {
   const body = req.body;
@@ -110,6 +115,7 @@ app.listen(port, () => {
   }
   console.log(
     `[payment] listening on http://0.0.0.0:${port}\n` +
+      `  GET  /wayforpay/purchase/:orderReference (Purchase auto-submit)\n` +
       `  POST /wayforpay/webhook\n` +
       `  POST /wayforpay/checkout  (legacy; JSON: price, courseName, chatId)\n` +
       `  POST /subscription/checkout (JSON: userId, planCode?, forceNew?)\n` +

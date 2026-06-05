@@ -13,10 +13,10 @@ import { SUPPORT_CONTACT_SUFFIX_PLAIN_UA } from "../core/support";
 import { isPrivateChat } from "../core/chat-guards";
 import { escapeTelegramHtml } from "../core/telegram-html";
 import { StartContext, trackTelegramUser } from "../core/user-tracking";
-import { registerTestAutoHandlers } from "./testauto-command";
+import { registerSubscriptionAutoHandlers } from "./subscription-auto-command";
 
 export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
-  registerTestAutoHandlers(bot);
+  registerSubscriptionAutoHandlers(bot);
   bot.start(async (ctx) => {
     try {
       if (!ctx.from) return;

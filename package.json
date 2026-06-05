@@ -33,6 +33,8 @@
     "debug:clean-consultation-tables": "ts-node debug/db/clean-consultation-tables.ts",
     "debug:clean-majority-tables": "ts-node debug/db/clean-majority-tables.ts",
     "debug:list-webhooks": "ts-node debug/payments/list-wayforpay-webhooks.ts",
+    "debug:list-subscription-orders": "ts-node debug/payments/list-subscription-payment-orders.ts",
+    "debug:list-subscription-auto": "ts-node debug/payments/list-subscription-auto.ts",
     "debug:remove-telegram-user": "ts-node debug/telegram/remove-telegram-user.ts",
     "debug:sync-kwiga-ranks": "ts-node debug/telegram/sync-telegram-kwiga-ranks.ts",
     "debug:seed-telegram-chats": "ts-node debug/db/seed-telegram-chat-ids-to-app-settings.ts",

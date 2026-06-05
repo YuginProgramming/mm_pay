@@ -751,6 +751,107 @@ async function seedYearlySubscriptionTestSettings(): Promise<void> {
   );
 }
 
+async function createSubscriptionAutoTable(): Promise<void> {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS subscription_auto (
+      id                      SERIAL PRIMARY KEY,
+      user_id                 VARCHAR(64) NOT NULL,
+      plan_id                 INTEGER NOT NULL REFERENCES subscription_plans(id) ON DELETE RESTRICT,
+      anchor_order_reference  VARCHAR(128),
+      latest_order_reference  VARCHAR(128),
+      payment_token           TEXT,
+      wayforpay_status        VARCHAR(32),
+      wayforpay_mode          VARCHAR(32),
+      next_charge_at          TIMESTAMPTZ,
+      auto_renew_enabled      BOOLEAN NOT NULL DEFAULT true,
+      last_charge_status      VARCHAR(32),
+      last_charge_at          TIMESTAMPTZ,
+      cancelled_at            TIMESTAMPTZ,
+      created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await sequelize.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS subscription_auto_user_plan_uq
+      ON subscription_auto (user_id, plan_id);
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS subscription_auto_renew_schedule_idx
+      ON subscription_auto (auto_renew_enabled, next_charge_at);
+  `);
+  await sequelize.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS subscription_auto_anchor_order_ref_uq
+      ON subscription_auto (anchor_order_reference)
+      WHERE anchor_order_reference IS NOT NULL;
+  `);
+  console.log("Migration completed: subscription_auto table (if missing).");
+}
+
+async function createWayforpayPurchaseCheckoutsTable(): Promise<void> {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS wayforpay_purchase_checkouts (
+      order_reference VARCHAR(128) PRIMARY KEY,
+      form_fields     JSONB NOT NULL,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  console.log("Migration completed: wayforpay_purchase_checkouts table (if missing).");
+}
+
+async function seedSubscriptionAutoPlan(): Promise<void> {
+  await sequelize.query(`
+    INSERT INTO subscription_plans (
+      code,
+      title,
+      duration_days,
+      price,
+      currency,
+      is_active
+    )
+    VALUES (
+      'subscription_auto',
+      'Автопродовження WayForPay (/subauto)',
+      1,
+      5.00,
+      'UAH',
+      true
+    )
+    ON CONFLICT (code) DO NOTHING;
+  `);
+  console.log("Migration completed: subscription_plans seed subscription_auto.");
+}
+
+async function seedSubscriptionAutoSettings(): Promise<void> {
+  await sequelize.query(`
+    INSERT INTO app_settings (setting_key, setting_value, description_uk)
+    VALUES
+      (
+        'subscription_auto_price_uah',
+        '5',
+        'Сума Purchase з regular для /subauto, грн'
+      ),
+      (
+        'subscription_auto_access_days',
+        '1',
+        'Днів доступу після кожної успішної оплати /subauto'
+      ),
+      (
+        'subscription_auto_regular_mode',
+        'daily',
+        'WayForPay regularMode для /subauto'
+      ),
+      (
+        'subscription_auto_regular_count',
+        '5',
+        'WayForPay regularCount для /subauto (кількість списань)'
+      )
+    ON CONFLICT (setting_key) DO NOTHING;
+  `);
+  console.log(
+    "Migration completed: subscription_auto app_settings seed (if missing).",
+  );
+}
+
 async function createYearlyAutoRenewSubscriptionsTable(): Promise<void> {
   await sequelize.query(`
     CREATE TABLE IF NOT EXISTS yearly_auto_renew_subscriptions (
@@ -853,6 +954,10 @@ async function runMigrations(): Promise<void> {
     await seedSubscriptionTestPlan();
     await seedYearlySubscriptionTestSettings();
     await createYearlyAutoRenewSubscriptionsTable();
+    await createSubscriptionAutoTable();
+    await createWayforpayPurchaseCheckoutsTable();
+    await seedSubscriptionAutoPlan();
+    await seedSubscriptionAutoSettings();
     await createPaidChatJanitorAlertLogTable();
     await createPaidChatMemberStateTable();
     await seedPaidChatJanitorIntervalSetting();
