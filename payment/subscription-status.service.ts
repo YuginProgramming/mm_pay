@@ -1,6 +1,7 @@
 import { SubscriptionAuto } from "../database/SubscriptionAuto";
 import { SubscriptionPlan } from "../database/SubscriptionPlan";
 import { UserSubscription } from "../database/UserSubscription";
+import { isActiveSubscriptionAutoRecord } from "./subscription-auto-active";
 import { isMultimaskingRecurringPlanCode } from "./subscription-plan-codes";
 
 export type SubscriptionStatusValue = "active" | "inactive" | "lapsed" | "canceled";
@@ -23,10 +24,6 @@ type ActiveSubscriptionAutoRenew = {
   nextChargeAt: Date | null;
 };
 
-function isWayforpayActiveStatus(status: string | null | undefined): boolean {
-  return (status ?? "").trim().toLowerCase() === "active";
-}
-
 /** Активний recurring-рядок `subscription_auto` (узгоджено з `multimasking-access-status`). */
 async function findActiveSubscriptionAutoRenew(
   userId: string,
@@ -36,7 +33,7 @@ async function findActiveSubscriptionAutoRenew(
   });
 
   for (const row of rows) {
-    if (!isWayforpayActiveStatus(row.wayforpayStatus)) {
+    if (!isActiveSubscriptionAutoRecord(row)) {
       continue;
     }
     const plan = await SubscriptionPlan.findByPk(row.planId, { attributes: ["code"] });
@@ -44,7 +41,7 @@ async function findActiveSubscriptionAutoRenew(
       continue;
     }
     return {
-      wayforpayStatus: row.wayforpayStatus,
+      wayforpayStatus: row.wayforpayStatus ?? "Active",
       nextChargeAt: row.nextChargeAt,
     };
   }

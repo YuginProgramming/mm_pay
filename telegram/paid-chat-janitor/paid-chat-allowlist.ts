@@ -18,6 +18,7 @@ import { normalizeEmail } from "../../database/normalize-email";
 import { SubscriptionAuto } from "../../database/SubscriptionAuto";
 import { SubscriptionPlan } from "../../database/SubscriptionPlan";
 import { TelegramUser } from "../../database/TelegramUser";
+import { isActiveSubscriptionAutoRecord } from "../../payment/subscription-auto-active";
 import { hasActiveMultimaskingAccess } from "../../payment/multimasking-access-status";
 import { BOT_PAYMENT_EXTERNAL_PRODUCT_ID } from "../../payment/multimasking-product";
 import { isMultimaskingRecurringPlanCode } from "../../payment/subscription-plan-codes";
@@ -129,8 +130,7 @@ async function resolveAllowlistGrantEndByContact(): Promise<Map<number, Date | n
   });
 
   for (const auto of autos) {
-    const wfpStatus = (auto.wayforpayStatus ?? "").trim().toLowerCase();
-    if (wfpStatus !== "active") {
+    if (!isActiveSubscriptionAutoRecord(auto)) {
       continue;
     }
     const plan = await SubscriptionPlan.findByPk(auto.planId, { attributes: ["code"] });

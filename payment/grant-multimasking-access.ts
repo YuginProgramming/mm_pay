@@ -324,7 +324,13 @@ export async function processApprovedMultimaskingPayment(
   }
 
   if (options?.successMessageText) {
-    await sendTelegramBotMessage(chatId, options.successMessageText);
+    const { successText, urlButtons } = paymentSuccessCopyAndButtons(
+      tierAfterPayment,
+      options.successMessageText + "\n\n",
+    );
+    await sendTelegramBotMessage(chatId, successText, urlButtons, {
+      parseMode: "HTML",
+    });
     return { granted: true, grantEndAt: endAt };
   }
 

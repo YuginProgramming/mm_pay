@@ -5,6 +5,7 @@ import { SubscriptionPlan } from "../database/SubscriptionPlan";
 import { getActiveMultimaskingPaymentSummaryForContact } from "../telegram/paid-chat-janitor/paid-chat-allowlist";
 import { BOT_PAYMENT_EXTERNAL_PRODUCT_ID } from "./multimasking-product";
 import { isMultimaskingRecurringPlanCode } from "./subscription-plan-codes";
+import { isActiveSubscriptionAutoRecord } from "./subscription-auto-active";
 import { getSubscriptionStatusForUserId } from "./subscription-status.service";
 
 export type MultimaskingAccessSource =
@@ -54,10 +55,6 @@ export type MultimaskingAccessStatus = {
   inGracePeriod: boolean;
 };
 
-function isWayforpayActiveStatus(status: string | null | undefined): boolean {
-  return (status ?? "").trim().toLowerCase() === "active";
-}
-
 function addDaysUtc(date: Date, days: number): Date {
   const result = new Date(date);
   result.setUTCDate(result.getUTCDate() + days);
@@ -72,7 +69,7 @@ async function findActiveSubscriptionAutoForUser(
   });
 
   for (const row of rows) {
-    if (!isWayforpayActiveStatus(row.wayforpayStatus)) {
+    if (!isActiveSubscriptionAutoRecord(row)) {
       continue;
     }
     const plan = await SubscriptionPlan.findByPk(row.planId, { attributes: ["code"] });
@@ -81,7 +78,7 @@ async function findActiveSubscriptionAutoForUser(
     }
     return {
       planCode: plan.code,
-      wayforpayStatus: row.wayforpayStatus,
+      wayforpayStatus: row.wayforpayStatus?.trim() || "Active",
       wayforpayMode: row.wayforpayMode,
       nextChargeAt: row.nextChargeAt,
       anchorOrderReference: row.anchorOrderReference,

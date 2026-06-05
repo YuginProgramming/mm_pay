@@ -54,7 +54,10 @@ function parseWayforpayTimestamp(value: unknown): Date | null {
   return null;
 }
 
-async function fetchWayforpayRegularSnapshot(anchorOrderReference: string): Promise<{
+async function fetchWayforpayRegularSnapshot(
+  anchorOrderReference: string,
+  options?: { retries?: number; retryDelayMs?: number },
+): Promise<{
   wayforpayStatus: string | null;
   wayforpayMode: string | null;
   nextChargeAt: Date | null;
@@ -69,17 +72,65 @@ async function fetchWayforpayRegularSnapshot(anchorOrderReference: string): Prom
     return empty;
   }
 
-  try {
-    const status = await getWayforpayRegularPaymentStatus(anchorOrderReference);
-    return {
-      wayforpayStatus: status.status ?? null,
-      wayforpayMode: status.mode ?? null,
-      nextChargeAt: parseWayforpayTimestamp(status.nextPaymentDate),
-    };
-  } catch (err) {
-    console.error("[subscription-auto] STATUS failed:", err);
-    return empty;
+  const retries = Math.max(1, options?.retries ?? 3);
+  const retryDelayMs = Math.max(0, options?.retryDelayMs ?? 2000);
+
+  for (let attempt = 1; attempt <= retries; attempt += 1) {
+    try {
+      const status = await getWayforpayRegularPaymentStatus(anchorOrderReference);
+      const snapshot = {
+        wayforpayStatus: status.status ?? null,
+        wayforpayMode: status.mode ?? null,
+        nextChargeAt: parseWayforpayTimestamp(status.nextPaymentDate),
+      };
+      if (
+        snapshot.wayforpayStatus != null ||
+        snapshot.wayforpayMode != null ||
+        snapshot.nextChargeAt != null ||
+        attempt === retries
+      ) {
+        return snapshot;
+      }
+    } catch (err) {
+      console.error("[subscription-auto] STATUS failed:", err);
+      if (attempt === retries) {
+        return empty;
+      }
+    }
+
+    if (attempt < retries && retryDelayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+    }
   }
+
+  return empty;
+}
+
+function resolveWayforpayFieldsAfterApproved(args: {
+  wfp: {
+    wayforpayStatus: string | null;
+    wayforpayMode: string | null;
+    nextChargeAt: Date | null;
+  };
+  planCode: string;
+  existing: SubscriptionAuto | null;
+}): {
+  wayforpayStatus: string | null;
+  wayforpayMode: string | null;
+  nextChargeAt: Date | null;
+} {
+  const defaultMode =
+    args.planCode === MONTHLY_SUBSCRIPTION_PLAN_CODE ? "monthly" : null;
+
+  return {
+    wayforpayStatus:
+      args.wfp.wayforpayStatus ??
+      args.existing?.wayforpayStatus ??
+      "Active",
+    wayforpayMode:
+      args.wfp.wayforpayMode ?? args.existing?.wayforpayMode ?? defaultMode,
+    nextChargeAt: args.wfp.nextChargeAt ?? args.existing?.nextChargeAt ?? null,
+  };
 }
 
 async function buildRecurringDiagnosticMessageUa(args: {
@@ -136,7 +187,15 @@ async function upsertSubscriptionAutoFromPayment(args: {
       (existing.anchorOrderReference?.trim() || "") !== args.orderReference.trim(),
   );
 
+  const plan = await SubscriptionPlan.findByPk(args.planId, { attributes: ["code"] });
+  const planCode = plan?.code ?? SUBSCRIPTION_AUTO_PLAN_CODE;
+
   const wfp = await fetchWayforpayRegularSnapshot(anchorOrderReference);
+  const resolved = resolveWayforpayFieldsAfterApproved({
+    wfp,
+    planCode,
+    existing,
+  });
   const now = new Date();
 
   if (existing) {
@@ -146,9 +205,9 @@ async function upsertSubscriptionAutoFromPayment(args: {
       autoRenewEnabled: true,
       lastChargeStatus: "Approved",
       lastChargeAt: now,
-      nextChargeAt: wfp.nextChargeAt ?? existing.nextChargeAt,
-      wayforpayStatus: wfp.wayforpayStatus ?? existing.wayforpayStatus,
-      wayforpayMode: wfp.wayforpayMode ?? existing.wayforpayMode,
+      nextChargeAt: resolved.nextChargeAt,
+      wayforpayStatus: resolved.wayforpayStatus,
+      wayforpayMode: resolved.wayforpayMode,
       anchorOrderReference: existing.anchorOrderReference ?? args.orderReference,
       cancelledAt: null,
     });
@@ -162,9 +221,9 @@ async function upsertSubscriptionAutoFromPayment(args: {
     latestOrderReference: args.orderReference,
     paymentToken: args.recToken,
     autoRenewEnabled: true,
-    nextChargeAt: wfp.nextChargeAt,
-    wayforpayStatus: wfp.wayforpayStatus,
-    wayforpayMode: wfp.wayforpayMode,
+    nextChargeAt: resolved.nextChargeAt,
+    wayforpayStatus: resolved.wayforpayStatus,
+    wayforpayMode: resolved.wayforpayMode,
     lastChargeStatus: "Approved",
     lastChargeAt: now,
     cancelledAt: null,
@@ -275,18 +334,20 @@ export async function handleSubscriptionAutoApprovedPayment(
     renewalExtendFromActiveGrant: isRenewal,
     ...(isRenewal
       ? { skipSuccessMessage: true }
-      : {
-          successMessageText: await buildRecurringDiagnosticMessageUa({
-            planCode,
-            orderReference,
-            recToken,
-            anchorOrderReference,
-            wayforpayStatus: wfp.wayforpayStatus,
-            wayforpayMode: wfp.wayforpayMode,
-            nextChargeAt: wfp.nextChargeAt,
-            accessDays,
+      : planCode === MONTHLY_SUBSCRIPTION_PLAN_CODE
+        ? {}
+        : {
+            successMessageText: await buildRecurringDiagnosticMessageUa({
+              planCode,
+              orderReference,
+              recToken,
+              anchorOrderReference,
+              wayforpayStatus: wfp.wayforpayStatus,
+              wayforpayMode: wfp.wayforpayMode,
+              nextChargeAt: wfp.nextChargeAt,
+              accessDays,
+            }),
           }),
-        }),
   };
 
   const grantResult = await processApprovedMultimaskingPayment(
