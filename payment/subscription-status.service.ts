@@ -1,5 +1,7 @@
+import { SubscriptionAuto } from "../database/SubscriptionAuto";
 import { SubscriptionPlan } from "../database/SubscriptionPlan";
 import { UserSubscription } from "../database/UserSubscription";
+import { isMultimaskingRecurringPlanCode } from "./subscription-plan-codes";
 
 export type SubscriptionStatusValue = "active" | "inactive" | "lapsed" | "canceled";
 
@@ -10,7 +12,45 @@ export type SubscriptionStatusView = {
   endAtIso: string | null;
   daysLeft: number;
   canRenew: boolean;
+  /** S2-7: чи є активне автопродовження WayForPay у `subscription_auto`. */
+  autoRenew: boolean;
+  wayforpayStatus: string | null;
+  nextChargeAt: string | null;
 };
+
+type ActiveSubscriptionAutoRenew = {
+  wayforpayStatus: string | null;
+  nextChargeAt: Date | null;
+};
+
+function isWayforpayActiveStatus(status: string | null | undefined): boolean {
+  return (status ?? "").trim().toLowerCase() === "active";
+}
+
+/** Активний recurring-рядок `subscription_auto` (узгоджено з `multimasking-access-status`). */
+async function findActiveSubscriptionAutoRenew(
+  userId: string,
+): Promise<ActiveSubscriptionAutoRenew | null> {
+  const rows = await SubscriptionAuto.findAll({
+    where: { userId, cancelledAt: null },
+  });
+
+  for (const row of rows) {
+    if (!isWayforpayActiveStatus(row.wayforpayStatus)) {
+      continue;
+    }
+    const plan = await SubscriptionPlan.findByPk(row.planId, { attributes: ["code"] });
+    if (!plan || !isMultimaskingRecurringPlanCode(plan.code)) {
+      continue;
+    }
+    return {
+      wayforpayStatus: row.wayforpayStatus,
+      nextChargeAt: row.nextChargeAt,
+    };
+  }
+
+  return null;
+}
 
 const msPerDay = 24 * 60 * 60 * 1000;
 
@@ -33,8 +73,9 @@ function toView(args: {
   startAt: Date | null;
   endAt: Date | null;
   now: Date;
+  autoRenew: ActiveSubscriptionAutoRenew | null;
 }): SubscriptionStatusView {
-  const { status, planCode, startAt, endAt, now } = args;
+  const { status, planCode, startAt, endAt, now, autoRenew } = args;
   const daysLeft = endAt ? computeDaysLeft(endAt, now) : 0;
   return {
     status,
@@ -43,6 +84,9 @@ function toView(args: {
     endAtIso: endAt?.toISOString() ?? null,
     daysLeft,
     canRenew: status !== "inactive",
+    autoRenew: autoRenew != null,
+    wayforpayStatus: autoRenew?.wayforpayStatus ?? null,
+    nextChargeAt: autoRenew?.nextChargeAt?.toISOString() ?? null,
   };
 }
 
@@ -55,10 +99,13 @@ export async function getSubscriptionStatusForUserId(
   userId: string,
   now = new Date(),
 ): Promise<SubscriptionStatusView> {
-  const row = await UserSubscription.findOne({
-    where: { userId },
-    order: [["endAt", "DESC"]],
-  });
+  const [row, autoRenew] = await Promise.all([
+    UserSubscription.findOne({
+      where: { userId },
+      order: [["endAt", "DESC"]],
+    }),
+    findActiveSubscriptionAutoRenew(userId),
+  ]);
 
   if (!row) {
     return toView({
@@ -67,6 +114,7 @@ export async function getSubscriptionStatusForUserId(
       startAt: null,
       endAt: null,
       now,
+      autoRenew,
     });
   }
 
@@ -82,6 +130,7 @@ export async function getSubscriptionStatusForUserId(
       startAt: row.startAt,
       endAt: row.endAt,
       now,
+      autoRenew,
     });
   }
 
@@ -92,6 +141,7 @@ export async function getSubscriptionStatusForUserId(
       startAt: row.startAt,
       endAt: row.endAt,
       now,
+      autoRenew,
     });
   }
 
@@ -101,5 +151,6 @@ export async function getSubscriptionStatusForUserId(
     startAt: row.startAt,
     endAt: row.endAt,
     now,
+    autoRenew,
   });
 }

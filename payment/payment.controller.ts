@@ -17,9 +17,14 @@ import { SubscriptionPaymentOrder } from "../database/SubscriptionPaymentOrder";
 import { SubscriptionPlan } from "../database/SubscriptionPlan";
 import {
   handleSubscriptionAutoApprovedPayment,
-  isSubscriptionAutoPlanCode,
+  tryHandleMultimaskingRecurringRenewalWebhook,
 } from "./subscription-auto-webhook.service";
 import { gateMultimaskingCheckoutForTelegramId } from "./multimasking-checkout-eligibility";
+import {
+  isMultimaskingRecurringPlanCode,
+  MONTHLY_SUBSCRIPTION_PLAN_CODE,
+} from "./subscription-plan-codes";
+import { getMultimaskingCoursePriceUah } from "./multimasking-price";
 import { MULTIMASKING_PRODUCT_NAME } from "./multimasking-product";
 import { logPaymentEvent } from "./payment-events";
 import { persistWayforpayWebhookEvent } from "./persist-wayforpay-webhook";
@@ -101,6 +106,8 @@ const handleWayForPayWebhook = async (
       return;
     }
 
+    // S1-8: ledger + user_subscriptions для checkout-замовлень; recurring grant дзеркалить
+    // user_subscriptions у handleSubscriptionAutoApprovedPayment (renewal без ledger теж).
     let subscriptionResolve: Awaited<
       ReturnType<typeof reconcileSubscriptionOrderFromWebhook>
     > = { handled: false, reason: "order_not_found" };
@@ -146,11 +153,19 @@ const handleWayForPayWebhook = async (
         if (
           subOrder &&
           plan &&
-          isSubscriptionAutoPlanCode(plan.code) &&
+          isMultimaskingRecurringPlanCode(plan.code) &&
           subscriptionResolve.handled &&
           subscriptionResolve.status === "approved"
         ) {
-          await handleSubscriptionAutoApprovedPayment(data, metadata, subOrder, subOrder.planId);
+          await handleSubscriptionAutoApprovedPayment(data, metadata, {
+            userId: subOrder.userId,
+            planId: subOrder.planId,
+            orderReference: subOrder.orderReference,
+          });
+        } else if (
+          await tryHandleMultimaskingRecurringRenewalWebhook(data, metadata)
+        ) {
+          // Renewal: новий orderReference від WayForPay без ledger-рядка.
         } else {
           await processApprovedMultimaskingPayment(data, metadata);
         }
@@ -293,6 +308,8 @@ const handleGetSubscriptionStatus = async (
       status: status.status,
       planCode: status.planCode,
       daysLeft: status.daysLeft,
+      autoRenew: status.autoRenew,
+      wayforpayStatus: status.wayforpayStatus,
     });
     res.status(200).json({ userId, ...status });
   } catch (err) {
@@ -322,7 +339,7 @@ const handleCreateSubscriptionCheckout = async (
     }
 
     const userId = String(req.body?.userId ?? "").trim();
-    const planCode = String(req.body?.planCode ?? "monthly_1m").trim();
+    const planCode = String(req.body?.planCode ?? MONTHLY_SUBSCRIPTION_PLAN_CODE).trim();
     const forceNew =
       req.body?.forceNew === true ||
       String(req.body?.forceNew ?? "")
@@ -332,6 +349,29 @@ const handleCreateSubscriptionCheckout = async (
     if (!userId) {
       res.status(400).json({ error: "userId is required" });
       return;
+    }
+
+    const gate = await gateMultimaskingCheckoutForTelegramId(userId);
+    if (!gate.ok) {
+      res.status(403).json({
+        error: "multimasking checkout not allowed",
+        reason: gate.reason,
+        ...("rank" in gate ? { rank: gate.rank } : {}),
+        ...("grantEndAtIso" in gate ? { grantEndAt: gate.grantEndAtIso } : {}),
+      });
+      return;
+    }
+
+    if (subscriptionFlags.subscriptionReturnFlowEnabled && !forceNew) {
+      const recovered = await recoverSubscriptionCheckout(userId);
+      if (recovered.hasActiveOrder) {
+        res.status(409).json({
+          error: "active checkout exists",
+          reason: "recovery_required",
+          ...recovered,
+        });
+        return;
+      }
     }
 
     const result = await createSubscriptionCheckout({
@@ -349,7 +389,13 @@ const handleCreateSubscriptionCheckout = async (
       return;
     }
 
-    res.status(200).json(result);
+    const priceUah = await getMultimaskingCoursePriceUah();
+    res.status(200).json({
+      ...result,
+      priceUah,
+      checkoutType: "purchase",
+      regularMode: "monthly",
+    });
   } catch (err) {
     console.error("Create subscription checkout error:", err);
     res.status(500).json({ error: "Server Error" });
@@ -397,7 +443,7 @@ const handleRecreateSubscriptionCheckout = async (
     }
 
     const userId = String(req.body?.userId ?? "").trim();
-    const planCode = String(req.body?.planCode ?? "monthly_1m").trim();
+    const planCode = String(req.body?.planCode ?? MONTHLY_SUBSCRIPTION_PLAN_CODE).trim();
     if (!userId) {
       res.status(400).json({ error: "userId is required" });
       return;
@@ -413,7 +459,13 @@ const handleRecreateSubscriptionCheckout = async (
       return;
     }
 
-    res.status(200).json(result);
+    const priceUah = await getMultimaskingCoursePriceUah();
+    res.status(200).json({
+      ...result,
+      priceUah,
+      checkoutType: "purchase",
+      regularMode: "monthly",
+    });
   } catch (err) {
     console.error("Recreate subscription checkout error:", err);
     res.status(500).json({ error: "Server Error" });
@@ -434,7 +486,7 @@ const handleRenewSubscriptionCheckout = async (
     }
 
     const userId = String(req.body?.userId ?? "").trim();
-    const planCode = String(req.body?.planCode ?? "monthly_1m").trim();
+    const planCode = String(req.body?.planCode ?? MONTHLY_SUBSCRIPTION_PLAN_CODE).trim();
     const forceNew =
       req.body?.forceNew === true ||
       String(req.body?.forceNew ?? "")
@@ -460,9 +512,13 @@ const handleRenewSubscriptionCheckout = async (
       return;
     }
 
+    const priceUah = await getMultimaskingCoursePriceUah();
     res.status(200).json({
       intent: "renewal",
       ...result,
+      priceUah,
+      checkoutType: "purchase",
+      regularMode: "monthly",
     });
   } catch (err) {
     console.error("Renew subscription checkout error:", err);

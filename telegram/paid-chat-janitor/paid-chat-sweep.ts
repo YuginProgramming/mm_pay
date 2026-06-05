@@ -267,7 +267,9 @@ export async function runPaidChatJanitorSweepOnce(options?: {
 
     const contactId = rankSnapshot.contact?.id;
     const activeBotPayment =
-      contactId != null ? await contactHasActiveMultimaskingPayment(contactId) : false;
+      contactId != null
+        ? await contactHasActiveMultimaskingPayment(contactId, telegramId)
+        : false;
     await maybeDelay(delayMs);
 
     const rank = rankSnapshot.rank;

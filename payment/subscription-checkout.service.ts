@@ -1,9 +1,8 @@
 import { literal, Op } from "sequelize";
 import { SubscriptionPaymentOrder } from "../database/SubscriptionPaymentOrder";
 import { SubscriptionPlan } from "../database/SubscriptionPlan";
-import { getMultimaskingCoursePriceUah } from "./multimasking-price";
-import { MULTIMASKING_PRODUCT_NAME } from "./multimasking-product";
-import { createCheckoutForCourse } from "./payment.service";
+import { createMultimaskingMonthlyCheckout } from "./multimasking-monthly-checkout.service";
+import { MONTHLY_SUBSCRIPTION_PLAN_CODE } from "./subscription-plan-codes";
 
 const ACTIVE_ORDER_STATUSES = ["created", "pending", "processing", "suspended"];
 
@@ -62,79 +61,25 @@ export type SubscriptionCheckoutRecoveryResult =
 export async function createSubscriptionCheckout(
   input: CreateSubscriptionCheckoutInput,
 ): Promise<SubscriptionCheckoutResult> {
-  const plan = await SubscriptionPlan.findOne({
-    where: { code: input.planCode, isActive: true },
-  });
-  if (!plan) {
-    return { ok: false, reason: "plan_not_found", planCode: input.planCode };
+  const planCode = input.planCode.trim();
+  if (planCode !== MONTHLY_SUBSCRIPTION_PLAN_CODE) {
+    return { ok: false, reason: "plan_not_found", planCode };
   }
 
-  const existing = await SubscriptionPaymentOrder.findOne({
-    where: {
-      userId: input.userId,
-      planId: plan.id,
-      status: { [Op.in]: ACTIVE_ORDER_STATUSES },
-    },
-    order: literal('"created_at" DESC'),
+  const result = await createMultimaskingMonthlyCheckout(input.userId, {
+    forceNew: input.forceNew,
   });
 
-  if (existing && !input.forceNew) {
-    if (!existing.checkoutUrl) {
-      return {
-        ok: false,
-        reason: "active_order_without_checkout_url",
-        planCode: plan.code,
-        orderReference: existing.orderReference,
-      };
-    }
-    return {
-      ok: true,
-      reused: true,
-      orderReference: existing.orderReference,
-      checkoutUrl: existing.checkoutUrl,
-      planCode: plan.code,
-    };
+  if (!result.ok) {
+    return result;
   }
-
-  if (existing && input.forceNew) {
-    await SubscriptionPaymentOrder.update(
-      { status: "replaced", terminalAt: new Date() },
-      {
-        where: {
-          userId: input.userId,
-          planId: plan.id,
-          status: { [Op.in]: ACTIVE_ORDER_STATUSES },
-        },
-      },
-    );
-  }
-
-  const priceUah = await getMultimaskingCoursePriceUah();
-
-  const { orderReference, invoiceUrl } = await createCheckoutForCourse(
-    priceUah,
-    MULTIMASKING_PRODUCT_NAME,
-    input.userId,
-  );
-
-  await SubscriptionPaymentOrder.create({
-    orderReference,
-    userId: input.userId,
-    planId: plan.id,
-    status: "created",
-    amount: String(priceUah),
-    currency: plan.currency,
-    provider: "wayforpay",
-    checkoutUrl: invoiceUrl,
-    terminalAt: null,
-  });
 
   return {
     ok: true,
-    reused: false,
-    orderReference,
-    checkoutUrl: invoiceUrl,
-    planCode: plan.code,
+    reused: result.reused,
+    orderReference: result.orderReference,
+    checkoutUrl: result.checkoutUrl,
+    planCode: result.planCode,
   };
 }
 
@@ -178,7 +123,7 @@ export async function recreateSubscriptionCheckout(input: {
   userId: string;
   planCode?: string;
 }): Promise<SubscriptionCheckoutResult> {
-  const planCode = input.planCode?.trim() || "monthly_1m";
+  const planCode = input.planCode?.trim() || MONTHLY_SUBSCRIPTION_PLAN_CODE;
   return createSubscriptionCheckout({
     userId: input.userId,
     planCode,
@@ -189,7 +134,7 @@ export async function recreateSubscriptionCheckout(input: {
 export async function renewSubscriptionCheckout(
   input: RenewSubscriptionInput,
 ): Promise<SubscriptionCheckoutResult> {
-  const planCode = input.planCode?.trim() || "monthly_1m";
+  const planCode = input.planCode?.trim() || MONTHLY_SUBSCRIPTION_PLAN_CODE;
   return createSubscriptionCheckout({
     userId: input.userId,
     planCode,

@@ -57,6 +57,17 @@ function formatDbDate(value: Date | null | undefined): string | null {
   return value?.toISOString() ?? null;
 }
 
+function formatModelTimestamp(
+  row: SubscriptionAuto,
+  attr: "createdAt" | "updatedAt",
+): string {
+  const snake = attr === "createdAt" ? "created_at" : "updated_at";
+  const raw = row[attr] ?? row.get(snake);
+  if (raw instanceof Date) return raw.toISOString();
+  if (raw != null && raw !== "") return String(raw);
+  return "—";
+}
+
 async function fetchLiveStatus(anchor: string | null): Promise<
   Pick<
     RowSummary,
@@ -136,8 +147,8 @@ async function main(): Promise<void> {
       dbLastChargeStatus: row.lastChargeStatus,
       dbLastChargeAt: formatDbDate(row.lastChargeAt),
       cancelledAt: formatDbDate(row.cancelledAt),
-      createdAt: row.createdAt.toISOString(),
-      updatedAt: row.updatedAt.toISOString(),
+      createdAt: formatModelTimestamp(row, "createdAt"),
+      updatedAt: formatModelTimestamp(row, "updatedAt"),
       ...live,
     });
   }

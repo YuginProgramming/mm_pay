@@ -11,16 +11,18 @@ import {
   CALLBACK_ALERT_CONSENT_REQUIRED_FOR_PAYMENT_UA,
   hasAcceptedCurrentRules,
 } from "../handlers/rules";
-import { getActiveMultimaskingPaymentSummaryForContact } from "../paid-chat-janitor/paid-chat-allowlist";
+import { hasActiveMultimaskingAccess } from "../../payment/multimasking-access-status";
 import { computeKwigaRankSnapshot } from "../profile/kwiga-rank-db";
 import {
+  buildMultimaskingAlreadyActiveAlertUa,
   buildMultimaskingAlreadyActivePaymentMessageUa,
-  CALLBACK_ALERT_ALREADY_ACTIVE_MULTIMASKING_UA,
   isKwigaRankEligibleForPaidChatPurchase,
   multimaskingIneligibleUserMessageUa,
+  toAlreadyActiveContext,
 } from "../profile/paid-chat-payment-eligibility";
 import { SUPPORT_CONTACT_SUFFIX_PLAIN_UA } from "../core/support";
 import { sparkleLabel } from "../core/sparkle-label";
+import { MONTHLY_SUBSCRIPTION_PLAN_CODE } from "../../payment/subscription-plan-codes";
 import { subscriptionFlags } from "../../payment/subscription-flags";
 import {
   createSubscriptionCheckout,
@@ -65,13 +67,41 @@ export const CALLBACK_ALERT_EMAIL_REQUIRED_FOR_PAYMENT_UA =
 
 export { MULTIMASKING_PRODUCT_NAME };
 
+function payButtonLabel(price: number): string {
+  if (subscriptionFlags.subscriptionModeEnabled) {
+    return sparkleLabel(`Підписка ${price} грн/міс`);
+  }
+  return sparkleLabel(`Оплатити ${price} грн`);
+}
+
 function payButtonRow(price: number) {
-  return [
-    Markup.button.callback(
-      sparkleLabel(`Оплатити ${price} грн`),
-      WAYFORPAY_INVOICE_CALLBACK,
-    ),
-  ];
+  return [Markup.button.callback(payButtonLabel(price), WAYFORPAY_INVOICE_CALLBACK)];
+}
+
+function buildLegacyCheckoutCreatedMessageUa(price: number, orderReference: string): string {
+  return (
+    `Рахунок WayForPay на суму ${price} грн за доступ до навчального продукту ` +
+    "«Multimasking Learning Project» створено.\n\n" +
+    "Натисніть кнопку нижче, щоб перейти до безпечної оплати.\n\n" +
+    "Після оплати підтвердження зазвичай надходить протягом 1-2 хвилин. " +
+    "Будь ласка, не створюйте повторну оплату, доки очікуєте результат.\n\n" +
+    `Номер замовлення: ${orderReference}`
+  );
+}
+
+function buildMonthlySubscriptionCheckoutMessageUa(
+  price: number,
+  orderReference: string,
+): string {
+  return (
+    `Щомісячна підписка WayForPay — ${price} грн/міс за доступ до навчального продукту ` +
+    "«Multimasking Learning Project».\n\n" +
+    "Перше списання — зараз; наступні — автоматично щомісяця, поки підписка активна.\n\n" +
+    "Натисніть кнопку нижче, щоб перейти до оформлення на WayForPay.\n\n" +
+    "Після першої оплати підтвердження зазвичай надходить протягом 1-2 хвилин. " +
+    "Не створюйте повторне оформлення, доки очікуєте результат.\n\n" +
+    `Номер замовлення: ${orderReference}`
+  );
 }
 
 /**
@@ -111,34 +141,28 @@ export async function buildWayForPayInvoiceKeyboard(telegramId: string) {
     ]);
   }
 
-  const botPaySummary = await getActiveMultimaskingPaymentSummaryForContact(
-    contact.id,
-  );
-  if (botPaySummary.active) {
-    if (subscriptionFlags.subscriptionModeEnabled) {
-      return Markup.inlineKeyboard([
-        [
-          Markup.button.callback(
-            sparkleLabel("Доступ уже активний"),
-            WFP_ALREADY_ACTIVE_INFO,
-          ),
-        ],
-        [
-          Markup.button.callback(
-            sparkleLabel("Продовжити підписку"),
-            SUBSCRIPTION_RENEW_NOW_CALLBACK,
-          ),
-        ],
-      ]);
-    }
-    return Markup.inlineKeyboard([
+  const access = await hasActiveMultimaskingAccess(contact.id, telegramId);
+  if (access.hasAccess) {
+    const activeRows: ReturnType<typeof Markup.button.callback>[][] = [
       [
         Markup.button.callback(
           sparkleLabel("Доступ уже активний"),
           WFP_ALREADY_ACTIVE_INFO,
         ),
       ],
-    ]);
+    ];
+    if (
+      subscriptionFlags.subscriptionModeEnabled &&
+      access.source !== "subscription_auto"
+    ) {
+      activeRows.push([
+        Markup.button.callback(
+          sparkleLabel("Продовжити підписку"),
+          SUBSCRIPTION_RENEW_NOW_CALLBACK,
+        ),
+      ]);
+    }
+    return Markup.inlineKeyboard(activeRows);
   }
 
   return Markup.inlineKeyboard([payButtonRow(price)]);
@@ -164,7 +188,7 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
 
       const renewed = await renewSubscriptionCheckout({
         userId: String(chatId),
-        planCode: "monthly_1m",
+        planCode: MONTHLY_SUBSCRIPTION_PLAN_CODE,
         forceNew: false,
       });
       if (!renewed.ok) {
@@ -177,11 +201,12 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
       }
 
       await ctx.reply(
-        "Рахунок на продовження підписки сформовано.\n\n" +
+        "Посилання на щомісячну підписку WayForPay сформовано.\n\n" +
+          "Перше списання — зараз; далі — автоматично щомісяця.\n\n" +
           `Номер замовлення: ${renewed.orderReference}`,
         Markup.inlineKeyboard([
           Markup.button.url(
-            sparkleLabel("Продовжити підписку"),
+            sparkleLabel("Оформити підписку"),
             renewed.checkoutUrl,
           ),
         ]),
@@ -224,11 +249,11 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
       }
 
       await ctx.reply(
-        "Знайшли незавершену оплату. Продовжіть за наявним посиланням:\n\n" +
+        "Знайшли незавершене оформлення щомісячної підписки. Продовжіть за наявним посиланням:\n\n" +
           `Номер замовлення: ${recovered.orderReference}`,
         Markup.inlineKeyboard([
           Markup.button.url(
-            sparkleLabel("Продовжити оплату"),
+            sparkleLabel("Продовжити оформлення"),
             recovered.checkoutUrl,
           ),
           Markup.button.callback(
@@ -256,7 +281,7 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
 
       const recreated = await recreateSubscriptionCheckout({
         userId: String(chatId),
-        planCode: "monthly_1m",
+        planCode: MONTHLY_SUBSCRIPTION_PLAN_CODE,
       });
       if (!recreated.ok) {
         await ctx.reply(
@@ -268,10 +293,10 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
       }
 
       await ctx.reply(
-        "Створено новий рахунок на підписку.\n\n" +
+        "Створено нове оформлення щомісячної підписки.\n\n" +
           `Номер замовлення: ${recreated.orderReference}`,
         Markup.inlineKeyboard([
-          Markup.button.url(sparkleLabel("Перейти до оплати"), recreated.checkoutUrl),
+          Markup.button.url(sparkleLabel("Оформити підписку"), recreated.checkoutUrl),
         ]),
       );
     } catch (err) {
@@ -303,19 +328,18 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
         await ctx.reply("Контакт за email не знайдено. Перевірте /profile.");
         return;
       }
-      const summary = await getActiveMultimaskingPaymentSummaryForContact(
-        contact.id,
-      );
-      if (!summary.active) {
+      const access = await hasActiveMultimaskingAccess(contact.id, telegramId);
+      if (!access.hasAccess) {
         await ctx.answerCbQuery(
           "Активної оплати вже немає — відкрийте /payment та оформіть доступ.",
         );
         return;
       }
-      await ctx.answerCbQuery(CALLBACK_ALERT_ALREADY_ACTIVE_MULTIMASKING_UA, {
+      const activeCtx = toAlreadyActiveContext(access);
+      await ctx.answerCbQuery(buildMultimaskingAlreadyActiveAlertUa(activeCtx), {
         show_alert: true,
       });
-      await ctx.reply(await buildMultimaskingAlreadyActivePaymentMessageUa(summary));
+      await ctx.reply(await buildMultimaskingAlreadyActivePaymentMessageUa(activeCtx));
     } catch (err) {
       console.error("WayForPay already active callback:", err);
       await ctx.answerCbQuery().catch(() => {});
@@ -420,34 +444,32 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
         return;
       }
 
-      const botPaySummary = await getActiveMultimaskingPaymentSummaryForContact(
-        contact.id,
-      );
-      if (botPaySummary.active) {
-        await ctx.answerCbQuery(CALLBACK_ALERT_ALREADY_ACTIVE_MULTIMASKING_UA, {
+      const access = await hasActiveMultimaskingAccess(contact.id, telegramId);
+      if (access.hasAccess) {
+        const activeCtx = toAlreadyActiveContext(access);
+        await ctx.answerCbQuery(buildMultimaskingAlreadyActiveAlertUa(activeCtx), {
           show_alert: true,
         });
-        await ctx.reply(
-          await buildMultimaskingAlreadyActivePaymentMessageUa(botPaySummary),
-        );
+        await ctx.reply(await buildMultimaskingAlreadyActivePaymentMessageUa(activeCtx));
         return;
       }
 
       await ctx.answerCbQuery();
 
       const price = await getMultimaskingCoursePriceUah();
-      let invoiceUrl: string;
+      let checkoutUrl: string;
       let orderReference: string;
+      const subscriptionMode = subscriptionFlags.subscriptionModeEnabled;
 
-      if (subscriptionFlags.subscriptionModeEnabled) {
+      if (subscriptionMode) {
         if (subscriptionFlags.subscriptionReturnFlowEnabled) {
           const recovered = await recoverSubscriptionCheckout(String(chatId));
           if (recovered.hasActiveOrder) {
             await ctx.reply(
-              "У вас уже є незавершена оплата. Оберіть дію:",
+              "У вас уже є незавершене оформлення щомісячної підписки. Оберіть дію:",
               Markup.inlineKeyboard([
                 Markup.button.callback(
-                  sparkleLabel("Продовжити оплату"),
+                  sparkleLabel("Продовжити оформлення"),
                   SUBSCRIPTION_CONTINUE_CHECKOUT_CALLBACK,
                 ),
                 Markup.button.callback(
@@ -462,7 +484,7 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
 
         const checkout = await createSubscriptionCheckout({
           userId: String(chatId),
-          planCode: "monthly_1m",
+          planCode: MONTHLY_SUBSCRIPTION_PLAN_CODE,
           forceNew: false,
         });
         if (!checkout.ok) {
@@ -473,7 +495,7 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
           );
           return;
         }
-        invoiceUrl = checkout.checkoutUrl;
+        checkoutUrl = checkout.checkoutUrl;
         orderReference = checkout.orderReference;
       } else {
         const { createCheckoutForCourse } = await import(
@@ -484,21 +506,20 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
           MULTIMASKING_PRODUCT_NAME,
           String(chatId),
         );
-        invoiceUrl = legacy.invoiceUrl;
+        checkoutUrl = legacy.invoiceUrl;
         orderReference = legacy.orderReference;
       }
 
+      const messageText = subscriptionMode
+        ? buildMonthlySubscriptionCheckoutMessageUa(price, orderReference)
+        : buildLegacyCheckoutCreatedMessageUa(price, orderReference);
+      const payButtonText = subscriptionMode
+        ? sparkleLabel("Оформити підписку")
+        : sparkleLabel("Перейти до оплати");
+
       await ctx.reply(
-        `Рахунок WayForPay на суму ${price} грн за доступ до навчального продукту ` +
-          "«Multimasking Learning Project» створено.\n\n" +
-          "Натисніть кнопку нижче, щоб перейти до безпечної оплати.\n\n" +
-          "Після оплати підтвердження зазвичай надходить протягом 1-2 хвилин. " +
-          "Будь ласка, не створюйте повторну оплату, доки очікуєте результат.\n\n" +
-          "Номер замовлення: " +
-          orderReference,
-        Markup.inlineKeyboard([
-          Markup.button.url(sparkleLabel("Перейти до оплати"), invoiceUrl),
-        ]),
+        messageText,
+        Markup.inlineKeyboard([Markup.button.url(payButtonText, checkoutUrl)]),
       );
     } catch (err) {
       console.error("WayForPay invoice (bot callback) failed:", err);

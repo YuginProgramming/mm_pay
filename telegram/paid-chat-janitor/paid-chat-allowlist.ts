@@ -1,6 +1,8 @@
 /**
  * Крок (b) paid-chat janitor: хто має право лишатися в MASTERS / Chat PRO за БД
- * (активний `payment_hook` на MULTIMASKING + ранг KWIGA без урахування оплати).
+ * (активний доступ MULTIMASKING: `payment_hook`, `subscription_auto` Active + grant,
+ * grace `SUBSCRIPTION_AUTO_GRACE_DAYS` після простроченого grant, або `user_subscriptions`;
+ * ранг KWIGA без урахування оплати).
  *
  * Ранг завжди береться через `computeKwigaRankSnapshot` під час побудови allowlist — не з колонки
  * `kwiga_audience_rank`. Перед фактичним kick у наступних кроках janitor знову перераховувати ранг
@@ -11,8 +13,14 @@
 import { Op } from "sequelize";
 import { Contact } from "../../database/Contact";
 import { ContactProductAccess } from "../../database/ContactProductAccess";
+import { findContactByEmailForBot } from "../../database/contact-lookup";
+import { normalizeEmail } from "../../database/normalize-email";
+import { SubscriptionAuto } from "../../database/SubscriptionAuto";
+import { SubscriptionPlan } from "../../database/SubscriptionPlan";
 import { TelegramUser } from "../../database/TelegramUser";
+import { hasActiveMultimaskingAccess } from "../../payment/multimasking-access-status";
 import { BOT_PAYMENT_EXTERNAL_PRODUCT_ID } from "../../payment/multimasking-product";
+import { isMultimaskingRecurringPlanCode } from "../../payment/subscription-plan-codes";
 import { computeKwigaRankSnapshot } from "../profile/kwiga-rank-db";
 import type { KwigaAudienceRank } from "../profile/kwiga-user-rank";
 import type { PaidChatRole } from "./chats-config";
@@ -87,13 +95,77 @@ export async function loadActiveBotPaymentRowsByContact(): Promise<
   return byContact;
 }
 
-export async function buildPaidChatAllowlistsStepB(): Promise<PaidChatAllowlistsStepB> {
+function mergeGrantEndAt(
+  map: Map<number, Date | null>,
+  contactId: number,
+  candidate: Date | null | undefined,
+): void {
+  if (candidate == null) {
+    if (!map.has(contactId)) {
+      map.set(contactId, null);
+    }
+    return;
+  }
+  const prev = map.get(contactId);
+  if (prev == null || candidate.getTime() > prev.getTime()) {
+    map.set(contactId, candidate);
+  }
+}
+
+/**
+ * Контакти з правом лишатися в paid chats: активний grant і/або recurring `subscription_auto`.
+ */
+async function resolveAllowlistGrantEndByContact(): Promise<Map<number, Date | null>> {
+  const grantEndByContact = new Map<number, Date | null>();
+
   const byContact = await loadActiveBotPaymentRowsByContact();
+  for (const [contactId, payRows] of byContact) {
+    grantEndByContact.set(contactId, maxGrantEndAt(payRows));
+  }
+
+  const autos = await SubscriptionAuto.findAll({
+    where: { cancelledAt: null },
+    attributes: ["userId", "planId", "wayforpayStatus"],
+  });
+
+  for (const auto of autos) {
+    const wfpStatus = (auto.wayforpayStatus ?? "").trim().toLowerCase();
+    if (wfpStatus !== "active") {
+      continue;
+    }
+    const plan = await SubscriptionPlan.findByPk(auto.planId, { attributes: ["code"] });
+    if (!plan || !isMultimaskingRecurringPlanCode(plan.code)) {
+      continue;
+    }
+
+    const user = await TelegramUser.findOne({ where: { telegramId: auto.userId } });
+    const emailRaw = user?.email?.trim();
+    if (!emailRaw) {
+      continue;
+    }
+    const contact = await findContactByEmailForBot(normalizeEmail(emailRaw));
+    if (!contact) {
+      continue;
+    }
+
+    const access = await hasActiveMultimaskingAccess(contact.id, auto.userId);
+    if (!access.hasAccess) {
+      continue;
+    }
+
+    const endAt = access.grantEndAt ?? access.userSubscriptionEndAt;
+    mergeGrantEndAt(grantEndByContact, contact.id, endAt);
+  }
+
+  return grantEndByContact;
+}
+
+export async function buildPaidChatAllowlistsStepB(): Promise<PaidChatAllowlistsStepB> {
+  const grantEndByContact = await resolveAllowlistGrantEndByContact();
   const masters: PaidChatAllowlistEntry[] = [];
   const catPro: PaidChatAllowlistEntry[] = [];
 
-  for (const [contactId, payRows] of byContact) {
-    const grantEndAt = maxGrantEndAt(payRows);
+  for (const [contactId, grantEndAt] of grantEndByContact) {
     const contact = await Contact.findByPk(contactId);
     if (!contact?.email?.trim()) {
       continue;
@@ -163,10 +235,18 @@ export async function getActiveMultimaskingPaymentSummaryForContact(
   return { active: true, grantEndAt: maxGrantEndAt(rows) };
 }
 
-/** Чи є в контакту активний рядок оплати MULTIMASKING у боті (як у профілі). */
+/**
+ * Чи є активний доступ MULTIMASKING (payment_hook, recurring, user_subscriptions).
+ * Якщо передано `telegramId`, використовує `hasActiveMultimaskingAccess` (S2).
+ */
 export async function contactHasActiveMultimaskingPayment(
   contactId: number,
+  telegramId?: string,
 ): Promise<boolean> {
+  const tid = telegramId?.trim();
+  if (tid) {
+    return (await hasActiveMultimaskingAccess(contactId, tid)).hasAccess;
+  }
   const summary = await getActiveMultimaskingPaymentSummaryForContact(contactId);
   return summary.active;
 }

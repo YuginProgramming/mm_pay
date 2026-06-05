@@ -1,14 +1,46 @@
 import { getPaidChatAccessDays } from "../../database/app-settings-queries";
-import type { ActiveMultimaskingPaymentSummary } from "../paid-chat-janitor/paid-chat-allowlist";
+import type {
+  MultimaskingAccessSource,
+  MultimaskingAccessStatus,
+  MultimaskingAutoRenewSnapshot,
+} from "../../payment/multimasking-access-status";
+import { MONTHLY_SUBSCRIPTION_PLAN_CODE } from "../../payment/subscription-plan-codes";
 import { SUPPORT_CONTACT_SUFFIX_PLAIN_UA } from "../core/support";
 import type { KwigaAudienceRank } from "./kwiga-user-rank";
 import { formatKwigaRankLine } from "./kwiga-user-rank";
+
+export type MultimaskingAlreadyActiveContext = {
+  grantEndAt: Date | null;
+  accessSource?: MultimaskingAccessSource | null;
+  autoRenew?: MultimaskingAutoRenewSnapshot | null;
+};
+
+export function toAlreadyActiveContext(
+  access: MultimaskingAccessStatus,
+): MultimaskingAlreadyActiveContext {
+  return {
+    grantEndAt: access.grantEndAt ?? access.userSubscriptionEndAt,
+    accessSource: access.source,
+    autoRenew: access.autoRenew,
+  };
+}
 
 function formatGrantEndUaKyiv(end: Date): string {
   return end.toLocaleDateString("uk-UA", {
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: "Europe/Kyiv",
+  });
+}
+
+function formatDateTimeUaKyiv(end: Date): string {
+  return end.toLocaleString("uk-UA", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
     timeZone: "Europe/Kyiv",
   });
 }
@@ -22,27 +54,75 @@ function formatAccessDaysUa(n: number): string {
   return `${n} днів`;
 }
 
+function buildPeriodLine(grantEndAt: Date | null): string {
+  if (grantEndAt == null) {
+    return "Дату закінчення поточного періоду див. у /profile.";
+  }
+  return `Поточний оплачений період до ${formatGrantEndUaKyiv(grantEndAt)}.`;
+}
+
+function isMonthlyAutoRenew(autoRenew: MultimaskingAutoRenewSnapshot | null | undefined): boolean {
+  return autoRenew?.planCode === MONTHLY_SUBSCRIPTION_PLAN_CODE;
+}
+
 /**
- * Користувач з активним payment_hook MULTIMASKING — повторна оплата за поточний період не пропонується.
+ * Довге повідомлення: активний доступ — legacy, щомісячна підписка або ledger.
  */
 export async function buildMultimaskingAlreadyActivePaymentMessageUa(
-  summary: Extract<ActiveMultimaskingPaymentSummary, { active: true }>,
+  ctx: MultimaskingAlreadyActiveContext,
 ): Promise<string> {
+  const periodLine = buildPeriodLine(ctx.grantEndAt);
+
+  if (ctx.accessSource === "subscription_auto" && ctx.autoRenew) {
+    const monthly = isMonthlyAutoRenew(ctx.autoRenew);
+    const title = monthly
+      ? "У вас уже є активний доступ. Щомісячна підписка WayForPay у статусі Active."
+      : "У вас уже є активний доступ. Автопродовження WayForPay (тест) у статусі Active.";
+    const nextLine = ctx.autoRenew.nextChargeAt
+      ? `Наступне списання: ${formatDateTimeUaKyiv(ctx.autoRenew.nextChargeAt)}.`
+      : "Наступне списання — див. у /profile.";
+    const renewHint = monthly
+      ? "Повторна оплата за поточний період не потрібна — доступ продовжується автоматично щомісяця."
+      : "Повторна оплата за поточний період не потрібна — списання за графіком WayForPay.";
+
+    return `${title}\n\n${periodLine}\n${nextLine}\n\n${renewHint}\n\nДеталі: /profile.`;
+  }
+
+  if (ctx.accessSource === "user_subscription") {
+    return (
+      "У вас уже є активний запис підписки в боті (без нової оплати зараз).\n\n" +
+      `${periodLine}\n\n` +
+      "Повторна оплата за поточний період не потрібна.\n\n" +
+      "Деталі: /profile."
+    );
+  }
+
   const days = await getPaidChatAccessDays();
   const daysLabel = formatAccessDaysUa(days);
-  const periodLine =
-    summary.grantEndAt == null
-      ? "Дату закінчення поточного періоду див. у /profile."
-      : `Поточний оплачений період до ${formatGrantEndUaKyiv(summary.grantEndAt)}.`;
   return (
-    "У вас уже є активний доступ за оплатою MULTIMASKING у цьому боті.\n\n" +
+    "У вас уже є активний доступ за разовою оплатою MULTIMASKING у цьому боті.\n\n" +
     `${periodLine}\n\n` +
     "Повторна оплата за поточний період не потрібна — ви вже маєте чинний доступ.\n\n" +
-    `Коли поточний період закінчиться, зможете оформити продовження через /payment: нова оплата додасть ${daysLabel} доступу до професійних спільнот (згідно з налаштуваннями бота).`
+    `Після закінчення періоду можна оформити доступ через /payment (щомісячна підписка) або разову оплату — +${daysLabel} доступу згідно з налаштуваннями бота.`
   );
 }
 
-/** Короткий текст для спливаючого вікна, якщо натиснули «Оплатити» при активному доступі. */
+/** Короткий текст для спливаючого вікна при активному доступі. */
+export function buildMultimaskingAlreadyActiveAlertUa(
+  ctx: Pick<MultimaskingAlreadyActiveContext, "accessSource" | "autoRenew">,
+): string {
+  if (ctx.accessSource === "subscription_auto") {
+    return isMonthlyAutoRenew(ctx.autoRenew)
+      ? "Щомісячна підписка активна. Повторна оплата не потрібна — списання автоматичне."
+      : "Автопродовження активне. Повторна оплата за період не потрібна.";
+  }
+  if (ctx.accessSource === "user_subscription") {
+    return "Підписка в боті активна. Повторна оплата зараз не потрібна.";
+  }
+  return CALLBACK_ALERT_ALREADY_ACTIVE_MULTIMASKING_UA;
+}
+
+/** Legacy one-shot (без розрізнення джерела). */
 export const CALLBACK_ALERT_ALREADY_ACTIVE_MULTIMASKING_UA =
   "Доступ за оплатою вже активний. Продовження — після закінчення періоду; нова оплата додасть дні доступу.";
 

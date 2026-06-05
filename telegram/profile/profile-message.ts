@@ -3,6 +3,12 @@ import { Op } from "sequelize";
 import { ContactProductAccess } from "../../database/ContactProductAccess";
 import { TelegramUser } from "../../database/TelegramUser";
 import {
+  getSubscriptionAutoGraceDays,
+  hasActiveMultimaskingAccess,
+  type MultimaskingAccessStatus,
+} from "../../payment/multimasking-access-status";
+import { isMonthlySubscriptionPlanCode } from "../../payment/subscription-plan-codes";
+import {
   computeKwigaRankSnapshot,
   persistKwigaRankSnapshot,
 } from "./kwiga-rank-db";
@@ -13,6 +19,52 @@ function formatDate(date: Date | null): string {
     return "—";
   }
   return date.toISOString().slice(0, 10);
+}
+
+function formatDateTimeUaKyiv(date: Date): string {
+  return date.toLocaleString("uk-UA", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Kyiv",
+  });
+}
+
+function formatWayforpayAutoRenewStatus(status: string | null | undefined): string {
+  const trimmed = (status ?? "").trim();
+  return trimmed.length > 0 ? trimmed : "Active";
+}
+
+/** S2-6: рядки про recurring WayForPay з `subscription_auto`. */
+function buildAutoRenewProfileLines(access: MultimaskingAccessStatus): string[] {
+  const auto = access.autoRenew;
+  if (!auto) {
+    return [];
+  }
+
+  const statusLabel = formatWayforpayAutoRenewStatus(auto.wayforpayStatus);
+  const lines: string[] = [`Автопродовження: ${statusLabel}`];
+
+  if (isMonthlySubscriptionPlanCode(auto.planCode)) {
+    lines.push("Тариф: щомісячна підписка MULTIMASKING (WayForPay).");
+  }
+
+  lines.push(
+    auto.nextChargeAt
+      ? `Наступне списання: ${formatDateTimeUaKyiv(auto.nextChargeAt)}`
+      : "Наступне списання: —",
+  );
+
+  if (access.inGracePeriod) {
+    const graceDays = getSubscriptionAutoGraceDays();
+    lines.push(
+      `Очікується автоматичне продовження після закінчення періоду (grace до ${graceDays} днів).`,
+    );
+  }
+
+  return lines;
 }
 
 function uaRecordsCount(n: number): string {
@@ -80,6 +132,11 @@ export async function buildProfileMessage(user: TelegramUser): Promise<string> {
   lines.push("Статус у базі KWIGA: контакт знайдено");
   lines.push(formatKwigaRankLine(snapshot.rank));
   const now = new Date();
+  const multimaskingAccess = await hasActiveMultimaskingAccess(
+    contact.id,
+    user.telegramId,
+    now,
+  );
   const activeRows = await ContactProductAccess.findAll({
     where: {
       contactId: contact.id,
@@ -116,12 +173,19 @@ export async function buildProfileMessage(user: TelegramUser): Promise<string> {
     });
   }
 
-  const isActiveAccess = activeRows.length > 0;
-  const nearestExpiry = activeRows.find((row) => row.endAt !== null)?.endAt ?? null;
+  const isActiveAccess = activeRows.length > 0 || multimaskingAccess.hasAccess;
+  const nearestExpiry =
+    multimaskingAccess.grantEndAt ??
+    activeRows.find((row) => row.endAt !== null)?.endAt ??
+    null;
   const activeByPid = groupRowsByExternalProductId(activeRows);
 
   lines.push(`Доступ активний: ${isActiveAccess ? "так" : "ні"}`);
   lines.push(`Дата завершення доступу: ${formatDate(nearestExpiry)}`);
+  const autoRenewLines = buildAutoRenewProfileLines(multimaskingAccess);
+  if (autoRenewLines.length > 0) {
+    lines.push(...autoRenewLines);
+  }
   lines.push("");
   lines.push("Доступні опції:");
 

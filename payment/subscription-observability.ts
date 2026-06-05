@@ -9,6 +9,8 @@ export type SubscriptionStatusReadEvent = {
   status?: string;
   planCode?: string | null;
   daysLeft?: number;
+  autoRenew?: boolean;
+  wayforpayStatus?: string | null;
   error?: string;
 };
 
@@ -19,6 +21,8 @@ export async function logSubscriptionStatusReadSuccess(input: {
   status: string;
   planCode: string | null;
   daysLeft: number;
+  autoRenew: boolean;
+  wayforpayStatus: string | null;
 }): Promise<void> {
   const event: SubscriptionStatusReadEvent = {
     kind: "subscription_status_read",
@@ -28,6 +32,8 @@ export async function logSubscriptionStatusReadSuccess(input: {
     status: input.status,
     planCode: input.planCode,
     daysLeft: input.daysLeft,
+    autoRenew: input.autoRenew,
+    wayforpayStatus: input.wayforpayStatus,
   };
   await appendFile(eventsPath, `${JSON.stringify(event)}\n`, "utf8");
 }

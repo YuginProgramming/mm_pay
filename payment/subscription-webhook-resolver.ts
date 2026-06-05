@@ -1,3 +1,11 @@
+/**
+ * Ledger `subscription_payment_orders` + дзеркало `user_subscriptions`.
+ *
+ * S1-8 / Q1 (TZ multimasking-recurring): для recurring (`monthly_1m`, `subscription_auto`)
+ * паралельно оновлюємо `user_subscriptions`, щоб `GET /subscription/status` і renewal-reminder
+ * лишались коректними до S2. Канонічний доступ після S1 — `contact_product_access` +
+ * `subscription_auto`; `user_subscriptions` — сумісний ledger (не джерело gate/janitor).
+ */
 import { SubscriptionPaymentOrder } from "../database/SubscriptionPaymentOrder";
 import { SubscriptionPlan } from "../database/SubscriptionPlan";
 import { UserSubscription } from "../database/UserSubscription";
@@ -22,6 +30,94 @@ function addDays(date: Date, days: number): Date {
   return result;
 }
 
+/**
+ * Ідемпотентно продовжує `user_subscriptions` за `lastPaymentOrderReference`.
+ * Повертає true, якщо рядок створено або оновлено; false — якщо цей payment вже застосовано.
+ */
+export async function applyApprovedUserSubscriptionExtension(args: {
+  userId: string;
+  planId: number;
+  orderReference: string;
+  durationDays: number;
+}): Promise<boolean> {
+  const now = new Date();
+
+  return sequelize.transaction(async (tx) => {
+    const alreadyApplied = await UserSubscription.findOne({
+      where: {
+        userId: args.userId,
+        planId: args.planId,
+        lastPaymentOrderReference: args.orderReference,
+      },
+      transaction: tx,
+    });
+    if (alreadyApplied) {
+      return false;
+    }
+
+    const current = await UserSubscription.findOne({
+      where: { userId: args.userId, planId: args.planId },
+      order: [["endAt", "DESC"]],
+      transaction: tx,
+    });
+
+    if (!current) {
+      await UserSubscription.create(
+        {
+          userId: args.userId,
+          planId: args.planId,
+          status: "active",
+          startAt: now,
+          endAt: addDays(now, args.durationDays),
+          lastPaymentOrderReference: args.orderReference,
+        },
+        { transaction: tx },
+      );
+      return true;
+    }
+
+    const isCurrentActive = current.endAt > now && current.status === "active";
+    const extensionBase = isCurrentActive ? current.endAt : now;
+    const nextEndAt = addDays(extensionBase, args.durationDays);
+    const nextStartAt = isCurrentActive ? current.startAt : now;
+
+    await current.update(
+      {
+        status: "active",
+        startAt: nextStartAt,
+        endAt: nextEndAt,
+        lastPaymentOrderReference: args.orderReference,
+      },
+      { transaction: tx },
+    );
+    return true;
+  });
+}
+
+/**
+ * Renewal recurring без `subscription_payment_orders`: дзеркалимо в `user_subscriptions`
+ * за `subscription_plans.duration_days` (для `monthly_1m` = 30).
+ */
+export async function reconcileUserSubscriptionFromRecurringWebhook(args: {
+  userId: string;
+  planId: number;
+  orderReference: string;
+}): Promise<boolean> {
+  const plan = await SubscriptionPlan.findByPk(args.planId, {
+    attributes: ["durationDays"],
+  });
+  if (!plan) {
+    return false;
+  }
+
+  return applyApprovedUserSubscriptionExtension({
+    userId: args.userId,
+    planId: args.planId,
+    orderReference: args.orderReference,
+    durationDays: plan.durationDays,
+  });
+}
+
 export async function reconcileSubscriptionOrderFromWebhook(
   payload: WayForPayWebhookPayload,
 ): Promise<ResolveSubscriptionWebhookResult> {
@@ -41,65 +137,23 @@ export async function reconcileSubscriptionOrderFromWebhook(
       return { handled: false, reason: "plan_not_found" };
     }
 
-    await sequelize.transaction(async (tx) => {
-      await SubscriptionPaymentOrder.update(
-        { status: "approved", terminalAt: now },
-        { where: { id: order.id }, transaction: tx },
-      );
+    await SubscriptionPaymentOrder.update(
+      { status: "approved", terminalAt: now },
+      { where: { id: order.id } },
+    );
 
-      // Idempotency: if this exact payment reference has already been applied, do nothing else.
-      const alreadyApplied = await UserSubscription.findOne({
-        where: {
-          userId: order.userId,
-          planId: order.planId,
-          lastPaymentOrderReference: order.orderReference,
-        },
-        transaction: tx,
-      });
-      if (alreadyApplied) return;
-
-      const current = await UserSubscription.findOne({
-        where: { userId: order.userId, planId: order.planId },
-        order: [["endAt", "DESC"]],
-        transaction: tx,
-      });
-
-      if (!current) {
-        await UserSubscription.create(
-          {
-            userId: order.userId,
-            planId: order.planId,
-            status: "active",
-            startAt: now,
-            endAt: addDays(now, plan.durationDays),
-            lastPaymentOrderReference: order.orderReference,
-          },
-          { transaction: tx },
-        );
-        return;
-      }
-
-      const isCurrentActive = current.endAt > now && current.status === "active";
-      const extensionBase = isCurrentActive ? current.endAt : now;
-      const nextEndAt = addDays(extensionBase, plan.durationDays);
-      const nextStartAt = isCurrentActive ? current.startAt : now;
-
-      await current.update(
-        {
-          status: "active",
-          startAt: nextStartAt,
-          endAt: nextEndAt,
-          lastPaymentOrderReference: order.orderReference,
-        },
-        { transaction: tx },
-      );
+    const updatedSubscription = await applyApprovedUserSubscriptionExtension({
+      userId: order.userId,
+      planId: order.planId,
+      orderReference: order.orderReference,
+      durationDays: plan.durationDays,
     });
 
     return {
       handled: true,
       orderReference: order.orderReference,
       status: "approved",
-      updatedSubscription: true,
+      updatedSubscription,
     };
   }
 

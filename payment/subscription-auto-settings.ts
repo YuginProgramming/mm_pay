@@ -16,9 +16,6 @@ const ALLOWED_REGULAR_MODES = new Set([
   "yearly",
 ]);
 
-/** Plan code для WayForPay Purchase + regularApi (команда /subauto). */
-export const SUBSCRIPTION_AUTO_PLAN_CODE = "subscription_auto";
-
 export async function getSubscriptionAutoPriceUah(): Promise<number> {
   const n = await getAppSettingInt(
     APP_SETTING_KEYS.SUBSCRIPTION_AUTO_PRICE_UAH,

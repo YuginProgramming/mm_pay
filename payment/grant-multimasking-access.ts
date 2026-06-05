@@ -1,3 +1,4 @@
+import { Op } from "sequelize";
 import { getPaidChatAccessDays } from "../database/app-settings-queries";
 import { findContactByEmailForBot } from "../database/contact-lookup";
 import { ContactProductAccess } from "../database/ContactProductAccess";
@@ -72,7 +73,60 @@ export type MultimaskingGrantOptions = {
   successMessageText?: string;
   /** Override `subscriptionStateTitle` snapshot in contact_product_access. */
   subscriptionStateLabel?: string;
+  /** Продовжити `endAt` від активного grant (recurring renewal), не від `now`. */
+  renewalExtendFromActiveGrant?: boolean;
+  /** Не надсилати success-повідомлення (напр. renewal DM окремо). */
+  skipSuccessMessage?: boolean;
 };
+
+export type MultimaskingGrantResult = {
+  granted: boolean;
+  grantEndAt?: Date;
+};
+
+function maxActiveGrantEndAt(rows: ContactProductAccess[], now: Date): Date {
+  let max = now;
+  for (const row of rows) {
+    const end = row.endAt;
+    if (end != null && end.getTime() > max.getTime()) {
+      max = end;
+    }
+  }
+  return max;
+}
+
+async function resolveGrantWindow(
+  contactId: number,
+  accessDays: number,
+  renewalExtend: boolean,
+): Promise<{ startAt: Date; endAt: Date }> {
+  const now = new Date();
+  if (!renewalExtend) {
+    const endAt = new Date(now);
+    endAt.setUTCDate(endAt.getUTCDate() + accessDays);
+    return { startAt: now, endAt };
+  }
+
+  const activeRows = await ContactProductAccess.findAll({
+    where: {
+      contactId,
+      source: "payment_hook",
+      externalProductId: BOT_PAYMENT_EXTERNAL_PRODUCT_ID,
+      revokedAt: null,
+      isActive: true,
+      [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+    },
+    order: [["endAt", "DESC"]],
+  });
+
+  const extensionBase = maxActiveGrantEndAt(activeRows, now);
+  const endAt = new Date(extensionBase);
+  endAt.setUTCDate(endAt.getUTCDate() + accessDays);
+  const startAt =
+    activeRows.length > 0 && activeRows[0].startAt != null ? activeRows[0].startAt : now;
+
+  return { startAt, endAt };
+}
 
 /**
  * Після верифікації підпису webhook: запис у БД (термін — `app_settings.paid_chat_access_days`) + повідомлення в чат.
@@ -82,7 +136,7 @@ export async function processApprovedMultimaskingPayment(
   payload: WayForPayWebhookPayload,
   metadata: PaymentMetadata,
   options?: MultimaskingGrantOptions,
-): Promise<void> {
+): Promise<MultimaskingGrantResult> {
   const orderReference = payload.orderReference;
   const chatId = metadata.chatId.trim();
   const courseName = metadata.courseName.trim();
@@ -92,7 +146,7 @@ export async function processApprovedMultimaskingPayment(
   });
   if (existing) {
     console.log("[payment] skip duplicate webhook for order", orderReference);
-    return;
+    return { granted: false };
   }
 
   const paidParse = parsePositivePaidAmount(payload.amount);
@@ -108,7 +162,7 @@ export async function processApprovedMultimaskingPayment(
         "\n\n" +
         SUPPORT_CONTACT_SUFFIX_PLAIN_UA,
     );
-    return;
+    return { granted: false };
   }
   const paidUah = paidParse.value;
 
@@ -125,7 +179,7 @@ export async function processApprovedMultimaskingPayment(
         "\n\n" +
         SUPPORT_CONTACT_SUFFIX_PLAIN_UA,
     );
-    return;
+    return { granted: false };
   }
 
   if (courseName !== MULTIMASKING_PRODUCT_NAME) {
@@ -142,7 +196,7 @@ export async function processApprovedMultimaskingPayment(
         "\n\n" +
         SUPPORT_CONTACT_SUFFIX_PLAIN_UA,
     );
-    return;
+    return { granted: false };
   }
 
   const telegramUser = await TelegramUser.findOne({
@@ -159,7 +213,7 @@ export async function processApprovedMultimaskingPayment(
         "\n\n" +
         SUPPORT_CONTACT_SUFFIX_PLAIN_UA,
     );
-    return;
+    return { granted: false };
   }
 
   const contact = await findContactByEmailForBot(
@@ -175,7 +229,7 @@ export async function processApprovedMultimaskingPayment(
         "\n\n" +
         SUPPORT_CONTACT_SUFFIX_PLAIN_UA,
     );
-    return;
+    return { granted: false };
   }
 
   const preGrantRankSnapshot = await computeKwigaRankSnapshot(telegramUser);
@@ -190,16 +244,19 @@ export async function processApprovedMultimaskingPayment(
       chatId,
       multimaskingPaidButRankIneligibleUa(orderReference, preGrantRankSnapshot.rank),
     );
-    return;
+    return { granted: false };
   }
 
   const accessDays =
     options?.accessDays != null && options.accessDays >= 1
       ? Math.floor(options.accessDays)
       : await getPaidChatAccessDays();
-  const startAt = new Date();
-  const endAt = new Date(startAt);
-  endAt.setUTCDate(endAt.getUTCDate() + accessDays);
+  const renewalExtend = Boolean(options?.renewalExtendFromActiveGrant);
+  const { startAt, endAt } = await resolveGrantWindow(
+    contact.id,
+    accessDays,
+    renewalExtend,
+  );
 
   console.log("[payment] granting access", {
     orderReference,
@@ -207,6 +264,7 @@ export async function processApprovedMultimaskingPayment(
     currency: payload.currency,
     contactId: contact.id,
     accessDays,
+    renewalExtend,
   });
 
   try {
@@ -243,7 +301,7 @@ export async function processApprovedMultimaskingPayment(
         : "";
     if (name === "SequelizeUniqueConstraintError") {
       console.log("[payment] concurrent duplicate order", orderReference);
-      return;
+      return { granted: false };
     }
     throw err;
   }
@@ -261,9 +319,13 @@ export async function processApprovedMultimaskingPayment(
     accessRowCount: postGrantSnapshot.accessRowCount,
   });
 
+  if (options?.skipSuccessMessage) {
+    return { granted: true, grantEndAt: endAt };
+  }
+
   if (options?.successMessageText) {
     await sendTelegramBotMessage(chatId, options.successMessageText);
-    return;
+    return { granted: true, grantEndAt: endAt };
   }
 
   const commonHead =
@@ -284,6 +346,8 @@ export async function processApprovedMultimaskingPayment(
   await sendTelegramBotMessage(chatId, successText, urlButtons, {
     parseMode: "HTML",
   });
+
+  return { granted: true, grantEndAt: endAt };
 }
 
 function paymentSuccessCopyAndButtons(

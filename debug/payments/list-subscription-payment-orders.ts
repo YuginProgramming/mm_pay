@@ -4,8 +4,8 @@
  *   npx ts-node debug/payments/list-subscription-payment-orders.ts
  *   npx ts-node debug/payments/list-subscription-payment-orders.ts 50
  *
- * Для recurring-рядків (plan subscription_auto) додатково викликає WayForPay regularApi STATUS,
- * якщо задано WFP_MERCHANT_PASSWORD.
+ * Для recurring-рядків (plan `subscription_auto` або `monthly_1m`) додатково викликає
+ * WayForPay regularApi STATUS, якщо задано WFP_MERCHANT_PASSWORD.
  */
 import "dotenv/config";
 import { literal, Op } from "sequelize";
@@ -15,7 +15,7 @@ import { SubscriptionAuto } from "../../database/SubscriptionAuto";
 import { sequelize } from "../../database/db";
 import { getWayforpayMerchantPassword } from "../../payment/payment.config";
 import { getWayforpayRegularPaymentStatus } from "../../payment/wayforpay-regular-api";
-import { SUBSCRIPTION_AUTO_PLAN_CODE } from "../../payment/subscription-auto-settings";
+import { isMultimaskingRecurringPlanCode } from "../../payment/subscription-plan-codes";
 
 type OrderType = "recurring" | "one_time";
 
@@ -44,7 +44,7 @@ function parseLimit(): number | null {
 }
 
 function isRecurringPlanCode(planCode: string): boolean {
-  return planCode === SUBSCRIPTION_AUTO_PLAN_CODE;
+  return isMultimaskingRecurringPlanCode(planCode);
 }
 
 function formatWayforpayDate(value: unknown): string | null {

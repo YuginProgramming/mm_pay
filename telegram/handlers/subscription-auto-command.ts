@@ -28,8 +28,9 @@ async function gateFailureMessageUa(
       return EMAIL_REQUIRED_BEFORE_PAYMENT_MESSAGE_UA;
     case "already_active_access":
       return buildMultimaskingAlreadyActivePaymentMessageUa({
-        active: true,
         grantEndAt: gate.grantEndAtIso ? new Date(gate.grantEndAtIso) : null,
+        accessSource: gate.accessSource,
+        autoRenew: gate.autoRenew,
       });
     case "no_user":
     case "no_contact":
