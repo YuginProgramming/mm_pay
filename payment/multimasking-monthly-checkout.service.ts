@@ -1,3 +1,4 @@
+import { getPaidChatAccessDays } from "../database/app-settings-queries";
 import {
   createMultimaskingRecurringCheckout,
   type MultimaskingRecurringCheckoutResult,
@@ -7,15 +8,21 @@ import { MONTHLY_SUBSCRIPTION_PLAN_CODE } from "./subscription-plan-codes";
 
 export type MultimaskingMonthlyCheckoutResult = MultimaskingRecurringCheckoutResult;
 
+/** Кількість щомісячних списань WayForPay (regularCount); без dateEnd. */
+export const MONTHLY_SUBSCRIPTION_REGULAR_COUNT = 36;
+
 /**
  * Prod preset: `regularMode=monthly`, ціна з `multimasking_course_price_uah`,
- * без `regularCount` / `dateEnd`, `dateNext` = +1 day UTC.
+ * `dateNext` = +`paid_chat_access_days` UTC (типово 30), `regularCount` = 36.
  */
 export async function createMultimaskingMonthlyCheckout(
   userId: string,
   options?: { forceNew?: boolean },
 ): Promise<MultimaskingMonthlyCheckoutResult> {
-  const priceUah = await getMultimaskingCoursePriceUah();
+  const [priceUah, accessDays] = await Promise.all([
+    getMultimaskingCoursePriceUah(),
+    getPaidChatAccessDays(),
+  ]);
 
   return createMultimaskingRecurringCheckout(
     userId,
@@ -23,7 +30,8 @@ export async function createMultimaskingMonthlyCheckout(
       planCode: MONTHLY_SUBSCRIPTION_PLAN_CODE,
       regularMode: "monthly",
       priceUah,
-      dateNextDaysFromNow: 1,
+      dateNextDaysFromNow: accessDays,
+      regularCount: MONTHLY_SUBSCRIPTION_REGULAR_COUNT,
     },
     options,
   );
