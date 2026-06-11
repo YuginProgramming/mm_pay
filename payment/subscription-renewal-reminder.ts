@@ -1,6 +1,7 @@
 import { Op } from "sequelize";
 import { SubscriptionRenewalReminderLog } from "../database/SubscriptionRenewalReminderLog";
 import { UserSubscription } from "../database/UserSubscription";
+import { hasActiveMultimaskingRecurringAuto } from "./multimasking-access-status";
 import { sendTelegramBotMessage } from "./telegram-notify";
 import { subscriptionFlags } from "./subscription-flags";
 
@@ -78,6 +79,10 @@ export async function sendDueSubscriptionRenewalReminders(
   });
 
   for (const row of candidates) {
+    if (await hasActiveMultimaskingRecurringAuto(row.userId)) {
+      continue;
+    }
+
     const endAt = row.endAt;
     const left = daysUntil(endAt, now);
 

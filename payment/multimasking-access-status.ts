@@ -88,6 +88,11 @@ async function findActiveSubscriptionAutoForUser(
   return null;
 }
 
+/** S3-3: активний WayForPay recurring (`monthly_1m` або `subscription_auto`) — renewal-reminder не потрібен. */
+export async function hasActiveMultimaskingRecurringAuto(userId: string): Promise<boolean> {
+  return (await findActiveSubscriptionAutoForUser(userId)) != null;
+}
+
 /** Останній `endAt` payment_hook (навіть якщо вже прострочений) — для grace-вікна. */
 async function getLatestMultimaskingGrantEndAt(contactId: number): Promise<Date | null> {
   const row = await ContactProductAccess.findOne({
