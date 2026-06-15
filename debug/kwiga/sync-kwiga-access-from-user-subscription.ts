@@ -8,36 +8,13 @@ import { assertKwigaEnv, syncKwigaContactProductsToDb } from "../../database/syn
 import { TelegramUser } from "../../database/TelegramUser";
 import { UserSubscription } from "../../database/UserSubscription";
 import { sequelize } from "../../database/db";
+import { searchKwigaContactByEmail } from "../../kwiga/kwiga-api-client";
+import { DEFAULT_KWIGA_PROLONG_FALLBACK_DAYS } from "../../kwiga/kwiga-config";
+import type { ProlongKwigaProductAction } from "../../kwiga/kwiga-types";
+import { withKwigaRetry } from "../../kwiga/kwiga-retry";
+import { prolongKwigaCourseAccessForPayment } from "../../payment/grant-kwiga-course-access";
 
-const BASE_URL = process.env.KWIGA_BASE_URL ?? "https://api.kwiga.com";
-const DEFAULT_FALLBACK_DAYS = 30;
-const PURCHASE_DELAY_MS = Math.max(
-  0,
-  parseInt(process.env.KWIGA_PURCHASE_DELAY_MS ?? "2500", 10) || 2500,
-);
-const RETRY_MAX_ATTEMPTS = Math.max(
-  1,
-  parseInt(process.env.KWIGA_RETRY_MAX_ATTEMPTS ?? "4", 10) || 4,
-);
-const RETRY_BASE_DELAY_MS = Math.max(
-  100,
-  parseInt(process.env.KWIGA_RETRY_BASE_DELAY_MS ?? "2000", 10) || 2000,
-);
-
-type KwigaContact = { id: number; email: string };
-type KwigaSubscription = {
-  id: number;
-  offer_id?: number | null;
-  order_id?: number | null;
-  end_at?: string | null;
-  is_active?: boolean;
-};
-type KwigaProduct = {
-  id: number;
-  title: string;
-  aggregated_subscription?: { end_at?: string | null; is_active?: boolean };
-  subscriptions?: KwigaSubscription[];
-};
+const DEFAULT_FALLBACK_DAYS = DEFAULT_KWIGA_PROLONG_FALLBACK_DAYS;
 
 type CliArgs = {
   apply: boolean;
@@ -79,15 +56,6 @@ type UserReport = {
   actions: ProductAction[];
 };
 
-function kwigaHeaders(): Record<string, string> {
-  return {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    Token: process.env.KWIGA_TOKEN!,
-    "Cabinet-Hash": process.env.KWIGA_CABINET_HASH!,
-  };
-}
-
 function parseArgs(): CliArgs {
   const args = process.argv.slice(2);
   let apply = false;
@@ -118,122 +86,11 @@ function parseArgs(): CliArgs {
   return { apply, limit, userId, email, includeLapsed, syncLocal, fallbackDays };
 }
 
-function plusDaysIso(days: number): string {
-  const now = new Date();
-  const d = new Date(now);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString();
-}
-
-function parseIso(value: string | null | undefined): Date | null {
-  if (!value) return null;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
-function iso(value: Date | null): string | null {
-  return value ? value.toISOString() : null;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function effectiveEndAt(product: KwigaProduct): Date | null {
-  const subs = product.subscriptions ?? [];
-  let best: Date | null = null;
-  for (const s of subs) {
-    const dt = parseIso(s.end_at ?? null);
-    if (!dt) continue;
-    if (!best || dt > best) best = dt;
-  }
-  if (best) return best;
-  return parseIso(product.aggregated_subscription?.end_at ?? null);
-}
-
-function currentOfferId(product: KwigaProduct): number | null {
-  const subs = product.subscriptions ?? [];
-  for (const s of subs) {
-    if (typeof s.offer_id === "number" && s.offer_id > 0) return s.offer_id;
-  }
-  return null;
-}
-
-function isRetriableErrorMessage(msg: string): boolean {
-  return (
-    /429|5\d\d/.test(msg) ||
-    /rate limit exceeded/i.test(msg) ||
-    /POST \/contacts\/purchases 422/.test(msg)
-  );
-}
-
-async function withRetry<T>(
-  fn: () => Promise<T>,
-  attempts = RETRY_MAX_ATTEMPTS,
-): Promise<T> {
-  let lastErr: unknown = null;
-  for (let i = 0; i < attempts; i += 1) {
-    try {
-      return await fn();
-    } catch (err) {
-      lastErr = err;
-      const msg = String(err);
-      const retriable = isRetriableErrorMessage(msg);
-      if (!retriable || i === attempts - 1) break;
-      const delayMs = RETRY_BASE_DELAY_MS * Math.pow(2, i);
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
-  }
-  throw lastErr;
-}
-
-async function searchKwigaContactByEmail(email: string): Promise<KwigaContact | null> {
-  const url = new URL(`${BASE_URL}/contacts`);
-  url.searchParams.set("page", "1");
-  url.searchParams.set("per_page", "50");
-  url.searchParams.set("filters[search]", email);
-
-  const res = await fetch(url, { method: "GET", headers: kwigaHeaders() });
-  if (!res.ok) {
-    throw new Error(`GET /contacts ${res.status}: ${await res.text()}`);
-  }
-  const body = (await res.json()) as { data?: KwigaContact[] };
-  const list = body.data ?? [];
-  return list.find((c) => c.email.toLowerCase() === email) ?? list[0] ?? null;
-}
-
-async function fetchKwigaProducts(kwigaContactId: number): Promise<KwigaProduct[]> {
-  const res = await fetch(`${BASE_URL}/contacts/${kwigaContactId}/products`, {
-    method: "GET",
-    headers: kwigaHeaders(),
-  });
-  if (!res.ok) {
-    throw new Error(
-      `GET /contacts/${kwigaContactId}/products ${res.status}: ${await res.text()}`,
-    );
-  }
-  const body = (await res.json()) as { data?: KwigaProduct[] };
-  return body.data ?? [];
-}
-
-async function postPurchase(email: string, offerId: number): Promise<void> {
-  const payload = {
-    email,
-    offer_id: offerId,
-    is_paid: true,
-    send_activation_email: false,
-    send_product_access_email: false,
-    send_payment_success_email: false,
-    comment: "Batch update from user_subscriptions",
-  };
-  const res = await fetch(`${BASE_URL}/contacts/purchases`, {
-    method: "POST",
-    headers: kwigaHeaders(),
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
-    throw new Error(`POST /contacts/purchases ${res.status}: ${await res.text()}`);
-  }
+function countActionsByKind(
+  actions: ProlongKwigaProductAction[],
+  kind: ProlongKwigaProductAction["kind"],
+): number {
+  return actions.filter((a) => a.kind === kind).length;
 }
 
 async function resolveEmailByUserId(userId: string): Promise<string | null> {
@@ -278,7 +135,6 @@ async function main(): Promise<void> {
 
   const processed: UserReport[] = [];
   const contactIdsToSync = new Set<number>();
-  const purchaseDedupe = new Set<string>();
 
   let scanned = 0;
   let noEmail = 0;
@@ -317,7 +173,7 @@ async function main(): Promise<void> {
       }
       one.email = email;
 
-      const contact = await withRetry(() => searchKwigaContactByEmail(email));
+      const contact = await withKwigaRetry(() => searchKwigaContactByEmail(email));
       if (!contact) {
         noContact += 1;
         one.actions.push({ kind: "skip_no_contact", note: "No Kwiga contact by email" });
@@ -326,84 +182,34 @@ async function main(): Promise<void> {
       }
       one.kwigaContactId = contact.id;
 
-      const products = await withRetry(() => fetchKwigaProducts(contact.id));
-      if (products.length === 0) {
+      const local = await Contact.findOne({
+        where: { externalId: contact.id },
+        attributes: ["id"],
+      });
+
+      const prolong = await prolongKwigaCourseAccessForPayment({
+        email,
+        kwigaContactId: contact.id,
+        localContactId: local?.id ?? null,
+        targetEndAt: row.endAt,
+        orderReference: `user_subscription:${row.id}`,
+        fallbackDays: args.fallbackDays,
+        apply: args.apply,
+        skipLocalSync: true,
+      });
+
+      one.actions.push(...(prolong.actions as ProductAction[]));
+
+      if (prolong.status === "no_products") {
         noProducts += 1;
-        one.actions.push({ kind: "skip_no_products", note: "Contact has no products" });
-        processed.push(one);
-        continue;
       }
+      skippedValid += countActionsByKind(prolong.actions, "skip_valid");
+      noOffer += countActionsByKind(prolong.actions, "skip_no_offer");
+      fallbackUsed += countActionsByKind(prolong.actions, "grant_offer");
+      granted += prolong.grantsApplied;
 
-      for (const p of products) {
-        const currentEnd = effectiveEndAt(p);
-        const targetEnd = row.endAt;
-        const isValid = currentEnd !== null && currentEnd >= targetEnd;
-
-        if (isValid) {
-          skippedValid += 1;
-          one.actions.push({
-            kind: "skip_valid",
-            productId: p.id,
-            productTitle: p.title,
-            targetEndAt: targetEnd.toISOString(),
-            currentEndAt: iso(currentEnd),
-          });
-          continue;
-        }
-
-        const offerId = currentOfferId(p);
-        if (!offerId) {
-          noOffer += 1;
-          one.actions.push({
-            kind: "skip_no_offer",
-            productId: p.id,
-            productTitle: p.title,
-            targetEndAt: targetEnd.toISOString(),
-            currentEndAt: iso(currentEnd),
-            note: "No offer_id found in product subscriptions",
-          });
-          continue;
-        }
-
-        const exactNotSupported = true;
-        const fallbackTarget = plusDaysIso(args.fallbackDays);
-        const dedupeKey = `${email}:${offerId}:${targetEnd.toISOString().slice(0, 10)}`;
-        if (purchaseDedupe.has(dedupeKey)) {
-          one.actions.push({
-            kind: "skip_valid",
-            productId: p.id,
-            productTitle: p.title,
-            offerId,
-            targetEndAt: targetEnd.toISOString(),
-            currentEndAt: iso(currentEnd),
-            note: "Deduped same email/offer/day within this run",
-          });
-          continue;
-        }
-
-        const action: ProductAction = {
-          kind: "grant_offer",
-          productId: p.id,
-          productTitle: p.title,
-          offerId,
-          targetEndAt: targetEnd.toISOString(),
-          currentEndAt: iso(currentEnd),
-          note: exactNotSupported
-            ? `Exact target date cannot be set via API; offer-based grant used (fallback intent: ${fallbackTarget}).`
-            : undefined,
-        };
-        one.actions.push(action);
-        fallbackUsed += 1;
-
-        if (args.apply) {
-          await withRetry(() => postPurchase(email, offerId));
-          granted += 1;
-          purchaseDedupe.add(dedupeKey);
-          contactIdsToSync.add(contact.id);
-          if (PURCHASE_DELAY_MS > 0) {
-            await sleep(PURCHASE_DELAY_MS);
-          }
-        }
+      if (prolong.grantsApplied > 0) {
+        contactIdsToSync.add(contact.id);
       }
     } catch (err) {
       failures += 1;
@@ -423,7 +229,7 @@ async function main(): Promise<void> {
         attributes: ["id"],
       });
       if (!local) continue;
-      await withRetry(() => syncKwigaContactProductsToDb(kwigaContactId, local.id));
+      await withKwigaRetry(() => syncKwigaContactProductsToDb(kwigaContactId, local.id));
     }
   }
 

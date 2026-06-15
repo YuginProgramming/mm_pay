@@ -12,6 +12,7 @@
         "app.ts",
         "poster.ts",
         "debug/**/*.ts",
+        "kwiga/**/*.ts",
         "telegram/**/*.ts",
         "payment/**/*.ts",
         "database/**/*.ts"
