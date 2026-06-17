@@ -44,6 +44,8 @@ export type ProlongKwigaResult = {
   status: ProlongKwigaResultStatus;
   actions: ProlongKwigaProductAction[];
   grantsApplied: number;
+  /** True when Kwiga API was not called because this order was already processed. */
+  idempotentSkip?: boolean;
 };
 
 export type ProlongKwigaInput = {

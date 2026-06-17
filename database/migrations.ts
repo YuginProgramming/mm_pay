@@ -928,6 +928,28 @@ async function createSubscriptionRenewalReminderLogTable(): Promise<void> {
   );
 }
 
+async function createKwigaPurchaseGrantsTable(): Promise<void> {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS kwiga_purchase_grants (
+      id                       SERIAL PRIMARY KEY,
+      wayforpay_order_reference VARCHAR(128) NOT NULL UNIQUE,
+      contact_id               INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+      status                   VARCHAR(32) NOT NULL DEFAULT 'pending',
+      actions_json             JSONB,
+      last_error               TEXT,
+      created_at               TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at               TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS kwiga_purchase_grants_contact_status_idx
+      ON kwiga_purchase_grants (contact_id, status);
+  `);
+  console.log(
+    "Migration completed: kwiga_purchase_grants table/indexes (if missing).",
+  );
+}
+
 async function runMigrations(): Promise<void> {
   try {
     await sequelize.authenticate();
@@ -950,6 +972,7 @@ async function runMigrations(): Promise<void> {
     await addConsultationCaseDisplayNameColumn();
     await addSubscriptionPaymentOrderCheckoutUrlColumn();
     await createSubscriptionRenewalReminderLogTable();
+    await createKwigaPurchaseGrantsTable();
     await seedSubscriptionMonthlyPlan();
     await seedSubscriptionTestPlan();
     await seedYearlySubscriptionTestSettings();

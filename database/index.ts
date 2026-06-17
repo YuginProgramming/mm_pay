@@ -6,6 +6,7 @@ import { ContactProductAccess } from "./ContactProductAccess";
 import { EmailChangeLog } from "./EmailChangeLog";
 import { AppSetting } from "./AppSetting";
 import { RulesConsent } from "./RulesConsent";
+import { KwigaPurchaseGrant } from "./KwigaPurchaseGrant";
 import { KwigaProduct } from "./KwigaProduct";
 import { SubscriptionFlowSession } from "./SubscriptionFlowSession";
 import { SubscriptionPaymentOrder } from "./SubscriptionPaymentOrder";
@@ -33,6 +34,7 @@ export {
   ConsultationPaymentOrder,
   ContactProductAccess,
   EmailChangeLog,
+  KwigaPurchaseGrant,
   KwigaProduct,
   AppSetting,
   RulesConsent,
@@ -54,6 +56,7 @@ export const models = {
   ConsultationPaymentOrder,
   ContactProductAccess,
   EmailChangeLog,
+  KwigaPurchaseGrant,
   KwigaProduct,
   AppSetting,
   RulesConsent,

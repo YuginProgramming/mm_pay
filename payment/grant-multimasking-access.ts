@@ -20,6 +20,7 @@ import {
   MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL,
   MULTIMASKING_TELEGRAM_GROUP_PRO_URL,
 } from "./multimasking-telegram-groups";
+import { prolongKwigaCourseAccessForPayment } from "./grant-kwiga-course-access";
 import type { PaymentMetadata, WayForPayWebhookPayload } from "./payment.types";
 import { sendTelegramBotMessage } from "./telegram-notify";
 import type { KwigaAudienceRank } from "../telegram/profile/kwiga-user-rank";
@@ -304,6 +305,39 @@ export async function processApprovedMultimaskingPayment(
       return { granted: false };
     }
     throw err;
+  }
+
+  try {
+    if (contact.externalId != null) {
+      const kwigaResult = await prolongKwigaCourseAccessForPayment({
+        email: normalizeEmail(telegramUser.email)!,
+        kwigaContactId: contact.externalId,
+        localContactId: contact.id,
+        targetEndAt: endAt,
+        orderReference,
+        fallbackDays: accessDays,
+        apply: true,
+      });
+      console.log("[payment] kwiga prolong result", {
+        orderReference,
+        contactId: contact.id,
+        kwigaContactId: contact.externalId,
+        status: kwigaResult.status,
+        grantsApplied: kwigaResult.grantsApplied,
+        idempotentSkip: kwigaResult.idempotentSkip ?? false,
+      });
+    } else {
+      console.warn("[payment] kwiga prolong skipped: contact has no externalId", {
+        orderReference,
+        contactId: contact.id,
+      });
+    }
+  } catch (kwigaErr) {
+    console.error("[payment] kwiga prolong failed after group grant", {
+      orderReference,
+      contactId: contact.id,
+      error: kwigaErr instanceof Error ? kwigaErr.message : String(kwigaErr),
+    });
   }
 
   /** Повідомлення після оплати: той самий «ефективний» ранг, що /profile (monotonic з telegram_users, TZ/rank-info.txt), а не сирий count→rank без збереженого pro. */

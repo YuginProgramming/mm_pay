@@ -19,6 +19,18 @@ vi.mock("../../database/sync-from-kwiga", () => ({
   syncKwigaContactProductsToDb: vi.fn(),
 }));
 
+const mockGrantFindOne = vi.fn();
+const mockGrantCreate = vi.fn();
+const mockGrantUpdate = vi.fn();
+
+vi.mock("../../database/KwigaPurchaseGrant", () => ({
+  KwigaPurchaseGrant: {
+    findOne: (...args: unknown[]) => mockGrantFindOne(...args),
+    create: (...args: unknown[]) => mockGrantCreate(...args),
+    update: (...args: unknown[]) => mockGrantUpdate(...args),
+  },
+}));
+
 vi.mock("../../kwiga/kwiga-config", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../kwiga/kwiga-config")>();
   return {
@@ -81,6 +93,9 @@ describe("prolongKwigaCourseAccessForPayment", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSync.mockResolvedValue(undefined);
+    mockGrantFindOne.mockResolvedValue(null);
+    mockGrantCreate.mockResolvedValue({});
+    mockGrantUpdate.mockResolvedValue([1]);
   });
 
   afterEach(() => {
@@ -184,5 +199,88 @@ describe("prolongKwigaCourseAccessForPayment", () => {
     expect(result.grantsApplied).toBe(1);
     expect(mockPostPurchase).toHaveBeenCalledTimes(1);
     expect(result.actions.some((a) => a.note?.includes("Deduped"))).toBe(true);
+  });
+
+  it("dry-run does not write idempotency rows", async () => {
+    mockFetchProducts.mockResolvedValue([
+      product(1, "2026-01-01T00:00:00.000Z", 100),
+    ]);
+
+    await prolongKwigaCourseAccessForPayment({
+      ...baseInput,
+      apply: false,
+    });
+
+    expect(mockGrantFindOne).not.toHaveBeenCalled();
+    expect(mockGrantCreate).not.toHaveBeenCalled();
+    expect(mockGrantUpdate).not.toHaveBeenCalled();
+  });
+
+  it("apply=true persists pending then final status", async () => {
+    mockFetchProducts.mockResolvedValue([
+      product(1, "2026-01-01T00:00:00.000Z", 100),
+    ]);
+
+    await prolongKwigaCourseAccessForPayment({
+      ...baseInput,
+      apply: true,
+    });
+
+    expect(mockGrantCreate).toHaveBeenCalledWith({
+      wayforpayOrderReference: "order-test-1",
+      contactId: 7,
+      status: "pending",
+    });
+    expect(mockGrantUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "completed",
+        actionsJson: expect.arrayContaining([
+          expect.objectContaining({ kind: "grant_offer" }),
+        ]),
+      }),
+      { where: { wayforpayOrderReference: "order-test-1" } },
+    );
+  });
+
+  it("skips Kwiga POST when grant already completed for orderReference", async () => {
+    mockGrantFindOne.mockResolvedValue({
+      status: "completed",
+      actionsJson: [
+        {
+          kind: "grant_offer",
+          productId: 1,
+          offerId: 100,
+        },
+      ],
+    });
+
+    const result = await prolongKwigaCourseAccessForPayment({
+      ...baseInput,
+      apply: true,
+    });
+
+    expect(result.idempotentSkip).toBe(true);
+    expect(result.status).toBe("ok");
+    expect(result.grantsApplied).toBe(1);
+    expect(mockFetchProducts).not.toHaveBeenCalled();
+    expect(mockPostPurchase).not.toHaveBeenCalled();
+    expect(mockGrantCreate).not.toHaveBeenCalled();
+  });
+
+  it("skips Kwiga POST when grant already skipped_valid", async () => {
+    mockGrantFindOne.mockResolvedValue({
+      status: "skipped_valid",
+      actionsJson: [{ kind: "skip_valid", productId: 1 }],
+    });
+
+    const result = await prolongKwigaCourseAccessForPayment({
+      ...baseInput,
+      apply: true,
+    });
+
+    expect(result.idempotentSkip).toBe(true);
+    expect(result.status).toBe("skipped_all_valid");
+    expect(mockFetchProducts).not.toHaveBeenCalled();
+    expect(mockPostPurchase).not.toHaveBeenCalled();
   });
 });
