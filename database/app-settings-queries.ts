@@ -148,3 +148,51 @@ export async function getConsultationMasterPriceUah(): Promise<number> {
   );
   return normalizePositiveIntOrFallback(value, CONSULTATION_PRICE_DEFAULT_UAH);
 }
+
+/** Telegram id цільової групи для poster bot (`app_settings.target_group_id`). */
+export async function getPosterTargetGroupId(): Promise<string | null> {
+  return getAppSettingString(APP_SETTING_KEYS.TARGET_GROUP_ID);
+}
+
+function parsePosterAuthorizedUserIdsJson(raw: string): number[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    console.warn(
+      "[app-settings] invalid poster_authorized_user_ids JSON, using empty list",
+    );
+    return [];
+  }
+  if (!Array.isArray(parsed)) {
+    console.warn(
+      "[app-settings] poster_authorized_user_ids is not a JSON array, using empty list",
+    );
+    return [];
+  }
+  const ids: number[] = [];
+  for (const item of parsed) {
+    const n =
+      typeof item === "number"
+        ? item
+        : typeof item === "string"
+          ? Number.parseInt(item.trim(), 10)
+          : Number.NaN;
+    if (Number.isFinite(n) && n > 0) {
+      ids.push(n);
+    }
+  }
+  return ids;
+}
+
+/**
+ * Telegram user ids, яким дозволено poster bot (створення та публікація постів).
+ * Джерело: `app_settings.poster_authorized_user_ids` (JSON-масив).
+ */
+export async function getPosterAuthorizedUserIds(): Promise<number[]> {
+  const raw = await getAppSettingRaw(APP_SETTING_KEYS.POSTER_AUTHORIZED_USER_IDS);
+  if (raw == null) {
+    return [];
+  }
+  return parsePosterAuthorizedUserIdsJson(raw);
+}

@@ -1,0 +1,11 @@
+{
+  "merchantAccount": "test_merchant",
+  "merchantSignature": "test_signature",
+  "orderReference": "test-order-s2-7",
+  "amount": "500",
+  "currency": "UAH",
+  "authCode": "123456",
+  "cardPan": "42****4242",
+  "transactionStatus": "Approved",
+  "reasonCode": 1100
+}

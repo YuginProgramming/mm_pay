@@ -13,6 +13,11 @@ export const APP_SETTING_KEYS = {
   CONSULTATION_MASTER_PRICE_UAH: "consultation_master_price_uah",
   /** Telegram ID групи (наприклад -100…) */
   TARGET_GROUP_ID: "target_group_id",
+  /**
+   * JSON-масив Telegram user id, яким дозволено публікувати через poster bot;
+   * див. TZ/telegram-post-publisher.md.
+   */
+  POSTER_AUTHORIZED_USER_IDS: "poster_authorized_user_ids",
   /** Telegram user id тестового акаунта для дебагу (читає debug/add-testuser.ts) */
   DEBUG_TELEGRAM_USER_ID: "debug_telegram_user_id",
   /**

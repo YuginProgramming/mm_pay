@@ -231,6 +231,21 @@ async function seedDebugTelegramUserIdMastersSetting(): Promise<void> {
   );
 }
 
+async function seedPosterBotSettings(): Promise<void> {
+  await sequelize.query(`
+    INSERT INTO app_settings (setting_key, setting_value, description_uk)
+    VALUES (
+      'poster_authorized_user_ids',
+      '[269694206,206147160]',
+      'JSON-масив Telegram user id для poster bot; лише ці користувачі можуть створювати та публікувати пости'
+    )
+    ON CONFLICT (setting_key) DO NOTHING;
+  `);
+  console.log(
+    "Migration completed: poster_authorized_user_ids seed (if missing).",
+  );
+}
+
 async function seedInlineMenuInactivityTimeoutSetting(): Promise<void> {
   await sequelize.query(`
     INSERT INTO app_settings (setting_key, setting_value, description_uk)
@@ -987,6 +1002,7 @@ async function runMigrations(): Promise<void> {
     await seedDebugTelegramUserIdMastersSetting();
     await seedInlineMenuInactivityTimeoutSetting();
     await seedConsultationPriceSettings();
+    await seedPosterBotSettings();
   } catch (error) {
     console.error("Migration failed:", error);
     process.exit(1);
