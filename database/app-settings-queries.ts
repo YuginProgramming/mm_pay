@@ -149,9 +149,14 @@ export async function getConsultationMasterPriceUah(): Promise<number> {
   return normalizePositiveIntOrFallback(value, CONSULTATION_PRICE_DEFAULT_UAH);
 }
 
-/** Telegram id цільової групи для poster bot (`app_settings.target_group_id`). */
+/** Telegram id групи Masters для poster bot (`app_settings.target_group_id`). */
 export async function getPosterTargetGroupId(): Promise<string | null> {
   return getAppSettingString(APP_SETTING_KEYS.TARGET_GROUP_ID);
+}
+
+/** Telegram id групи Chat PRO для poster bot (`app_settings.poster_pro_group_id`). */
+export async function getPosterProGroupId(): Promise<string | null> {
+  return getAppSettingString(APP_SETTING_KEYS.POSTER_PRO_GROUP_ID);
 }
 
 function parsePosterAuthorizedUserIdsJson(raw: string): number[] {

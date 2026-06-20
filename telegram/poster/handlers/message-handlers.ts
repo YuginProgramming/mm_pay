@@ -7,12 +7,14 @@ import {
   POSTER_CREATE_POST_COMMAND,
   POSTER_IDLE_HINT,
   POSTER_PROMPT_BUTTONS,
-  POSTER_PUBLISHED_OK,
+  POSTER_PUBLISHED_MASTERS_OK,
+  POSTER_PUBLISHED_PRO_OK,
   POSTER_PUBLISH_FAILED,
   POSTER_REPLY_LABEL_ADD_ACCOUNT,
   POSTER_REPLY_LABEL_ADD_CONSULTATION,
   POSTER_REPLY_LABEL_ADD_VIDEO,
-  POSTER_REPLY_LABEL_PUBLISH,
+  POSTER_REPLY_LABEL_PUBLISH_MASTERS,
+  POSTER_REPLY_LABEL_PUBLISH_PRO,
   POSTER_UNSUPPORTED_CONTENT_HINT,
 } from "../constants";
 import {
@@ -25,9 +27,10 @@ import {
 import { posterReplyKeyboard, posterReplyKeyboardRemove } from "../keyboards";
 import { parsePosterDraftContent } from "../parse-content";
 import {
-  isPosterTargetGroupChat,
-  POSTER_TARGET_GROUP_NOT_CONFIGURED_MESSAGE,
-  resolvePosterTargetGroupId,
+  isPosterPublishTargetChat,
+  POSTER_MASTERS_GROUP_NOT_CONFIGURED_MESSAGE,
+  POSTER_PRO_GROUP_NOT_CONFIGURED_MESSAGE,
+  resolvePosterPublishGroupIds,
 } from "../poster-config";
 import {
   publishPosterDraftToGroup,
@@ -45,14 +48,40 @@ function isPrivateChat(ctx: Context): boolean {
   return ctx.chat?.type === "private";
 }
 
+async function tryPublishDraft(
+  ctx: Context,
+  targetGroupId: string | null,
+  notConfiguredMessage: string,
+  successMessage: string,
+  userId: number,
+): Promise<boolean> {
+  if (!targetGroupId) {
+    await ctx.reply(notConfiguredMessage);
+    return true;
+  }
+  try {
+    await publishPosterDraftToGroup(
+      ctx.telegram,
+      targetGroupId,
+      getPosterDraft(userId),
+    );
+    await ctx.reply(successMessage, posterReplyKeyboardRemove);
+    clearPosterDraft(userId);
+  } catch (error) {
+    console.error("[poster] publish failed:", error);
+    await ctx.reply(POSTER_PUBLISH_FAILED);
+  }
+  return true;
+}
+
 export function registerPosterMessageHandlers(bot: Telegraf<Context>): void {
   bot.on("message", async (ctx) => {
     if (!ctx.chat || !ctx.message) {
       return;
     }
 
-    const targetGroupId = await resolvePosterTargetGroupId();
-    if (targetGroupId && isPosterTargetGroupChat(ctx.chat.id, targetGroupId)) {
+    const groupIds = await resolvePosterPublishGroupIds();
+    if (isPosterPublishTargetChat(ctx.chat.id, groupIds)) {
       return;
     }
 
@@ -65,11 +94,6 @@ export function registerPosterMessageHandlers(bot: Telegraf<Context>): void {
     }
 
     if (!(await assertPosterAuthorized(ctx))) {
-      return;
-    }
-
-    if (!targetGroupId) {
-      await ctx.reply(POSTER_TARGET_GROUP_NOT_CONFIGURED_MESSAGE);
       return;
     }
 
@@ -107,19 +131,25 @@ export function registerPosterMessageHandlers(bot: Telegraf<Context>): void {
     }
 
     if (draft.state === "awaiting_buttons") {
-      if (text === POSTER_REPLY_LABEL_PUBLISH) {
-        try {
-          await publishPosterDraftToGroup(
-            ctx.telegram,
-            targetGroupId,
-            getPosterDraft(userId),
-          );
-          await ctx.reply(POSTER_PUBLISHED_OK, posterReplyKeyboardRemove);
-          clearPosterDraft(userId);
-        } catch (error) {
-          console.error("[poster] publish failed:", error);
-          await ctx.reply(POSTER_PUBLISH_FAILED);
-        }
+      if (text === POSTER_REPLY_LABEL_PUBLISH_MASTERS) {
+        await tryPublishDraft(
+          ctx,
+          groupIds.mastersGroupId,
+          POSTER_MASTERS_GROUP_NOT_CONFIGURED_MESSAGE,
+          POSTER_PUBLISHED_MASTERS_OK,
+          userId,
+        );
+        return;
+      }
+
+      if (text === POSTER_REPLY_LABEL_PUBLISH_PRO) {
+        await tryPublishDraft(
+          ctx,
+          groupIds.proGroupId,
+          POSTER_PRO_GROUP_NOT_CONFIGURED_MESSAGE,
+          POSTER_PUBLISHED_PRO_OK,
+          userId,
+        );
         return;
       }
 

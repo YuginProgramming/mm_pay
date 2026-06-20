@@ -11,8 +11,10 @@ export const APP_SETTING_KEYS = {
   CONSULTATION_CLIENT_PRICE_UAH: "consultation_client_price_uah",
   /** Ціна консультації для майстрів, грн */
   CONSULTATION_MASTER_PRICE_UAH: "consultation_master_price_uah",
-  /** Telegram ID групи (наприклад -100…) */
+  /** Telegram ID групи Masters для poster bot (формат -100…) */
   TARGET_GROUP_ID: "target_group_id",
+  /** Telegram ID групи Chat PRO для poster bot (формат -100…) */
+  POSTER_PRO_GROUP_ID: "poster_pro_group_id",
   /**
    * JSON-масив Telegram user id, яким дозволено публікувати через poster bot;
    * див. TZ/telegram-post-publisher.md.

@@ -2,7 +2,7 @@ import { Context, Telegraf } from "telegraf";
 import { registerPosterCommandHandlers } from "./handlers/command-handlers";
 import { registerPosterMessageHandlers } from "./handlers/message-handlers";
 import { POSTER_CREATE_POST_COMMAND } from "./constants";
-import { resolvePosterTargetGroupId } from "./poster-config";
+import { resolvePosterPublishGroupIds } from "./poster-config";
 
 const token = process.env.TELEGRAM_BOT_TOKEN_POSTER;
 
@@ -25,13 +25,21 @@ registerPosterCommandHandlers(posterBot);
 registerPosterMessageHandlers(posterBot);
 
 export async function launchPosterBot(): Promise<void> {
-  const targetGroupId = await resolvePosterTargetGroupId();
-  if (!targetGroupId) {
+  const { mastersGroupId, proGroupId } = await resolvePosterPublishGroupIds();
+  if (!mastersGroupId) {
     console.warn(
-      "[poster] app_settings.target_group_id is empty — set it in DB before publishing.",
+      "[poster] app_settings.target_group_id is empty — Masters publish disabled.",
     );
-  } else {
-    console.log(`Poster bot started. Target group: ${targetGroupId}`);
+  }
+  if (!proGroupId) {
+    console.warn(
+      "[poster] app_settings.poster_pro_group_id is empty — Pro publish disabled.",
+    );
+  }
+  if (mastersGroupId || proGroupId) {
+    console.log(
+      `[poster] Publish targets — Masters: ${mastersGroupId ?? "(not set)"}, Pro: ${proGroupId ?? "(not set)"}`,
+    );
   }
 
   await posterBot.telegram.setMyCommands([

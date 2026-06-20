@@ -246,6 +246,22 @@ async function seedPosterBotSettings(): Promise<void> {
   );
 }
 
+/** Chat PRO з telegram_bot_chats_json (title «Chat PRO …»); див. seed-telegram-chat-ids. */
+async function seedPosterProGroupIdSetting(): Promise<void> {
+  await sequelize.query(`
+    INSERT INTO app_settings (setting_key, setting_value, description_uk)
+    VALUES (
+      'poster_pro_group_id',
+      '-1003861971216',
+      'Telegram ID групи Chat PRO для poster bot (формат -100…); «Опублікувати група Pro»'
+    )
+    ON CONFLICT (setting_key) DO NOTHING;
+  `);
+  console.log(
+    "Migration completed: poster_pro_group_id seed (if missing).",
+  );
+}
+
 async function seedInlineMenuInactivityTimeoutSetting(): Promise<void> {
   await sequelize.query(`
     INSERT INTO app_settings (setting_key, setting_value, description_uk)
@@ -1049,6 +1065,7 @@ async function runMigrations(): Promise<void> {
     await seedInlineMenuInactivityTimeoutSetting();
     await seedConsultationPriceSettings();
     await seedPosterBotSettings();
+    await seedPosterProGroupIdSetting();
   } catch (error) {
     console.error("Migration failed:", error);
     process.exit(1);

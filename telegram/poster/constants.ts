@@ -18,21 +18,25 @@ export const POSTER_BUTTON_ALREADY_ADDED = "Цю кнопку вже додан�
 
 export const POSTER_BUTTON_ADDED = "Кнопку додано.";
 
-export const POSTER_PUBLISHED_OK = "Опубліковано у групі.";
+export const POSTER_PUBLISHED_MASTERS_OK = "Опубліковано у групі Masters.";
+
+export const POSTER_PUBLISHED_PRO_OK = "Опубліковано у групі Pro.";
 
 export const POSTER_PUBLISH_FAILED =
   "Не вдалося опублікувати повідомлення в групі.";
 
 export const POSTER_REPLY_LABEL_ADD_CONSULTATION =
-  'Додати кнопку "Консультація"';
+  'Додати кнопку "Записатися на консультацію"';
 
 export const POSTER_REPLY_LABEL_ADD_ACCOUNT =
-  'Додати кнопку "Персональний кабінет"';
+  'Додати кнопку "Долучитися до спільноти"';
 
 export const POSTER_REPLY_LABEL_ADD_VIDEO =
-  'Додати кнопку "Відеоплатформа"';
+  'Додати кнопку "Запис на навчання"';
 
-export const POSTER_REPLY_LABEL_PUBLISH = "Опублікувати";
+export const POSTER_REPLY_LABEL_PUBLISH_MASTERS = "Опублікувати група Masters";
+
+export const POSTER_REPLY_LABEL_PUBLISH_PRO = "Опублікувати група Pro";
 
 import type { PosterDraftButtonKey } from "./draft-session";
 
@@ -41,15 +45,15 @@ export const POSTER_BUTTON_URLS: Record<
   { label: string; url: string }
 > = {
   consultation: {
-    label: "Консультація",
+    label: "Записатися на консультацію ⤵️",
     url: "https://t.me/mm_consultation_bot",
   },
   account: {
-    label: "Персональний кабінет",
+    label: "Долучитися до спільноти ⤵️",
     url: "https://t.me/multimasking_account_bot",
   },
   video_platform: {
-    label: "Відеоплатформа",
+    label: "Запис на навчання ⤵️",
     url: "https://multimasking.kwiga.com/ua",
   },
 };

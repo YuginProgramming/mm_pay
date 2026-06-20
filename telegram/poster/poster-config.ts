@@ -1,30 +1,63 @@
-import { getPosterTargetGroupId } from "../../database/app-settings-queries";
+import {
+  getPosterProGroupId,
+  getPosterTargetGroupId,
+} from "../../database/app-settings-queries";
 
 const TARGET_GROUP_CACHE_MS = 60_000;
 
-let cachedTargetGroupId: string | null | undefined;
-let cachedTargetGroupAtMs = 0;
+export type PosterPublishGroupIds = {
+  mastersGroupId: string | null;
+  proGroupId: string | null;
+};
 
-/** `app_settings.target_group_id` з коротким in-memory кешем. */
-export async function resolvePosterTargetGroupId(): Promise<string | null> {
+let cachedGroupIds: PosterPublishGroupIds | undefined;
+let cachedGroupIdsAtMs = 0;
+
+async function loadPosterPublishGroupIds(): Promise<PosterPublishGroupIds> {
+  const [mastersGroupId, proGroupId] = await Promise.all([
+    getPosterTargetGroupId(),
+    getPosterProGroupId(),
+  ]);
+  return { mastersGroupId, proGroupId };
+}
+
+/** `target_group_id` (Masters) та `poster_pro_group_id` (Pro) з коротким кешем. */
+export async function resolvePosterPublishGroupIds(): Promise<PosterPublishGroupIds> {
   const now = Date.now();
   if (
-    cachedTargetGroupId !== undefined &&
-    now - cachedTargetGroupAtMs < TARGET_GROUP_CACHE_MS
+    cachedGroupIds !== undefined &&
+    now - cachedGroupIdsAtMs < TARGET_GROUP_CACHE_MS
   ) {
-    return cachedTargetGroupId;
+    return cachedGroupIds;
   }
-  cachedTargetGroupId = await getPosterTargetGroupId();
-  cachedTargetGroupAtMs = now;
-  return cachedTargetGroupId;
+  cachedGroupIds = await loadPosterPublishGroupIds();
+  cachedGroupIdsAtMs = now;
+  return cachedGroupIds;
 }
 
-export function isPosterTargetGroupChat(
+/** @deprecated використовуйте resolvePosterPublishGroupIds */
+export async function resolvePosterTargetGroupId(): Promise<string | null> {
+  const { mastersGroupId } = await resolvePosterPublishGroupIds();
+  return mastersGroupId;
+}
+
+export function isPosterPublishTargetChat(
   chatId: number | string,
-  targetGroupId: string,
+  groupIds: PosterPublishGroupIds,
 ): boolean {
-  return String(chatId) === targetGroupId;
+  const id = String(chatId);
+  return (
+    (groupIds.mastersGroupId != null && id === groupIds.mastersGroupId) ||
+    (groupIds.proGroupId != null && id === groupIds.proGroupId)
+  );
 }
 
+export const POSTER_MASTERS_GROUP_NOT_CONFIGURED_MESSAGE =
+  "Групу Masters не налаштовано (app_settings.target_group_id).";
+
+export const POSTER_PRO_GROUP_NOT_CONFIGURED_MESSAGE =
+  "Групу Pro не налаштовано (app_settings.poster_pro_group_id).";
+
+/** @deprecated */
 export const POSTER_TARGET_GROUP_NOT_CONFIGURED_MESSAGE =
-  "Цільову групу не налаштовано (app_settings.target_group_id).";
+  POSTER_MASTERS_GROUP_NOT_CONFIGURED_MESSAGE;
