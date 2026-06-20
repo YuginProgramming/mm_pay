@@ -717,6 +717,50 @@ async function seedSubscriptionMonthlyPlan(): Promise<void> {
   console.log("Migration completed: subscription_plans seed monthly_1m.");
 }
 
+async function seedSubscriptionYearlyPlan(): Promise<void> {
+  await sequelize.query(`
+    INSERT INTO subscription_plans (
+      code,
+      title,
+      duration_days,
+      price,
+      currency,
+      is_active
+    )
+    VALUES (
+      'yearly_12m',
+      'Підписка на 1 рік',
+      365,
+      4800.00,
+      'UAH',
+      true
+    )
+    ON CONFLICT (code) DO NOTHING;
+  `);
+  console.log("Migration completed: subscription_plans seed yearly_12m.");
+}
+
+async function seedYearlySubscriptionSettings(): Promise<void> {
+  await sequelize.query(`
+    INSERT INTO app_settings (setting_key, setting_value, description_uk)
+    VALUES
+      (
+        'yearly_subscription_price_uah',
+        '4800',
+        'Ціна річної підписки MULTIMASKING, грн'
+      ),
+      (
+        'yearly_subscription_access_days',
+        '365',
+        'Днів доступу після кожної успішної річної оплати'
+      )
+    ON CONFLICT (setting_key) DO NOTHING;
+  `);
+  console.log(
+    "Migration completed: yearly subscription prod app_settings seed (if missing).",
+  );
+}
+
 async function seedSubscriptionTestPlan(): Promise<void> {
   await sequelize.query(`
     INSERT INTO subscription_plans (
@@ -989,6 +1033,8 @@ async function runMigrations(): Promise<void> {
     await createSubscriptionRenewalReminderLogTable();
     await createKwigaPurchaseGrantsTable();
     await seedSubscriptionMonthlyPlan();
+    await seedSubscriptionYearlyPlan();
+    await seedYearlySubscriptionSettings();
     await seedSubscriptionTestPlan();
     await seedYearlySubscriptionTestSettings();
     await createYearlyAutoRenewSubscriptionsTable();

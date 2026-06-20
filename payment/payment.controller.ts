@@ -22,9 +22,11 @@ import {
 import { gateMultimaskingCheckoutForTelegramId } from "./multimasking-checkout-eligibility";
 import {
   isMultimaskingRecurringPlanCode,
+  isYearlySubscriptionPlanCode,
   MONTHLY_SUBSCRIPTION_PLAN_CODE,
 } from "./subscription-plan-codes";
 import { getMultimaskingCoursePriceUah } from "./multimasking-price";
+import { getYearlySubscriptionPriceUah } from "./yearly-subscription-settings";
 import { MULTIMASKING_PRODUCT_NAME } from "./multimasking-product";
 import { logPaymentEvent } from "./payment-events";
 import { persistWayforpayWebhookEvent } from "./persist-wayforpay-webhook";
@@ -46,6 +48,18 @@ import {
 } from "./subscription-observability";
 import { reconcileSubscriptionOrderFromWebhook } from "./subscription-webhook-resolver";
 import { reconcileConsultationOrderFromWebhook } from "./consultation-payment.service";
+
+async function subscriptionCheckoutResponseMeta(planCode: string): Promise<{
+  priceUah: number;
+  regularMode: "monthly" | "yearly";
+}> {
+  return {
+    priceUah: isYearlySubscriptionPlanCode(planCode)
+      ? await getYearlySubscriptionPriceUah()
+      : await getMultimaskingCoursePriceUah(),
+    regularMode: isYearlySubscriptionPlanCode(planCode) ? "yearly" : "monthly",
+  };
+}
 
 const parseWebhookBody = (body: unknown): WayForPayWebhookPayload => {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -389,12 +403,12 @@ const handleCreateSubscriptionCheckout = async (
       return;
     }
 
-    const priceUah = await getMultimaskingCoursePriceUah();
+    const { priceUah, regularMode } = await subscriptionCheckoutResponseMeta(planCode);
     res.status(200).json({
       ...result,
       priceUah,
       checkoutType: "purchase",
-      regularMode: "monthly",
+      regularMode,
     });
   } catch (err) {
     console.error("Create subscription checkout error:", err);
@@ -459,12 +473,12 @@ const handleRecreateSubscriptionCheckout = async (
       return;
     }
 
-    const priceUah = await getMultimaskingCoursePriceUah();
+    const { priceUah, regularMode } = await subscriptionCheckoutResponseMeta(planCode);
     res.status(200).json({
       ...result,
       priceUah,
       checkoutType: "purchase",
-      regularMode: "monthly",
+      regularMode,
     });
   } catch (err) {
     console.error("Recreate subscription checkout error:", err);
@@ -512,13 +526,13 @@ const handleRenewSubscriptionCheckout = async (
       return;
     }
 
-    const priceUah = await getMultimaskingCoursePriceUah();
+    const { priceUah, regularMode } = await subscriptionCheckoutResponseMeta(planCode);
     res.status(200).json({
       intent: "renewal",
       ...result,
       priceUah,
       checkoutType: "purchase",
-      regularMode: "monthly",
+      regularMode,
     });
   } catch (err) {
     console.error("Renew subscription checkout error:", err);

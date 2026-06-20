@@ -1,7 +1,7 @@
 /**
  * Ledger `subscription_payment_orders` + дзеркало `user_subscriptions`.
  *
- * S1-8 / Q1 (TZ multimasking-recurring): для recurring (`monthly_1m`, `subscription_auto`)
+ * S1-8 / Q1 (TZ multimasking-recurring): для recurring (`monthly_1m`, `yearly_12m`, `subscription_auto`)
  * паралельно оновлюємо `user_subscriptions`, щоб `GET /subscription/status` і renewal-reminder
  * лишались коректними до S2. Канонічний доступ після S1 — `contact_product_access` +
  * `subscription_auto`; `user_subscriptions` — сумісний ledger (не джерело gate/janitor).
@@ -96,7 +96,7 @@ export async function applyApprovedUserSubscriptionExtension(args: {
 
 /**
  * Renewal recurring без `subscription_payment_orders`: дзеркалимо в `user_subscriptions`
- * за `subscription_plans.duration_days` (для `monthly_1m` = 30).
+ * за `subscription_plans.duration_days` (для `monthly_1m` = 30, `yearly_12m` = 365).
  */
 export async function reconcileUserSubscriptionFromRecurringWebhook(args: {
   userId: string;

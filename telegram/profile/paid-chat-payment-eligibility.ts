@@ -4,7 +4,10 @@ import type {
   MultimaskingAccessStatus,
   MultimaskingAutoRenewSnapshot,
 } from "../../payment/multimasking-access-status";
-import { MONTHLY_SUBSCRIPTION_PLAN_CODE } from "../../payment/subscription-plan-codes";
+import {
+  MONTHLY_SUBSCRIPTION_PLAN_CODE,
+  YEARLY_SUBSCRIPTION_PLAN_CODE,
+} from "../../payment/subscription-plan-codes";
 import { SUPPORT_CONTACT_SUFFIX_PLAIN_UA } from "../core/support";
 import type { KwigaAudienceRank } from "./kwiga-user-rank";
 import { formatKwigaRankLine } from "./kwiga-user-rank";
@@ -65,6 +68,10 @@ function isMonthlyAutoRenew(autoRenew: MultimaskingAutoRenewSnapshot | null | un
   return autoRenew?.planCode === MONTHLY_SUBSCRIPTION_PLAN_CODE;
 }
 
+function isYearlyAutoRenew(autoRenew: MultimaskingAutoRenewSnapshot | null | undefined): boolean {
+  return autoRenew?.planCode === YEARLY_SUBSCRIPTION_PLAN_CODE;
+}
+
 /**
  * Довге повідомлення: активний доступ — legacy, щомісячна підписка або ledger.
  */
@@ -75,15 +82,20 @@ export async function buildMultimaskingAlreadyActivePaymentMessageUa(
 
   if (ctx.accessSource === "subscription_auto" && ctx.autoRenew) {
     const monthly = isMonthlyAutoRenew(ctx.autoRenew);
+    const yearly = isYearlyAutoRenew(ctx.autoRenew);
     const title = monthly
       ? "У вас уже є активний доступ. Щомісячна підписка WayForPay у статусі Active."
-      : "У вас уже є активний доступ. Автопродовження WayForPay (тест) у статусі Active.";
+      : yearly
+        ? "У вас уже є активний доступ. Річна підписка WayForPay у статусі Active."
+        : "У вас уже є активний доступ. Автопродовження WayForPay (тест) у статусі Active.";
     const nextLine = ctx.autoRenew.nextChargeAt
       ? `Наступне списання: ${formatDateTimeUaKyiv(ctx.autoRenew.nextChargeAt)}.`
       : "Наступне списання — див. у /profile.";
     const renewHint = monthly
       ? "Повторна оплата за поточний період не потрібна — доступ продовжується автоматично щомісяця."
-      : "Повторна оплата за поточний період не потрібна — списання за графіком WayForPay.";
+      : yearly
+        ? "Повторна оплата за поточний період не потрібна — доступ продовжується автоматично щороку."
+        : "Повторна оплата за поточний період не потрібна — списання за графіком WayForPay.";
 
     return `${title}\n\n${periodLine}\n${nextLine}\n\n${renewHint}\n\nДеталі: /profile.`;
   }
@@ -112,9 +124,13 @@ export function buildMultimaskingAlreadyActiveAlertUa(
   ctx: Pick<MultimaskingAlreadyActiveContext, "accessSource" | "autoRenew">,
 ): string {
   if (ctx.accessSource === "subscription_auto") {
-    return isMonthlyAutoRenew(ctx.autoRenew)
-      ? "Щомісячна підписка активна. Повторна оплата не потрібна — списання автоматичне."
-      : "Автопродовження активне. Повторна оплата за період не потрібна.";
+    if (isMonthlyAutoRenew(ctx.autoRenew)) {
+      return "Щомісячна підписка активна. Повторна оплата не потрібна — списання автоматичне.";
+    }
+    if (isYearlyAutoRenew(ctx.autoRenew)) {
+      return "Річна підписка активна. Повторна оплата не потрібна — списання автоматичне.";
+    }
+    return "Автопродовження активне. Повторна оплата за період не потрібна.";
   }
   if (ctx.accessSource === "user_subscription") {
     return "Підписка в боті активна. Повторна оплата зараз не потрібна.";

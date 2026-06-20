@@ -5,9 +5,13 @@ import { SubscriptionPlan } from "../database/SubscriptionPlan";
 import { getSubscriptionAutoAccessDays } from "./subscription-auto-settings";
 import {
   isMultimaskingRecurringPlanCode,
+  isMonthlySubscriptionPlanCode,
+  isYearlySubscriptionPlanCode,
   MONTHLY_SUBSCRIPTION_PLAN_CODE,
   SUBSCRIPTION_AUTO_PLAN_CODE,
+  YEARLY_SUBSCRIPTION_PLAN_CODE,
 } from "./subscription-plan-codes";
+import { getYearlySubscriptionAccessDays } from "./yearly-subscription-settings";
 import {
   processApprovedMultimaskingPayment,
   type MultimaskingGrantOptions,
@@ -27,7 +31,44 @@ async function resolveRecurringAccessDays(planCode: string): Promise<number> {
   if (planCode === MONTHLY_SUBSCRIPTION_PLAN_CODE) {
     return getPaidChatAccessDays();
   }
+  if (planCode === YEARLY_SUBSCRIPTION_PLAN_CODE) {
+    return getYearlySubscriptionAccessDays();
+  }
   return getSubscriptionAutoAccessDays();
+}
+
+function resolveDefaultWayforpayMode(planCode: string): string | null {
+  if (planCode === MONTHLY_SUBSCRIPTION_PLAN_CODE) {
+    return "monthly";
+  }
+  if (planCode === YEARLY_SUBSCRIPTION_PLAN_CODE) {
+    return "yearly";
+  }
+  return null;
+}
+
+function buildSubscriptionStateLabel(planCode: string, accessDays: number): string {
+  if (planCode === MONTHLY_SUBSCRIPTION_PLAN_CODE) {
+    return `Щомісячна підписка · ${accessDays} дн.`;
+  }
+  if (planCode === YEARLY_SUBSCRIPTION_PLAN_CODE) {
+    return `Річна підписка · ${accessDays} дн.`;
+  }
+  return `Автопродовження · ${accessDays} дн.`;
+}
+
+function buildRenewalIntroUa(planCode: string): string {
+  if (planCode === MONTHLY_SUBSCRIPTION_PLAN_CODE) {
+    return "Повторне щомісячне списання: успіх.\n\n";
+  }
+  if (planCode === YEARLY_SUBSCRIPTION_PLAN_CODE) {
+    return "Повторне річне списання: успіх.\n\n";
+  }
+  return "Повторне списання (автопродовження): успіх.\n\n";
+}
+
+function usesStandardMultimaskingSuccessMessage(planCode: string): boolean {
+  return isMonthlySubscriptionPlanCode(planCode) || isYearlySubscriptionPlanCode(planCode);
 }
 
 function parseRecToken(payload: WayForPayWebhookPayload): string | null {
@@ -119,8 +160,7 @@ function resolveWayforpayFieldsAfterApproved(args: {
   wayforpayMode: string | null;
   nextChargeAt: Date | null;
 } {
-  const defaultMode =
-    args.planCode === MONTHLY_SUBSCRIPTION_PLAN_CODE ? "monthly" : null;
+  const defaultMode = resolveDefaultWayforpayMode(args.planCode);
 
   return {
     wayforpayStatus:
@@ -158,7 +198,9 @@ async function buildRecurringDiagnosticMessageUa(args: {
   const intro =
     args.planCode === MONTHLY_SUBSCRIPTION_PLAN_CODE
       ? "Щомісячна підписка WayForPay: оплату зафіксовано.\n\n"
-      : "Автопродовження WayForPay: оплату зафіксовано.\n\n";
+      : args.planCode === YEARLY_SUBSCRIPTION_PLAN_CODE
+        ? "Річна підписка WayForPay: оплату зафіксовано.\n\n"
+        : "Автопродовження WayForPay: оплату зафіксовано.\n\n";
 
   return (
     intro +
@@ -323,10 +365,7 @@ export async function handleSubscriptionAutoApprovedPayment(
 
   const wfp = await fetchWayforpayRegularSnapshot(anchorOrderReference);
 
-  const subscriptionStateLabel =
-    planCode === MONTHLY_SUBSCRIPTION_PLAN_CODE
-      ? `Щомісячна підписка · ${accessDays} дн.`
-      : `Автопродовження · ${accessDays} дн.`;
+  const subscriptionStateLabel = buildSubscriptionStateLabel(planCode, accessDays);
 
   const grantOptions: MultimaskingGrantOptions = {
     accessDays,
@@ -334,7 +373,7 @@ export async function handleSubscriptionAutoApprovedPayment(
     renewalExtendFromActiveGrant: isRenewal,
     ...(isRenewal
       ? { skipSuccessMessage: true }
-      : planCode === MONTHLY_SUBSCRIPTION_PLAN_CODE
+      : usesStandardMultimaskingSuccessMessage(planCode)
         ? {}
         : {
             successMessageText: await buildRecurringDiagnosticMessageUa({
@@ -380,10 +419,7 @@ export async function handleSubscriptionAutoApprovedPayment(
     const endLine = grantResult.grantEndAt
       ? ` (до ${formatEndDateUk(grantResult.grantEndAt)})`
       : "";
-    const renewalIntro =
-      planCode === MONTHLY_SUBSCRIPTION_PLAN_CODE
-        ? "Повторне щомісячне списання: успіх.\n\n"
-        : "Повторне списання (автопродовження): успіх.\n\n";
+    const renewalIntro = buildRenewalIntroUa(planCode);
     await sendTelegramBotMessage(
       metadata.chatId.trim(),
       renewalIntro +

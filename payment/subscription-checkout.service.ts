@@ -2,7 +2,11 @@ import { literal, Op } from "sequelize";
 import { SubscriptionPaymentOrder } from "../database/SubscriptionPaymentOrder";
 import { SubscriptionPlan } from "../database/SubscriptionPlan";
 import { createMultimaskingMonthlyCheckout } from "./multimasking-monthly-checkout.service";
-import { MONTHLY_SUBSCRIPTION_PLAN_CODE } from "./subscription-plan-codes";
+import { createMultimaskingYearlyCheckout } from "./multimasking-yearly-checkout.service";
+import {
+  MONTHLY_SUBSCRIPTION_PLAN_CODE,
+  YEARLY_SUBSCRIPTION_PLAN_CODE,
+} from "./subscription-plan-codes";
 
 const ACTIVE_ORDER_STATUSES = ["created", "pending", "processing", "suspended"];
 
@@ -62,13 +66,21 @@ export async function createSubscriptionCheckout(
   input: CreateSubscriptionCheckoutInput,
 ): Promise<SubscriptionCheckoutResult> {
   const planCode = input.planCode.trim();
-  if (planCode !== MONTHLY_SUBSCRIPTION_PLAN_CODE) {
+
+  const result =
+    planCode === MONTHLY_SUBSCRIPTION_PLAN_CODE
+      ? await createMultimaskingMonthlyCheckout(input.userId, {
+          forceNew: input.forceNew,
+        })
+      : planCode === YEARLY_SUBSCRIPTION_PLAN_CODE
+        ? await createMultimaskingYearlyCheckout(input.userId, {
+            forceNew: input.forceNew,
+          })
+        : null;
+
+  if (result == null) {
     return { ok: false, reason: "plan_not_found", planCode };
   }
-
-  const result = await createMultimaskingMonthlyCheckout(input.userId, {
-    forceNew: input.forceNew,
-  });
 
   if (!result.ok) {
     return result;

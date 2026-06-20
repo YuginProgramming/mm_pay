@@ -107,7 +107,7 @@ async function findActiveSubscriptionAutoForUser(
   return null;
 }
 
-/** S3-3: активний WayForPay recurring (`monthly_1m` або `subscription_auto`) — renewal-reminder не потрібен. */
+/** S3-3: активний WayForPay recurring (`monthly_1m`, `yearly_12m` або `subscription_auto`) — renewal-reminder не потрібен. */
 export async function hasActiveMultimaskingRecurringAuto(userId: string): Promise<boolean> {
   return (await findActiveSubscriptionAutoForUser(userId)) != null;
 }

@@ -7,7 +7,10 @@ import {
   hasActiveMultimaskingAccess,
   type MultimaskingAccessStatus,
 } from "../../payment/multimasking-access-status";
-import { isMonthlySubscriptionPlanCode } from "../../payment/subscription-plan-codes";
+import {
+  isMonthlySubscriptionPlanCode,
+  isYearlySubscriptionPlanCode,
+} from "../../payment/subscription-plan-codes";
 import {
   computeKwigaRankSnapshot,
   persistKwigaRankSnapshot,
@@ -49,6 +52,8 @@ function buildAutoRenewProfileLines(access: MultimaskingAccessStatus): string[] 
 
   if (isMonthlySubscriptionPlanCode(auto.planCode)) {
     lines.push("Тариф: щомісячна підписка MULTIMASKING (WayForPay).");
+  } else if (isYearlySubscriptionPlanCode(auto.planCode)) {
+    lines.push("Тариф: річна підписка MULTIMASKING (WayForPay).");
   }
 
   lines.push(

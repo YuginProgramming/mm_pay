@@ -22,7 +22,12 @@ import {
 } from "../profile/paid-chat-payment-eligibility";
 import { SUPPORT_CONTACT_SUFFIX_PLAIN_UA } from "../core/support";
 import { sparkleLabel } from "../core/sparkle-label";
-import { MONTHLY_SUBSCRIPTION_PLAN_CODE } from "../../payment/subscription-plan-codes";
+import {
+  MONTHLY_SUBSCRIPTION_PLAN_CODE,
+  YEARLY_SUBSCRIPTION_PLAN_CODE,
+  isYearlySubscriptionPlanCode,
+} from "../../payment/subscription-plan-codes";
+import { getYearlySubscriptionPricing } from "../../payment/yearly-subscription-pricing";
 import { subscriptionFlags } from "../../payment/subscription-flags";
 import {
   createSubscriptionCheckout,
@@ -35,6 +40,8 @@ import {
  * Стабільний ідентифікатор callback: у старих чатах кнопки вже зберегли це значення.
  */
 const WAYFORPAY_INVOICE_CALLBACK = "wfp_smoke_test_invoice";
+const WFP_SUB_MONTHLY_CALLBACK = "wfp_sub_monthly";
+const WFP_SUB_YEARLY_CALLBACK = "wfp_sub_yearly";
 
 /** Пояснення, чому приховано WayForPay (лише masters/pro за KWIGA). */
 const WFP_RANK_INELIGIBLE_INFO = "wfp_rank_ineligible_info";
@@ -67,15 +74,41 @@ export const CALLBACK_ALERT_EMAIL_REQUIRED_FOR_PAYMENT_UA =
 
 export { MULTIMASKING_PRODUCT_NAME };
 
-function payButtonLabel(price: number): string {
-  if (subscriptionFlags.subscriptionModeEnabled) {
-    return sparkleLabel(`Підписка ${price} грн/міс`);
-  }
-  return sparkleLabel(`Оплатити ${price} грн`);
+type ProductionSubscriptionPlanCode =
+  | typeof MONTHLY_SUBSCRIPTION_PLAN_CODE
+  | typeof YEARLY_SUBSCRIPTION_PLAN_CODE;
+
+function describeSubscriptionPlanPeriodUa(planCode: string | null | undefined): string {
+  return isYearlySubscriptionPlanCode(planCode) ? "річної" : "щомісячної";
 }
 
-function payButtonRow(price: number) {
-  return [Markup.button.callback(payButtonLabel(price), WAYFORPAY_INVOICE_CALLBACK)];
+async function buildEligiblePayKeyboardRows(): Promise<
+  ReturnType<typeof Markup.button.callback>[][]
+> {
+  if (subscriptionFlags.subscriptionModeEnabled) {
+    const pricing = await getYearlySubscriptionPricing();
+    const yearlyDiscount =
+      pricing.discountPercent > 0 ? ` (−${pricing.discountPercent}%)` : "";
+    return [
+      [
+        Markup.button.callback(
+          sparkleLabel(`Підписка ${pricing.monthlyPriceUah} грн/міс`),
+          WFP_SUB_MONTHLY_CALLBACK,
+        ),
+      ],
+      [
+        Markup.button.callback(
+          sparkleLabel(`Річна ${pricing.yearlyPriceUah} грн/рік${yearlyDiscount}`),
+          WFP_SUB_YEARLY_CALLBACK,
+        ),
+      ],
+    ];
+  }
+
+  const price = await getMultimaskingCoursePriceUah();
+  return [
+    [Markup.button.callback(sparkleLabel(`Оплатити ${price} грн`), WAYFORPAY_INVOICE_CALLBACK)],
+  ];
 }
 
 function buildLegacyCheckoutCreatedMessageUa(price: number, orderReference: string): string {
@@ -104,12 +137,194 @@ function buildMonthlySubscriptionCheckoutMessageUa(
   );
 }
 
+function buildYearlySubscriptionCheckoutMessageUa(
+  price: number,
+  orderReference: string,
+): string {
+  return (
+    `Річна підписка WayForPay — ${price} грн/рік за доступ до навчального продукту ` +
+    "«Multimasking Learning Project».\n\n" +
+    "Перше списання — зараз; наступні — автоматично щороку, поки підписка активна.\n\n" +
+    "Натисніть кнопку нижче, щоб перейти до оформлення на WayForPay.\n\n" +
+    "Після першої оплати підтвердження зазвичай надходить протягом 1-2 хвилин. " +
+    "Не створюйте повторне оформлення, доки очікуєте результат.\n\n" +
+    `Номер замовлення: ${orderReference}`
+  );
+}
+
+function buildSubscriptionCheckoutMessageUa(
+  planCode: ProductionSubscriptionPlanCode,
+  price: number,
+  orderReference: string,
+): string {
+  return isYearlySubscriptionPlanCode(planCode)
+    ? buildYearlySubscriptionCheckoutMessageUa(price, orderReference)
+    : buildMonthlySubscriptionCheckoutMessageUa(price, orderReference);
+}
+
+async function runMultimaskingCheckoutPrechecks(
+  ctx: Context,
+): Promise<{ ok: true; chatId: number; telegramId: string } | { ok: false }> {
+  const chatId = ctx.from?.id;
+  if (chatId == null) {
+    return { ok: false };
+  }
+  if (!isPrivateChat(ctx)) {
+    await ctx.answerCbQuery().catch(() => {});
+    return { ok: false };
+  }
+
+  const telegramId = String(chatId);
+  if (!(await hasAcceptedCurrentRules(telegramId))) {
+    await ctx.answerCbQuery(CALLBACK_ALERT_CONSENT_REQUIRED_FOR_PAYMENT_UA, {
+      show_alert: true,
+    });
+    const { text, extra } = buildPaymentNeedsConsentMessageAndKeyboard();
+    await ctx.reply(text, extra);
+    return { ok: false };
+  }
+
+  const dbUser = await TelegramUser.findOne({ where: { telegramId } });
+  const emailRaw = dbUser?.email?.trim();
+
+  if (!dbUser) {
+    await ctx.answerCbQuery("Профіль не знайдено. Спробуйте /start.");
+    await ctx.reply("Профіль не знайдено. Спробуйте /start.");
+    return { ok: false };
+  }
+  if (!emailRaw) {
+    await ctx.answerCbQuery(CALLBACK_ALERT_EMAIL_REQUIRED_FOR_PAYMENT_UA, {
+      show_alert: true,
+    });
+    await ctx.reply(EMAIL_REQUIRED_BEFORE_PAYMENT_MESSAGE_UA);
+    return { ok: false };
+  }
+
+  const contact = await findContactByEmailForBot(normalizeEmail(emailRaw));
+  if (!contact) {
+    await ctx.answerCbQuery(
+      "Контакт за цим email у KWIGA не знайдено — див. повідомлення нижче.",
+      { show_alert: true },
+    );
+    await ctx.reply(
+      "За вказаним email контакта у базі KWIGA не знайдено — після оплати доступ не можна буде зарахувати автоматично.\n\n" +
+        "Перевірте адресу в /profile, за потреби змініть її через /change_email. " +
+        "Після оновлення email знову відкрийте меню оплати (/payment).\n\n" +
+        SUPPORT_CONTACT_SUFFIX_PLAIN_UA,
+    );
+    return { ok: false };
+  }
+
+  const rankSnapshot = await computeKwigaRankSnapshot(dbUser);
+  if (!isKwigaRankEligibleForPaidChatPurchase(rankSnapshot.rank)) {
+    await ctx.answerCbQuery();
+    await ctx.reply(multimaskingIneligibleUserMessageUa(rankSnapshot.rank));
+    return { ok: false };
+  }
+
+  const access = await hasActiveMultimaskingAccess(contact.id, telegramId);
+  if (access.hasAccess) {
+    const activeCtx = toAlreadyActiveContext(access);
+    await ctx.answerCbQuery(buildMultimaskingAlreadyActiveAlertUa(activeCtx), {
+      show_alert: true,
+    });
+    await ctx.reply(await buildMultimaskingAlreadyActivePaymentMessageUa(activeCtx));
+    return { ok: false };
+  }
+
+  return { ok: true, chatId, telegramId };
+}
+
+async function handleMultimaskingSubscriptionCheckout(
+  ctx: Context,
+  planCode: ProductionSubscriptionPlanCode,
+): Promise<void> {
+  const precheck = await runMultimaskingCheckoutPrechecks(ctx);
+  if (!precheck.ok) {
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  const { chatId } = precheck;
+
+  if (subscriptionFlags.subscriptionReturnFlowEnabled) {
+    const recovered = await recoverSubscriptionCheckout(String(chatId));
+    if (recovered.hasActiveOrder) {
+      const planLabel = describeSubscriptionPlanPeriodUa(recovered.planCode);
+      await ctx.reply(
+        `У вас уже є незавершене оформлення ${planLabel} підписки. Оберіть дію:`,
+        Markup.inlineKeyboard([
+          Markup.button.callback(
+            sparkleLabel("Продовжити оформлення"),
+            SUBSCRIPTION_CONTINUE_CHECKOUT_CALLBACK,
+          ),
+          Markup.button.callback(
+            sparkleLabel("Створити новий рахунок"),
+            SUBSCRIPTION_RECREATE_CHECKOUT_CALLBACK,
+          ),
+        ]),
+      );
+      return;
+    }
+  }
+
+  const checkout = await createSubscriptionCheckout({
+    userId: String(chatId),
+    planCode,
+    forceNew: false,
+  });
+  if (!checkout.ok) {
+    await ctx.reply(
+      checkout.reason === "plan_not_found"
+        ? "План підписки не знайдено. Зверніться до підтримки."
+        : "Не вдалося створити рахунок. Спробуйте пізніше.",
+    );
+    return;
+  }
+
+  const pricing = await getYearlySubscriptionPricing();
+  const price = isYearlySubscriptionPlanCode(planCode)
+    ? pricing.yearlyPriceUah
+    : pricing.monthlyPriceUah;
+
+  await ctx.reply(
+    buildSubscriptionCheckoutMessageUa(planCode, price, checkout.orderReference),
+    Markup.inlineKeyboard([
+      Markup.button.url(sparkleLabel("Оформити підписку"), checkout.checkoutUrl),
+    ]),
+  );
+}
+
+async function handleLegacyMultimaskingCheckout(ctx: Context): Promise<void> {
+  const precheck = await runMultimaskingCheckoutPrechecks(ctx);
+  if (!precheck.ok) {
+    return;
+  }
+
+  await ctx.answerCbQuery();
+
+  const price = await getMultimaskingCoursePriceUah();
+  const { createCheckoutForCourse } = await import("../../payment/payment.service");
+  const legacy = await createCheckoutForCourse(
+    price,
+    MULTIMASKING_PRODUCT_NAME,
+    String(precheck.chatId),
+  );
+
+  await ctx.reply(
+    buildLegacyCheckoutCreatedMessageUa(price, legacy.orderReference),
+    Markup.inlineKeyboard([
+      Markup.button.url(sparkleLabel("Перейти до оплати"), legacy.invoiceUrl),
+    ]),
+  );
+}
+
 /**
  * Кнопка оплати — лише якщо email є, контакт у KWIGA є і ранг masters/pro.
  * Інакше одна кнопка з поясненням (деталі по натисканню).
  */
 export async function buildWayForPayInvoiceKeyboard(telegramId: string) {
-  const price = await getMultimaskingCoursePriceUah();
   const dbUser = await TelegramUser.findOne({ where: { telegramId } });
   const emailRaw = dbUser?.email?.trim();
 
@@ -126,7 +341,7 @@ export async function buildWayForPayInvoiceKeyboard(telegramId: string) {
 
   const contact = await findContactByEmailForBot(normalizeEmail(emailRaw));
   if (!contact) {
-    return Markup.inlineKeyboard([payButtonRow(price)]);
+    return Markup.inlineKeyboard(await buildEligiblePayKeyboardRows());
   }
 
   const rankSnapshot = await computeKwigaRankSnapshot(dbUser);
@@ -165,7 +380,7 @@ export async function buildWayForPayInvoiceKeyboard(telegramId: string) {
     return Markup.inlineKeyboard(activeRows);
   }
 
-  return Markup.inlineKeyboard([payButtonRow(price)]);
+  return Markup.inlineKeyboard(await buildEligiblePayKeyboardRows());
 }
 
 export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
@@ -249,7 +464,7 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
       }
 
       await ctx.reply(
-        "Знайшли незавершене оформлення щомісячної підписки. Продовжіть за наявним посиланням:\n\n" +
+        `Знайшли незавершене оформлення ${describeSubscriptionPlanPeriodUa(recovered.planCode)} підписки. Продовжіть за наявним посиланням:\n\n` +
           `Номер замовлення: ${recovered.orderReference}`,
         Markup.inlineKeyboard([
           Markup.button.url(
@@ -279,9 +494,16 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
       }
       await ctx.answerCbQuery();
 
+      const recovered = await recoverSubscriptionCheckout(String(chatId));
+      const planCode =
+        recovered.hasActiveOrder &&
+        recovered.planCode === YEARLY_SUBSCRIPTION_PLAN_CODE
+          ? YEARLY_SUBSCRIPTION_PLAN_CODE
+          : MONTHLY_SUBSCRIPTION_PLAN_CODE;
+
       const recreated = await recreateSubscriptionCheckout({
         userId: String(chatId),
-        planCode: MONTHLY_SUBSCRIPTION_PLAN_CODE,
+        planCode,
       });
       if (!recreated.ok) {
         await ctx.reply(
@@ -292,8 +514,13 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
         return;
       }
 
+      const pricing = await getYearlySubscriptionPricing();
+      const price = isYearlySubscriptionPlanCode(planCode)
+        ? pricing.yearlyPriceUah
+        : pricing.monthlyPriceUah;
+
       await ctx.reply(
-        "Створено нове оформлення щомісячної підписки.\n\n" +
+        `Створено нове оформлення ${describeSubscriptionPlanPeriodUa(planCode)} підписки (${price} грн).\n\n` +
           `Номер замовлення: ${recreated.orderReference}`,
         Markup.inlineKeyboard([
           Markup.button.url(sparkleLabel("Оформити підписку"), recreated.checkoutUrl),
@@ -387,140 +614,33 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
     }
   });
 
+  bot.action(WFP_SUB_MONTHLY_CALLBACK, async (ctx) => {
+    try {
+      await handleMultimaskingSubscriptionCheckout(ctx, MONTHLY_SUBSCRIPTION_PLAN_CODE);
+    } catch (err) {
+      console.error("WayForPay monthly subscription callback failed:", err);
+      await ctx.answerCbQuery().catch(() => {});
+      await ctx.reply("Не вдалося створити рахунок. Спробуйте пізніше.");
+    }
+  });
+
+  bot.action(WFP_SUB_YEARLY_CALLBACK, async (ctx) => {
+    try {
+      await handleMultimaskingSubscriptionCheckout(ctx, YEARLY_SUBSCRIPTION_PLAN_CODE);
+    } catch (err) {
+      console.error("WayForPay yearly subscription callback failed:", err);
+      await ctx.answerCbQuery().catch(() => {});
+      await ctx.reply("Не вдалося створити рахунок. Спробуйте пізніше.");
+    }
+  });
+
   bot.action(WAYFORPAY_INVOICE_CALLBACK, async (ctx) => {
     try {
-      const chatId = ctx.from?.id;
-      if (chatId == null) return;
-      if (!isPrivateChat(ctx)) {
-        await ctx.answerCbQuery().catch(() => {});
+      if (subscriptionFlags.subscriptionModeEnabled) {
+        await handleMultimaskingSubscriptionCheckout(ctx, MONTHLY_SUBSCRIPTION_PLAN_CODE);
         return;
       }
-
-      const telegramId = String(chatId);
-      if (!(await hasAcceptedCurrentRules(telegramId))) {
-        await ctx.answerCbQuery(CALLBACK_ALERT_CONSENT_REQUIRED_FOR_PAYMENT_UA, {
-          show_alert: true,
-        });
-        const { text, extra } = buildPaymentNeedsConsentMessageAndKeyboard();
-        await ctx.reply(text, extra);
-        return;
-      }
-
-      const dbUser = await TelegramUser.findOne({ where: { telegramId } });
-      const emailRaw = dbUser?.email?.trim();
-
-      if (!dbUser) {
-        await ctx.answerCbQuery("Профіль не знайдено. Спробуйте /start.");
-        await ctx.reply("Профіль не знайдено. Спробуйте /start.");
-        return;
-      }
-      if (!emailRaw) {
-        await ctx.answerCbQuery(CALLBACK_ALERT_EMAIL_REQUIRED_FOR_PAYMENT_UA, {
-          show_alert: true,
-        });
-        await ctx.reply(EMAIL_REQUIRED_BEFORE_PAYMENT_MESSAGE_UA);
-        return;
-      }
-
-      const contact = await findContactByEmailForBot(normalizeEmail(emailRaw));
-      if (!contact) {
-        await ctx.answerCbQuery(
-          "Контакт за цим email у KWIGA не знайдено — див. повідомлення нижче.",
-          { show_alert: true },
-        );
-        await ctx.reply(
-          "За вказаним email контакта у базі KWIGA не знайдено — після оплати доступ не можна буде зарахувати автоматично.\n\n" +
-            "Перевірте адресу в /profile, за потреби змініть її через /change_email. " +
-            "Після оновлення email знову натисніть «Оплатити».\n\n" +
-            SUPPORT_CONTACT_SUFFIX_PLAIN_UA,
-        );
-        return;
-      }
-
-      const rankSnapshot = await computeKwigaRankSnapshot(dbUser);
-      if (!isKwigaRankEligibleForPaidChatPurchase(rankSnapshot.rank)) {
-        await ctx.answerCbQuery();
-        await ctx.reply(multimaskingIneligibleUserMessageUa(rankSnapshot.rank));
-        return;
-      }
-
-      const access = await hasActiveMultimaskingAccess(contact.id, telegramId);
-      if (access.hasAccess) {
-        const activeCtx = toAlreadyActiveContext(access);
-        await ctx.answerCbQuery(buildMultimaskingAlreadyActiveAlertUa(activeCtx), {
-          show_alert: true,
-        });
-        await ctx.reply(await buildMultimaskingAlreadyActivePaymentMessageUa(activeCtx));
-        return;
-      }
-
-      await ctx.answerCbQuery();
-
-      const price = await getMultimaskingCoursePriceUah();
-      let checkoutUrl: string;
-      let orderReference: string;
-      const subscriptionMode = subscriptionFlags.subscriptionModeEnabled;
-
-      if (subscriptionMode) {
-        if (subscriptionFlags.subscriptionReturnFlowEnabled) {
-          const recovered = await recoverSubscriptionCheckout(String(chatId));
-          if (recovered.hasActiveOrder) {
-            await ctx.reply(
-              "У вас уже є незавершене оформлення щомісячної підписки. Оберіть дію:",
-              Markup.inlineKeyboard([
-                Markup.button.callback(
-                  sparkleLabel("Продовжити оформлення"),
-                  SUBSCRIPTION_CONTINUE_CHECKOUT_CALLBACK,
-                ),
-                Markup.button.callback(
-                  sparkleLabel("Створити новий рахунок"),
-                  SUBSCRIPTION_RECREATE_CHECKOUT_CALLBACK,
-                ),
-              ]),
-            );
-            return;
-          }
-        }
-
-        const checkout = await createSubscriptionCheckout({
-          userId: String(chatId),
-          planCode: MONTHLY_SUBSCRIPTION_PLAN_CODE,
-          forceNew: false,
-        });
-        if (!checkout.ok) {
-          await ctx.reply(
-            checkout.reason === "plan_not_found"
-              ? "План підписки не знайдено. Зверніться до підтримки."
-              : "Не вдалося створити рахунок. Спробуйте пізніше.",
-          );
-          return;
-        }
-        checkoutUrl = checkout.checkoutUrl;
-        orderReference = checkout.orderReference;
-      } else {
-        const { createCheckoutForCourse } = await import(
-          "../../payment/payment.service"
-        );
-        const legacy = await createCheckoutForCourse(
-          price,
-          MULTIMASKING_PRODUCT_NAME,
-          String(chatId),
-        );
-        checkoutUrl = legacy.invoiceUrl;
-        orderReference = legacy.orderReference;
-      }
-
-      const messageText = subscriptionMode
-        ? buildMonthlySubscriptionCheckoutMessageUa(price, orderReference)
-        : buildLegacyCheckoutCreatedMessageUa(price, orderReference);
-      const payButtonText = subscriptionMode
-        ? sparkleLabel("Оформити підписку")
-        : sparkleLabel("Перейти до оплати");
-
-      await ctx.reply(
-        messageText,
-        Markup.inlineKeyboard([Markup.button.url(payButtonText, checkoutUrl)]),
-      );
+      await handleLegacyMultimaskingCheckout(ctx);
     } catch (err) {
       console.error("WayForPay invoice (bot callback) failed:", err);
       await ctx.answerCbQuery().catch(() => {});

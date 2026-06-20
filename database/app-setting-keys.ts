@@ -58,6 +58,10 @@ export const APP_SETTING_KEYS = {
   SUBSCRIPTION_AUTO_REGULAR_MODE: "subscription_auto_regular_mode",
   /** `/subauto`: кількість регулярних списань (regularCount) */
   SUBSCRIPTION_AUTO_REGULAR_COUNT: "subscription_auto_regular_count",
+  /** Річна підписка MULTIMASKING: сума Purchase з regular, грн */
+  YEARLY_SUBSCRIPTION_PRICE_UAH: "yearly_subscription_price_uah",
+  /** Річна підписка MULTIMASKING: днів доступу після кожної успішної оплати */
+  YEARLY_SUBSCRIPTION_ACCESS_DAYS: "yearly_subscription_access_days",
 } as const;
 
 export type AppSettingKey =
