@@ -5,10 +5,8 @@
  */
 import { APP_SETTING_KEYS } from "../../database/app-setting-keys";
 import { getAppSettingString } from "../../database/app-settings-queries";
-import { tryInsertPaidChatJanitorAlertLog } from "../../database/paid-chat-janitor-alert-queries";
 import { findTrackedUsersStillInPaidChat } from "../../database/paid-chat-member-state-queries";
 import { TelegramUser } from "../../database/TelegramUser";
-import { sendTelegramBotMessage } from "../../payment/telegram-notify";
 import { computeKwigaRankSnapshot } from "../profile/kwiga-rank-db";
 import {
   contactHasActiveMultimaskingPayment,
@@ -25,12 +23,6 @@ import {
   rawBanChatMember,
   rawGetChatMember,
 } from "./telegram-bot-raw";
-import {
-  buildPostKickUa,
-  type PaidChatPostKickReason,
-} from "./paid-chat-janitor-messages";
-
-const POST_KICK_ALERT_TYPE = "post_kick";
 
 export type PaidChatSweepResult = {
   kickedFromMasters: number;
@@ -41,7 +33,6 @@ export type PaidChatSweepResult = {
   usersChecked: number;
   /** Учасники з таблиці chat_member без жодного payment_hook MULTIMASKING у боті — перевірка intruder. */
   intruderCandidatesChecked: number;
-  postKickDmSent: number;
   errors: string[];
 };
 
@@ -69,47 +60,6 @@ export function shouldStayInCatPro(
   rank: KwigaAudienceRank,
 ): boolean {
   return activeBotPayment && rank === "pro";
-}
-
-function postKickReason(
-  activeBotPayment: boolean,
-): PaidChatPostKickReason {
-  if (!activeBotPayment) {
-    return "no_active_access";
-  }
-  return "rank_ineligible";
-}
-
-async function sendPostKickPrivateNotice(
-  telegramId: string,
-  snap: PaidChatSnapshot,
-  reason: PaidChatPostKickReason,
-  delayMs: number,
-  errors: string[],
-  contactId: number | null,
-): Promise<boolean> {
-  const dedupeKey = `post_${snap.chatId}_${telegramId}_${snap.role}_${reason}_${Math.floor(Date.now() / 1000)}`;
-  const logged = await tryInsertPaidChatJanitorAlertLog(
-    telegramId,
-    POST_KICK_ALERT_TYPE,
-    dedupeKey,
-    contactId != null ? { contactId } : undefined,
-  );
-  if (!logged) {
-    return false;
-  }
-  try {
-    await sendTelegramBotMessage(
-      telegramId,
-      buildPostKickUa({ chatTitle: snap.title, reason }),
-    );
-    await maybeDelay(delayMs);
-    return true;
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    errors.push(`[post-kick DM] ${telegramId}: ${msg}`);
-    return false;
-  }
 }
 
 async function kickIfMemberNotAdmin(
@@ -178,17 +128,6 @@ async function runPaidChatIntrudersWithoutBotPaymentPass(
         } else {
           result.kickedFromCatPro += 1;
         }
-        const sent = await sendPostKickPrivateNotice(
-          telegramId,
-          snap,
-          "intruder",
-          delayMs,
-          result.errors,
-          null,
-        );
-        if (sent) {
-          result.postKickDmSent += 1;
-        }
       } else if (out === "skipped_admin") {
         result.skippedAdmin += 1;
       } else if (out === "skipped_not_in_chat") {
@@ -237,7 +176,6 @@ export async function runPaidChatJanitorSweepOnce(options?: {
     skippedNoSnapshot: 0,
     usersChecked: 0,
     intruderCandidatesChecked: 0,
-    postKickDmSent: 0,
     errors: [],
   };
 
@@ -284,15 +222,6 @@ export async function runPaidChatJanitorSweepOnce(options?: {
       });
       if (out === "kicked") {
         result.kickedFromMasters += 1;
-        const sent = await sendPostKickPrivateNotice(
-          telegramId,
-          mastersSnap,
-          postKickReason(activeBotPayment),
-          delayMs,
-          result.errors,
-          contactId ?? null,
-        );
-        if (sent) result.postKickDmSent += 1;
       } else if (out === "skipped_admin") result.skippedAdmin += 1;
       else if (out === "skipped_not_in_chat") result.skippedNotInChat += 1;
     }
@@ -305,15 +234,6 @@ export async function runPaidChatJanitorSweepOnce(options?: {
       });
       if (out === "kicked") {
         result.kickedFromCatPro += 1;
-        const sent = await sendPostKickPrivateNotice(
-          telegramId,
-          catProSnap,
-          postKickReason(activeBotPayment),
-          delayMs,
-          result.errors,
-          contactId ?? null,
-        );
-        if (sent) result.postKickDmSent += 1;
       } else if (out === "skipped_admin") result.skippedAdmin += 1;
       else if (out === "skipped_not_in_chat") result.skippedNotInChat += 1;
     }

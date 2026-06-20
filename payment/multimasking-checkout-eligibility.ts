@@ -40,7 +40,7 @@ function resolveGateGrantEndIso(access: MultimaskingAccessStatus): string | null
 
 /**
  * Перевірка перед створенням checkout (HTTP `/subscription/checkout`, `/subauto`, бот).
- * Блокує, якщо є активний grant, recurring (subscription_auto Active + grant) або user_subscriptions.
+ * Блокує, якщо є активний grant, recurring, user_subscriptions або grace після end_at (усі типи).
  */
 export async function gateMultimaskingCheckoutForTelegramId(
   telegramId: string,

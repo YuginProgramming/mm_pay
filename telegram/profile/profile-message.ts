@@ -3,7 +3,7 @@ import { Op } from "sequelize";
 import { ContactProductAccess } from "../../database/ContactProductAccess";
 import { TelegramUser } from "../../database/TelegramUser";
 import {
-  getSubscriptionAutoGraceDays,
+  getMultimaskingAccessGraceDays,
   hasActiveMultimaskingAccess,
   type MultimaskingAccessStatus,
 } from "../../payment/multimasking-access-status";
@@ -58,9 +58,9 @@ function buildAutoRenewProfileLines(access: MultimaskingAccessStatus): string[] 
   );
 
   if (access.inGracePeriod) {
-    const graceDays = getSubscriptionAutoGraceDays();
+    const graceDays = getMultimaskingAccessGraceDays();
     lines.push(
-      `Очікується автоматичне продовження після закінчення періоду (grace до ${graceDays} днів).`,
+      `Оплачений період формально завершився; доступ у групах зберігається ще до ${graceDays} дн. після кінця періоду.`,
     );
   }
 

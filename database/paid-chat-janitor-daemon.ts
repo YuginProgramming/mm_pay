@@ -1,7 +1,6 @@
 import "dotenv/config";
 import { resolvePaidChatJanitorIntervalMs } from "./app-settings-queries";
 import { sequelize } from "./db";
-import { runPaidChatExpiryAlertsOnce } from "../telegram/paid-chat-janitor/paid-chat-expiry-alerts";
 import { runPaidChatJanitorSweepOnce } from "../telegram/paid-chat-janitor/paid-chat-sweep";
 
 /**
@@ -18,8 +17,7 @@ import { runPaidChatJanitorSweepOnce } from "../telegram/paid-chat-janitor/paid-
  *
  * Запуск: `npm run paid-chat:janitor:daemon` або pm2 (див. ecosystem.config.cjs).
  *
- * Порядок циклу: спочатку §7.6 попередження про закінчення терміну (`paid-chat-expiry-alerts`),
- * потім sweep kick + приватне повідомлення після вилучення.
+ * Цикл: sweep kick з MASTERS / Chat PRO (без окремих Telegram-нагадувань — див. subscription-renewal-reminder).
  */
 
 function parseDelayMs(): number {
@@ -71,23 +69,9 @@ async function main(): Promise<void> {
     if (shuttingDown) return;
     const t0 = Date.now();
     try {
-      const alerts = await runPaidChatExpiryAlertsOnce({ delayMs });
-      if (
-        alerts.sent24h > 0 ||
-        alerts.sentFinal > 0 ||
-        alerts.sentTest1m > 0 ||
-        alerts.errors.length > 0
-      ) {
-        console.log(
-          `[paid-chat-janitor-daemon] §7.6 pre-kick alerts · 24h ${alerts.sent24h} · final ${alerts.sentFinal} · test1m ${alerts.sentTest1m}`,
-        );
-        for (const err of alerts.errors) {
-          console.error("[paid-chat-janitor-daemon]", err);
-        }
-      }
       const r = await runPaidChatJanitorSweepOnce({ delayMs });
       console.log(
-        `[paid-chat-janitor-daemon] sweep done in ${Date.now() - t0} ms · checked ${r.usersChecked} · intruder checks ${r.intruderCandidatesChecked} · kicked MASTERS ${r.kickedFromMasters} · kicked Chat PRO ${r.kickedFromCatPro} · post-kick DM ${r.postKickDmSent} · skip admin ${r.skippedAdmin} · skip not in chat ${r.skippedNotInChat}`,
+        `[paid-chat-janitor-daemon] sweep done in ${Date.now() - t0} ms · checked ${r.usersChecked} · intruder checks ${r.intruderCandidatesChecked} · kicked MASTERS ${r.kickedFromMasters} · kicked Chat PRO ${r.kickedFromCatPro} · skip admin ${r.skippedAdmin} · skip not in chat ${r.skippedNotInChat}`,
       );
       if (r.errors.length > 0) {
         for (const err of r.errors) {

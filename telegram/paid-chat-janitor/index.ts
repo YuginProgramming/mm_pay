@@ -25,11 +25,6 @@ export {
   type PaidChatSweepResult,
 } from "./paid-chat-sweep";
 export {
-  runPaidChatExpiryAlertsOnce,
-  PAID_CHAT_JANITOR_ALERT_TYPE,
-  type PaidChatExpiryAlertsResult,
-} from "./paid-chat-expiry-alerts";
-export {
   resolvePaidChatIdsFromAppSettings,
   resolvePaidChatIdsCached,
   invalidatePaidChatIdsCache,

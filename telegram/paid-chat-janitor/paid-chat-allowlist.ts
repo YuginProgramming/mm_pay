@@ -1,7 +1,7 @@
 /**
  * Крок (b) paid-chat janitor: хто має право лишатися в MASTERS / Chat PRO за БД
  * (активний доступ MULTIMASKING: `payment_hook`, `subscription_auto` Active + grant,
- * grace `SUBSCRIPTION_AUTO_GRACE_DAYS` після простроченого grant, або `user_subscriptions`;
+ * grace `MULTIMASKING_ACCESS_GRACE_DAYS` (усі типи доступу) після простроченого `end_at`, або `user_subscriptions`;
  * ранг KWIGA без урахування оплати).
  *
  * Ранг завжди береться через `computeKwigaRankSnapshot` під час побудови allowlist — не з колонки

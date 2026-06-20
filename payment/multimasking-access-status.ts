@@ -21,28 +21,38 @@ export type MultimaskingAutoRenewSnapshot = {
   anchorOrderReference: string | null;
 };
 
-/** Дефолт grace, якщо `SUBSCRIPTION_AUTO_GRACE_DAYS` не задано в env. */
-export const SUBSCRIPTION_AUTO_GRACE_DAYS_DEFAULT = 5;
+/** Дефолт grace для всіх типів доступу (janitor, gate, profile). */
+export const MULTIMASKING_ACCESS_GRACE_DAYS_DEFAULT = 5;
+
+/** @deprecated використовуйте `MULTIMASKING_ACCESS_GRACE_DAYS_DEFAULT` */
+export const SUBSCRIPTION_AUTO_GRACE_DAYS_DEFAULT = MULTIMASKING_ACCESS_GRACE_DAYS_DEFAULT;
 
 /**
- * S2-5 / Q3: дні після `contact_product_access.endAt`, коли `subscription_auto` ще Active,
- * але renewal webhook ще не продовжив grant (janitor / gate / allowlist).
+ * Дні після `end_at`, коли доступ (і право лишатися в paid chats) ще вважається активним.
+ * Env: `MULTIMASKING_ACCESS_GRACE_DAYS`, інакше `SUBSCRIPTION_AUTO_GRACE_DAYS`, інакше 5.
  */
+export function getMultimaskingAccessGraceDays(): number {
+  for (const envName of ["MULTIMASKING_ACCESS_GRACE_DAYS", "SUBSCRIPTION_AUTO_GRACE_DAYS"] as const) {
+    const raw = process.env[envName]?.trim();
+    if (!raw) {
+      continue;
+    }
+    const n = Number.parseInt(raw, 10);
+    if (Number.isFinite(n) && n >= 0) {
+      return n;
+    }
+  }
+  return MULTIMASKING_ACCESS_GRACE_DAYS_DEFAULT;
+}
+
+/** @deprecated використовуйте `getMultimaskingAccessGraceDays` */
 export function getSubscriptionAutoGraceDays(): number {
-  const raw = process.env.SUBSCRIPTION_AUTO_GRACE_DAYS?.trim();
-  if (!raw) {
-    return SUBSCRIPTION_AUTO_GRACE_DAYS_DEFAULT;
-  }
-  const n = Number.parseInt(raw, 10);
-  if (!Number.isFinite(n) || n < 0) {
-    return SUBSCRIPTION_AUTO_GRACE_DAYS_DEFAULT;
-  }
-  return n;
+  return getMultimaskingAccessGraceDays();
 }
 
 /**
  * Єдине джерело для gate / janitor / profile (S2).
- * `hasAccess` = активний grant, user_subscriptions active, або grace (recurring Active + прострочений grant).
+ * `hasAccess` = активний grant, user_subscriptions active, або grace після `end_at` (усі типи).
  */
 export type MultimaskingAccessStatus = {
   hasAccess: boolean;
@@ -51,7 +61,7 @@ export type MultimaskingAccessStatus = {
   autoRenew: MultimaskingAutoRenewSnapshot | null;
   userSubscriptionPlanCode: string | null;
   userSubscriptionEndAt: Date | null;
-  /** `true` — grant формально минув, але в межах SUBSCRIPTION_AUTO_GRACE_DAYS. */
+  /** `true` — період формально минув, але в межах grace після `end_at`. */
   inGracePeriod: boolean;
 };
 
@@ -59,6 +69,15 @@ function addDaysUtc(date: Date, days: number): Date {
   const result = new Date(date);
   result.setUTCDate(result.getUTCDate() + days);
   return result;
+}
+
+function maxDate(dates: Date[]): Date | null {
+  if (dates.length === 0) {
+    return null;
+  }
+  return dates.reduce((latest, candidate) =>
+    candidate.getTime() >= latest.getTime() ? candidate : latest,
+  );
 }
 
 async function findActiveSubscriptionAutoForUser(
@@ -110,15 +129,35 @@ async function getLatestMultimaskingGrantEndAt(contactId: number): Promise<Date 
   return row?.endAt ?? null;
 }
 
-function isWithinGraceAfterGrantEnd(
-  latestGrantEndAt: Date,
+function isWithinGraceAfterEndAt(
+  periodEndAt: Date,
   now: Date,
   graceDays: number,
 ): boolean {
   if (graceDays <= 0) {
     return false;
   }
-  return now.getTime() <= addDaysUtc(latestGrantEndAt, graceDays).getTime();
+  return (
+    periodEndAt.getTime() <= now.getTime() &&
+    now.getTime() <= addDaysUtc(periodEndAt, graceDays).getTime()
+  );
+}
+
+function resolveGraceSource(args: {
+  autoRenew: MultimaskingAutoRenewSnapshot | null;
+  effectiveEndAt: Date;
+  latestGrantEndAt: Date | null;
+  userSubscriptionEndAt: Date | null;
+}): MultimaskingAccessSource {
+  if (args.autoRenew != null) {
+    return "subscription_auto";
+  }
+  const grantMs = args.latestGrantEndAt?.getTime() ?? Number.NEGATIVE_INFINITY;
+  const subMs = args.userSubscriptionEndAt?.getTime() ?? Number.NEGATIVE_INFINITY;
+  if (subMs >= grantMs && subMs === args.effectiveEndAt.getTime()) {
+    return "user_subscription";
+  }
+  return "payment_hook";
 }
 
 /**
@@ -139,8 +178,7 @@ export async function hasActiveMultimaskingAccess(
   let grantEndAt = grantSummary.active ? (grantSummary.grantEndAt ?? null) : null;
 
   const userSubActive = userSub.status === "active";
-  const userSubscriptionEndAt =
-    userSubActive && userSub.endAtIso ? new Date(userSub.endAtIso) : null;
+  const userSubscriptionEndAt = userSub.endAtIso ? new Date(userSub.endAtIso) : null;
 
   let hasAccess = grantActive || userSubActive;
   let inGracePeriod = false;
@@ -154,27 +192,51 @@ export async function hasActiveMultimaskingAccess(
     source = "user_subscription";
   }
 
-  if (!hasAccess && autoRenew != null) {
-    const graceDays = getSubscriptionAutoGraceDays();
+  if (!hasAccess) {
     const latestGrantEndAt = await getLatestMultimaskingGrantEndAt(contactId);
+    const expiredEndCandidates: Date[] = [];
+
     if (
       latestGrantEndAt != null &&
-      latestGrantEndAt.getTime() <= now.getTime() &&
-      isWithinGraceAfterGrantEnd(latestGrantEndAt, now, graceDays)
+      latestGrantEndAt.getTime() <= now.getTime()
+    ) {
+      expiredEndCandidates.push(latestGrantEndAt);
+    }
+    if (
+      userSubscriptionEndAt != null &&
+      userSubscriptionEndAt.getTime() <= now.getTime()
+    ) {
+      expiredEndCandidates.push(userSubscriptionEndAt);
+    }
+
+    const effectiveEndAt = maxDate(expiredEndCandidates);
+    if (
+      effectiveEndAt != null &&
+      isWithinGraceAfterEndAt(effectiveEndAt, now, getMultimaskingAccessGraceDays())
     ) {
       hasAccess = true;
       inGracePeriod = true;
-      grantEndAt = latestGrantEndAt;
-      source = "subscription_auto";
+      grantEndAt = latestGrantEndAt ?? effectiveEndAt;
+      source = resolveGraceSource({
+        autoRenew,
+        effectiveEndAt,
+        latestGrantEndAt,
+        userSubscriptionEndAt,
+      });
     }
   }
+
+  const userSubscriptionPlanCode =
+    userSubActive || (inGracePeriod && source === "user_subscription")
+      ? userSub.planCode
+      : null;
 
   return {
     hasAccess,
     source,
     grantEndAt,
     autoRenew,
-    userSubscriptionPlanCode: userSubActive ? userSub.planCode : null,
+    userSubscriptionPlanCode,
     userSubscriptionEndAt,
     inGracePeriod,
   };
