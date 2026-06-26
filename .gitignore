@@ -11,6 +11,11 @@ dist/
 debug/bot-telegram-chats.json
 debug/info.txt
 debug/info-*.txt
+debug/**/*.md
+
+# Chat PRO: згенеровані звіти (emails, Telegram ids) — debug/generate-pro-*.ts, export-chat-pro-members-csv.ts
+pro-question.md
+debug/chat-pro-members.csv
 
 # Local specs/notes
 TZ/
