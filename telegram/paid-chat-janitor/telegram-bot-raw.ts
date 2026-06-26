@@ -80,6 +80,39 @@ export async function rawGetChatMemberCount(
   }
 }
 
+type ChatMemberUser = {
+  id: number;
+  is_bot?: boolean;
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+};
+
+export type ChatMemberInfo = {
+  status: string;
+  user: ChatMemberUser;
+};
+
+export async function rawGetChatMemberInfo(
+  token: string,
+  chatId: number,
+  userId: number,
+): Promise<ChatMemberInfo | null> {
+  try {
+    const result = await telegramGetJson<ChatMemberInfo>(token, "getChatMember", {
+      chat_id: String(chatId),
+      user_id: String(userId),
+    });
+    const st = result.status ?? "";
+    if (st === "left" || st === "kicked") {
+      return null;
+    }
+    return result;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Якщо користувача немає в чаті або помилка API — null.
  * `left` / `kicked` теж трактуємо як «немає сенсу kick».
@@ -89,19 +122,8 @@ export async function rawGetChatMember(
   chatId: number,
   userId: number,
 ): Promise<{ status: string } | null> {
-  try {
-    const result = await telegramGetJson<{ status?: string }>(token, "getChatMember", {
-      chat_id: String(chatId),
-      user_id: String(userId),
-    });
-    const st = result.status ?? "";
-    if (st === "left" || st === "kicked") {
-      return null;
-    }
-    return { status: st };
-  } catch {
-    return null;
-  }
+  const info = await rawGetChatMemberInfo(token, chatId, userId);
+  return info ? { status: info.status } : null;
 }
 
 export function isChatAdminStatus(status: string): boolean {
