@@ -1,8 +1,6 @@
 import { Op } from "sequelize";
-import { getPaidChatAccessDays } from "../database/app-settings-queries";
 import { SubscriptionAuto } from "../database/SubscriptionAuto";
 import { SubscriptionPlan } from "../database/SubscriptionPlan";
-import { getSubscriptionAutoAccessDays } from "./subscription-auto-settings";
 import {
   isMultimaskingRecurringPlanCode,
   isMonthlySubscriptionPlanCode,
@@ -11,11 +9,15 @@ import {
   SUBSCRIPTION_AUTO_PLAN_CODE,
   YEARLY_SUBSCRIPTION_PLAN_CODE,
 } from "./subscription-plan-codes";
-import { getYearlySubscriptionAccessDays } from "./yearly-subscription-settings";
 import {
   processApprovedMultimaskingPayment,
   type MultimaskingGrantOptions,
 } from "./grant-multimasking-access";
+import { extendRecurringMultimaskingAccess } from "./extend-recurring-access";
+import {
+  buildSubscriptionStateLabel,
+  resolveRecurringAccessDays,
+} from "./recurring-access-settings";
 import { reconcileUserSubscriptionFromRecurringWebhook } from "./subscription-webhook-resolver";
 import { getWayforpayRegularPaymentStatus } from "./wayforpay-regular-api";
 import { getWayforpayMerchantPassword } from "./payment.config";
@@ -27,16 +29,6 @@ export {
   isSubscriptionAutoPlanCode,
 } from "./subscription-plan-codes";
 
-async function resolveRecurringAccessDays(planCode: string): Promise<number> {
-  if (planCode === MONTHLY_SUBSCRIPTION_PLAN_CODE) {
-    return getPaidChatAccessDays();
-  }
-  if (planCode === YEARLY_SUBSCRIPTION_PLAN_CODE) {
-    return getYearlySubscriptionAccessDays();
-  }
-  return getSubscriptionAutoAccessDays();
-}
-
 function resolveDefaultWayforpayMode(planCode: string): string | null {
   if (planCode === MONTHLY_SUBSCRIPTION_PLAN_CODE) {
     return "monthly";
@@ -45,16 +37,6 @@ function resolveDefaultWayforpayMode(planCode: string): string | null {
     return "yearly";
   }
   return null;
-}
-
-function buildSubscriptionStateLabel(planCode: string, accessDays: number): string {
-  if (planCode === MONTHLY_SUBSCRIPTION_PLAN_CODE) {
-    return `Щомісячна підписка · ${accessDays} дн.`;
-  }
-  if (planCode === YEARLY_SUBSCRIPTION_PLAN_CODE) {
-    return `Річна підписка · ${accessDays} дн.`;
-  }
-  return `Автопродовження · ${accessDays} дн.`;
 }
 
 function buildRenewalIntroUa(planCode: string): string {
@@ -365,15 +347,28 @@ export async function handleSubscriptionAutoApprovedPayment(
 
   const wfp = await fetchWayforpayRegularSnapshot(anchorOrderReference);
 
-  const subscriptionStateLabel = buildSubscriptionStateLabel(planCode, accessDays);
+  let granted: boolean;
+  let grantEndAt: Date | null;
 
-  const grantOptions: MultimaskingGrantOptions = {
-    accessDays,
-    subscriptionStateLabel,
-    renewalExtendFromActiveGrant: isRenewal,
-    ...(isRenewal
-      ? { skipSuccessMessage: true }
-      : usesStandardMultimaskingSuccessMessage(planCode)
+  if (isRenewal) {
+    // Спільний шлях із cron/poll reconciler (TZ/update-access.md §8, Option A): silent grant.
+    const renewalResult = await extendRecurringMultimaskingAccess({
+      userId,
+      planId,
+      orderReference,
+      amount: payload.amount,
+      currency: payload.currency,
+      source: "webhook",
+    });
+    granted = renewalResult.granted;
+    grantEndAt = renewalResult.grantEndAt;
+  } else {
+    const subscriptionStateLabel = buildSubscriptionStateLabel(planCode, accessDays);
+    const grantOptions: MultimaskingGrantOptions = {
+      accessDays,
+      subscriptionStateLabel,
+      renewalExtendFromActiveGrant: false,
+      ...(usesStandardMultimaskingSuccessMessage(planCode)
         ? {}
         : {
             successMessageText: await buildRecurringDiagnosticMessageUa({
@@ -387,15 +382,18 @@ export async function handleSubscriptionAutoApprovedPayment(
               accessDays,
             }),
           }),
-  };
+    };
 
-  const grantResult = await processApprovedMultimaskingPayment(
-    payload,
-    metadata,
-    grantOptions,
-  );
+    const grantResult = await processApprovedMultimaskingPayment(
+      payload,
+      metadata,
+      grantOptions,
+    );
+    granted = grantResult.granted;
+    grantEndAt = grantResult.grantEndAt ?? null;
+  }
 
-  if (grantResult.granted) {
+  if (granted) {
     try {
       const mirrored = await reconcileUserSubscriptionFromRecurringWebhook({
         userId,
@@ -415,9 +413,9 @@ export async function handleSubscriptionAutoApprovedPayment(
     }
   }
 
-  if (isRenewal && grantResult.granted) {
-    const endLine = grantResult.grantEndAt
-      ? ` (до ${formatEndDateUk(grantResult.grantEndAt)})`
+  if (isRenewal && granted) {
+    const endLine = grantEndAt
+      ? ` (до ${formatEndDateUk(grantEndAt)})`
       : "";
     const renewalIntro = buildRenewalIntroUa(planCode);
     await sendTelegramBotMessage(
@@ -436,6 +434,6 @@ export async function handleSubscriptionAutoApprovedPayment(
     isRenewal,
     anchorOrderReference,
     wayforpayStatus: wfp.wayforpayStatus,
-    granted: grantResult.granted,
+    granted,
   });
 }

@@ -133,14 +133,44 @@ async function resolveGrantWindow(
  * Після верифікації підпису webhook: запис у БД (термін — `app_settings.paid_chat_access_days`) + повідомлення в чат.
  * Ідемпотентно за payload.orderReference.
  */
+/** Нормалізований вхід ядра видачі доступу (webhook або reconciler). */
+export type ApprovedMultimaskingPaymentInput = {
+  orderReference: string;
+  chatId: string;
+  courseName: string;
+  amount: number | string;
+  currency: string;
+};
+
+/** Тонкий адаптер для webhook-шляху: зберігає стару сигнатуру `(payload, metadata, options)`. */
 export async function processApprovedMultimaskingPayment(
   payload: WayForPayWebhookPayload,
   metadata: PaymentMetadata,
   options?: MultimaskingGrantOptions,
 ): Promise<MultimaskingGrantResult> {
-  const orderReference = payload.orderReference;
-  const chatId = metadata.chatId.trim();
-  const courseName = metadata.courseName.trim();
+  return grantApprovedMultimaskingAccess(
+    {
+      orderReference: payload.orderReference,
+      chatId: metadata.chatId,
+      courseName: metadata.courseName,
+      amount: payload.amount,
+      currency: payload.currency,
+    },
+    options,
+  );
+}
+
+/**
+ * Спільне ядро видачі/продовження доступу MULTIMASKING.
+ * Використовують і webhook-шлях, і cron/poll reconciler (TZ/update-access.md §8, Option A).
+ */
+export async function grantApprovedMultimaskingAccess(
+  input: ApprovedMultimaskingPaymentInput,
+  options?: MultimaskingGrantOptions,
+): Promise<MultimaskingGrantResult> {
+  const orderReference = input.orderReference;
+  const chatId = input.chatId.trim();
+  const courseName = input.courseName.trim();
 
   const existing = await ContactProductAccess.findOne({
     where: { wayforpayOrderReference: orderReference },
@@ -150,11 +180,11 @@ export async function processApprovedMultimaskingPayment(
     return { granted: false };
   }
 
-  const paidParse = parsePositivePaidAmount(payload.amount);
+  const paidParse = parsePositivePaidAmount(input.amount);
   if (!paidParse.ok) {
     console.error("[payment] invalid or zero amount in webhook", {
       orderReference,
-      amount: payload.amount,
+      amount: input.amount,
     });
     await sendTelegramBotMessage(
       chatId,
@@ -167,11 +197,11 @@ export async function processApprovedMultimaskingPayment(
   }
   const paidUah = paidParse.value;
 
-  const currency = String(payload.currency ?? "").toUpperCase();
+  const currency = String(input.currency ?? "").toUpperCase();
   if (currency !== "UAH") {
     console.error("[payment] currency mismatch", {
       orderReference,
-      currency: payload.currency,
+      currency: input.currency,
     });
     await sendTelegramBotMessage(
       chatId,
@@ -262,7 +292,7 @@ export async function processApprovedMultimaskingPayment(
   console.log("[payment] granting access", {
     orderReference,
     paidUah,
-    currency: payload.currency,
+    currency: input.currency,
     contactId: contact.id,
     accessDays,
     renewalExtend,
