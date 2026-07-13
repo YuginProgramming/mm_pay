@@ -1,7 +1,13 @@
 import { SUPPORT_CONTACT_SUFFIX_PLAIN_UA } from "../core/support";
+import { escapeTelegramHtml, telegramHtmlLink } from "../core/telegram-html";
 import { Op } from "sequelize";
 import { ContactProductAccess } from "../../database/ContactProductAccess";
 import { TelegramUser } from "../../database/TelegramUser";
+import {
+  MULTIMASKING_KWIGA_CABINET_URL,
+  MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL,
+  MULTIMASKING_TELEGRAM_GROUP_PRO_URL,
+} from "../../payment/multimasking-telegram-groups";
 import {
   getMultimaskingAccessGraceDays,
   hasActiveMultimaskingAccess,
@@ -104,7 +110,9 @@ function groupRowsByExternalProductId(
   return map;
 }
 
-export async function buildProfileMessage(user: TelegramUser): Promise<string> {
+export async function buildProfileMessage(
+  user: TelegramUser,
+): Promise<{ text: string; parseMode?: "HTML" }> {
   const email = user.email ?? null;
   const lines: string[] = ["Ваш профіль", ""];
 
@@ -118,7 +126,7 @@ export async function buildProfileMessage(user: TelegramUser): Promise<string> {
     );
     lines.push("");
     lines.push("Надішліть email у чат, щоб побачити статус доступу та доступні опції.");
-    return lines.join("\n");
+    return { text: lines.join("\n") };
   }
 
   lines.push(`Email: ${email}`);
@@ -131,7 +139,7 @@ export async function buildProfileMessage(user: TelegramUser): Promise<string> {
       "Спробуйте інший email, якщо впевнені, що поточна адреса некоректна.\n" +
         SUPPORT_CONTACT_SUFFIX_PLAIN_UA,
     );
-    return lines.join("\n");
+    return { text: lines.join("\n") };
   }
 
   lines.push("Статус у базі KWIGA: контакт знайдено");
@@ -235,5 +243,37 @@ export async function buildProfileMessage(user: TelegramUser): Promise<string> {
     }
   }
 
-  return lines.join("\n");
+  const rank = snapshot.rank;
+  const accessLinks =
+    isActiveAccess && rank === "pro"
+      ? [
+          { label: "Група для Майстрів", url: MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL },
+          {
+            label: "Група для Про підписників",
+            url: MULTIMASKING_TELEGRAM_GROUP_PRO_URL,
+          },
+          { label: "Кабінет (відеолекції)", url: MULTIMASKING_KWIGA_CABINET_URL },
+        ]
+      : isActiveAccess && rank === "masters"
+        ? [
+            { label: "Група для Майстрів", url: MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL },
+            { label: "Кабінет (відеолекції)", url: MULTIMASKING_KWIGA_CABINET_URL },
+          ]
+        : [];
+
+  const body = lines.join("\n");
+  if (accessLinks.length === 0) {
+    return { text: body };
+  }
+
+  const linksBlock =
+    "Далі вам доступні розділи — натисніть на назви нижче:\n\n" +
+    accessLinks
+      .map((l, i) => `${i + 1}) ` + telegramHtmlLink(l.url, l.label))
+      .join("\n");
+
+  return {
+    text: escapeTelegramHtml(body) + "\n\n" + linksBlock,
+    parseMode: "HTML",
+  };
 }

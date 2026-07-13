@@ -17,6 +17,7 @@ import {
   MULTIMASKING_PRODUCT_NAME,
 } from "./multimasking-product";
 import {
+  MULTIMASKING_KWIGA_CABINET_URL,
   MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL,
   MULTIMASKING_TELEGRAM_GROUP_PRO_URL,
 } from "./multimasking-telegram-groups";
@@ -445,6 +446,12 @@ function paymentSuccessCopyAndButtons(
           MULTIMASKING_TELEGRAM_GROUP_PRO_URL,
           "Група для Про підписників",
         ) +
+        "\n" +
+        "3) " +
+        telegramHtmlLink(
+          MULTIMASKING_KWIGA_CABINET_URL,
+          "Кабінет (відеолекції)",
+        ) +
         "\n\n" +
         "Перевірте статус у боті: /profile",
       urlButtons: [
@@ -453,6 +460,7 @@ function paymentSuccessCopyAndButtons(
           text: "Група для Про підписників",
           url: MULTIMASKING_TELEGRAM_GROUP_PRO_URL,
         },
+        { text: "Кабінет (відеолекції)", url: MULTIMASKING_KWIGA_CABINET_URL },
       ],
     };
   }
@@ -460,15 +468,23 @@ function paymentSuccessCopyAndButtons(
   return {
     successText:
       head +
-      "Доступна телеграм-група для Майстрів — натисніть на назву нижче або кнопку.\n\n" +
+      "Далі вам доступні розділи — натисніть на назви нижче або кнопки.\n\n" +
+      "1) " +
       telegramHtmlLink(
         MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL,
         "Група для Майстрів",
+      ) +
+      "\n" +
+      "2) " +
+      telegramHtmlLink(
+        MULTIMASKING_KWIGA_CABINET_URL,
+        "Кабінет (відеолекції)",
       ) +
       "\n\n" +
       "Перевірте статус у боті: /profile",
     urlButtons: [
       { text: "Група для Майстрів", url: MULTIMASKING_TELEGRAM_GROUP_MASTERS_URL },
+      { text: "Кабінет (відеолекції)", url: MULTIMASKING_KWIGA_CABINET_URL },
     ],
   };
 }

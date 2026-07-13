@@ -102,7 +102,11 @@ export function registerCommandHandlers(bot: Telegraf<StartContext>): void {
       if (!ctx.from) return;
       if (!isPrivateChat(ctx)) return;
       const { user } = await trackTelegramUser(ctx as StartContext);
-      await ctx.reply(await buildProfileMessage(user));
+      const profile = await buildProfileMessage(user);
+      await ctx.reply(
+        profile.text,
+        profile.parseMode ? { parse_mode: profile.parseMode } : undefined,
+      );
     } catch (error) {
       console.error("Error handling /profile:", error);
       await ctx.reply("Помилка під час завантаження профілю. Спробуй пізніше.");
