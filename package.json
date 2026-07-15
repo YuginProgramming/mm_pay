@@ -14,6 +14,7 @@
     "paid-chat:janitor:daemon": "ts-node database/paid-chat-janitor-daemon.ts",
     "paid-chat:janitor:daemon:prod": "npm run build && node dist/database/paid-chat-janitor-daemon.js",
     "paid-chat:janitor:once:prod": "npm run build && node dist/database/paid-chat-janitor-daemon.js --once",
+    "debug:reconcile-access-once": "ts-node database/paid-chat-janitor-daemon.ts --once --reconcile-only",
     "clear-telegram-users": "ts-node database/clear-telegram-users.ts",
     "debug:add-testuser": "ts-node debug/users/add-testuser.ts",
     "debug:set-masters-test-user": "ts-node debug/users/set-masters-rank-test-user.ts",

@@ -79,6 +79,8 @@ export type MultimaskingGrantOptions = {
   renewalExtendFromActiveGrant?: boolean;
   /** Не надсилати success-повідомлення (напр. renewal DM окремо). */
   skipSuccessMessage?: boolean;
+  /** Не надсилати жодних DM користувачу (reconciler — повністю silent). */
+  suppressUserMessages?: boolean;
 };
 
 export type MultimaskingGrantResult = {
@@ -173,6 +175,14 @@ export async function grantApprovedMultimaskingAccess(
   const chatId = input.chatId.trim();
   const courseName = input.courseName.trim();
 
+  const suppressUserMessages = Boolean(options?.suppressUserMessages);
+  const notifyUser: typeof sendTelegramBotMessage = async (...args) => {
+    if (suppressUserMessages) {
+      return undefined;
+    }
+    return sendTelegramBotMessage(...args);
+  };
+
   const existing = await ContactProductAccess.findOne({
     where: { wayforpayOrderReference: orderReference },
   });
@@ -187,7 +197,7 @@ export async function grantApprovedMultimaskingAccess(
       orderReference,
       amount: input.amount,
     });
-    await sendTelegramBotMessage(
+    await notifyUser(
       chatId,
       "Платіж зафіксовано, але сума в повідомленні некоректна. Зверніться до підтримки, номер замовлення:\n" +
         orderReference +
@@ -204,7 +214,7 @@ export async function grantApprovedMultimaskingAccess(
       orderReference,
       currency: input.currency,
     });
-    await sendTelegramBotMessage(
+    await notifyUser(
       chatId,
       "Платіж отримано в іншій валюті, ніж очікується. Зверніться до підтримки:\n" +
         orderReference +
@@ -220,7 +230,7 @@ export async function grantApprovedMultimaskingAccess(
       courseName,
       expected: MULTIMASKING_PRODUCT_NAME,
     });
-    await sendTelegramBotMessage(
+    await notifyUser(
       chatId,
       "Платіж отримано, але назва продукту не збігається з поточною пропозицією. " +
         "Зверніться до підтримки:\n" +
@@ -236,7 +246,7 @@ export async function grantApprovedMultimaskingAccess(
   });
 
   if (!telegramUser?.email) {
-    await sendTelegramBotMessage(
+    await notifyUser(
       chatId,
       "Оплату в WayForPay зафіксовано, але в боті не збережено email — без нього ми не зможемо зарахувати доступ до профілю KWIGA.\n\n" +
         "Надішліть у цьому чаті свій email одним повідомленням і перевірте /profile. " +
@@ -253,7 +263,7 @@ export async function grantApprovedMultimaskingAccess(
   );
 
   if (!contact) {
-    await sendTelegramBotMessage(
+    await notifyUser(
       chatId,
       "Оплату в WayForPay зафіксовано, але за email із бота контакта у KWIGA не знайдено — автоматично зарахувати доступ неможливо.\n\n" +
         "Перевірте адресу в /profile, за потреби змініть через /change_email або зверніться до підтримки з номером замовлення:\n" +
@@ -272,7 +282,7 @@ export async function grantApprovedMultimaskingAccess(
       contactId: contact.id,
       rank: preGrantRankSnapshot.rank,
     });
-    await sendTelegramBotMessage(
+    await notifyUser(
       chatId,
       multimaskingPaidButRankIneligibleUa(orderReference, preGrantRankSnapshot.rank),
     );
@@ -393,7 +403,7 @@ export async function grantApprovedMultimaskingAccess(
       tierAfterPayment,
       options.successMessageText + "\n\n",
     );
-    await sendTelegramBotMessage(chatId, successText, urlButtons, {
+    await notifyUser(chatId, successText, urlButtons, {
       parseMode: "HTML",
     });
     return { granted: true, grantEndAt: endAt };
@@ -414,7 +424,7 @@ export async function grantApprovedMultimaskingAccess(
     commonHead,
   );
 
-  await sendTelegramBotMessage(chatId, successText, urlButtons, {
+  await notifyUser(chatId, successText, urlButtons, {
     parseMode: "HTML",
   });
 

@@ -16,6 +16,8 @@ export interface SubscriptionAutoAttributes {
   autoRenewEnabled: boolean;
   lastChargeStatus: string | null;
   lastChargeAt: Date | null;
+  /** High-water mark останнього WayForPay `lastPayedDate`, опрацьованого reconciler (idempotency). */
+  lastReconciledPayedAt: Date | null;
   cancelledAt: Date | null;
   createdAt?: Date;
   updatedAt?: Date;
@@ -33,6 +35,7 @@ type SubscriptionAutoCreationAttributes = Optional<
   | "autoRenewEnabled"
   | "lastChargeStatus"
   | "lastChargeAt"
+  | "lastReconciledPayedAt"
   | "cancelledAt"
   | "createdAt"
   | "updatedAt"
@@ -54,6 +57,7 @@ export class SubscriptionAuto
   declare autoRenewEnabled: boolean;
   declare lastChargeStatus: string | null;
   declare lastChargeAt: Date | null;
+  declare lastReconciledPayedAt: Date | null;
   declare cancelledAt: Date | null;
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
@@ -123,6 +127,11 @@ SubscriptionAuto.init(
       type: DataTypes.DATE,
       allowNull: true,
       field: "last_charge_at",
+    },
+    lastReconciledPayedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: "last_reconciled_payed_at",
     },
     cancelledAt: {
       type: DataTypes.DATE,

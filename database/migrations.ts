@@ -862,6 +862,16 @@ async function createSubscriptionAutoTable(): Promise<void> {
   console.log("Migration completed: subscription_auto table (if missing).");
 }
 
+async function addSubscriptionAutoLastReconciledColumn(): Promise<void> {
+  await sequelize.query(`
+    ALTER TABLE subscription_auto
+    ADD COLUMN IF NOT EXISTS last_reconciled_payed_at TIMESTAMPTZ;
+  `);
+  console.log(
+    "Migration completed: last_reconciled_payed_at on subscription_auto (if missing).",
+  );
+}
+
 async function createWayforpayPurchaseCheckoutsTable(): Promise<void> {
   await sequelize.query(`
     CREATE TABLE IF NOT EXISTS wayforpay_purchase_checkouts (
@@ -1055,6 +1065,7 @@ async function runMigrations(): Promise<void> {
     await seedYearlySubscriptionTestSettings();
     await createYearlyAutoRenewSubscriptionsTable();
     await createSubscriptionAutoTable();
+    await addSubscriptionAutoLastReconciledColumn();
     await createWayforpayPurchaseCheckoutsTable();
     await seedSubscriptionAutoPlan();
     await seedSubscriptionAutoSettings();

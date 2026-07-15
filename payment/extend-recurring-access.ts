@@ -50,6 +50,7 @@ export async function extendRecurringMultimaskingAccess(
       subscriptionStateLabel,
       renewalExtendFromActiveGrant: true,
       skipSuccessMessage: true,
+      suppressUserMessages: input.source === "reconciler",
     },
   );
 

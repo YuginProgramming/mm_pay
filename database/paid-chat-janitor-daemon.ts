@@ -2,6 +2,15 @@ import "dotenv/config";
 import { resolvePaidChatJanitorIntervalMs } from "./app-settings-queries";
 import { sequelize } from "./db";
 import { runPaidChatJanitorSweepOnce } from "../telegram/paid-chat-janitor/paid-chat-sweep";
+import { runSubscriptionAccessReconcileOnce } from "../payment/subscription-access-reconciler.service";
+
+/**
+ * Пауза (мс) між зверненнями до WayForPay `regularApi STATUS` під час reconcile.
+ * Офіційного числового ліміту WayForPay не публікує, тож поводимось консервативно;
+ * у поєднанні з pre-filter по `next_charge_at` навантаження мінімальне
+ * (TZ/update-access.md §5).
+ */
+const RECONCILE_STATUS_DELAY_MS = 500;
 
 /**
  * Таймерний процес paid-chat janitor (TZ/user-control-crawler.txt §7): лише HTTPS Bot API,
@@ -17,7 +26,11 @@ import { runPaidChatJanitorSweepOnce } from "../telegram/paid-chat-janitor/paid-
  *
  * Запуск: `npm run paid-chat:janitor:daemon` або pm2 (див. ecosystem.config.cjs).
  *
- * Цикл: sweep kick з MASTERS / Chat PRO (без окремих Telegram-нагадувань — див. subscription-renewal-reminder).
+ * Цикл: спершу subscription-access reconcile (продовження доступу для пропущених
+ * recurring-списань, TZ/update-access.md §5 — завжди apply, без dry-run), далі
+ * sweep kick з MASTERS / Chat PRO (без окремих Telegram-нагадувань — див. subscription-renewal-reminder).
+ *
+ * Прапорець `--reconcile-only`: виконати лише reconcile-крок, без sweep (для дебагу).
  */
 
 function parseDelayMs(): number {
@@ -63,10 +76,34 @@ async function main(): Promise<void> {
   await sequelize.authenticate();
 
   const once = process.argv.includes("--once");
+  const reconcileOnly = process.argv.includes("--reconcile-only");
   const delayMs = parseDelayMs();
 
   const cycle = async (): Promise<void> => {
     if (shuttingDown) return;
+
+    // 1) Subscription-access reconcile (завжди apply). Ізольований try/catch —
+    //    помилка reconcile не має зривати наступний sweep.
+    try {
+      const rec = await runSubscriptionAccessReconcileOnce({
+        apply: true,
+        delayMs: RECONCILE_STATUS_DELAY_MS,
+      });
+      console.log(
+        `[paid-chat-janitor-daemon] reconcile · checked ${rec.checked} · extended ${rec.extended} · skipped ${rec.skipped} · errors ${rec.errors.length}`,
+      );
+      for (const err of rec.errors) {
+        console.error("[paid-chat-janitor-daemon] reconcile:", err);
+      }
+    } catch (e) {
+      console.error("[paid-chat-janitor-daemon] reconcile error:", e);
+    }
+
+    if (reconcileOnly) {
+      return;
+    }
+
+    // 2) Paid-chat sweep.
     const t0 = Date.now();
     try {
       const r = await runPaidChatJanitorSweepOnce({ delayMs });
