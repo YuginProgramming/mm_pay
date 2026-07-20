@@ -1,4 +1,5 @@
 import { KWIGA_BASE_URL, requireKwigaCredentials } from "./kwiga-config";
+import { formatKwigaEndAtForPut } from "./kwiga-product";
 import type { KwigaContact, KwigaProduct } from "./kwiga-types";
 
 export function kwigaApiHeaders(): Record<string, string> {
@@ -68,4 +69,39 @@ export async function postKwigaPurchase(params: PostKwigaPurchaseParams): Promis
   if (!res.ok) {
     throw new Error(`POST /contacts/purchases ${res.status}: ${await res.text()}`);
   }
+}
+
+export type PutKwigaProductEndDateParams = {
+  kwigaContactId: number;
+  productId: number;
+  endAt: Date;
+};
+
+/**
+ * Set explicit product subscription end date (Kwiga Public API).
+ * `PUT /contacts/{contact}/products/{product}/end-date` — omit `timezone_id` → UTC.
+ * @see https://api-doc.kwiga.com/ — Change subscription end date
+ */
+export async function putKwigaProductEndDate(
+  params: PutKwigaProductEndDateParams,
+): Promise<KwigaProduct> {
+  const endAtFormatted = formatKwigaEndAtForPut(params.endAt);
+  const url = `${KWIGA_BASE_URL}/contacts/${params.kwigaContactId}/products/${params.productId}/end-date`;
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: kwigaApiHeaders(),
+    body: JSON.stringify({ end_at: endAtFormatted }),
+  });
+  if (!res.ok) {
+    throw new Error(
+      `PUT /contacts/${params.kwigaContactId}/products/${params.productId}/end-date ${res.status}: ${await res.text()}`,
+    );
+  }
+  const body = (await res.json()) as { data?: KwigaProduct };
+  if (!body.data) {
+    throw new Error(
+      `PUT /contacts/${params.kwigaContactId}/products/${params.productId}/end-date: empty data`,
+    );
+  }
+  return body.data;
 }

@@ -16,6 +16,18 @@ export function plusDaysIso(days: number, from = new Date()): string {
   return d.toISOString();
 }
 
+/**
+ * Format for Kwiga `PUT .../end-date` body `end_at` when `timezone_id` is omitted (UTC).
+ * S0 smoke confirmed: `"YYYY-MM-DD HH:mm:ss"` is accepted (TZ/kwiga-recurring-prolong.md).
+ */
+export function formatKwigaEndAtForPut(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ` +
+    `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`
+  );
+}
+
 /** Latest subscription end on a Kwiga product (or aggregated fallback). */
 export function effectiveKwigaProductEndAt(product: KwigaProduct): Date | null {
   const subs = product.subscriptions ?? [];

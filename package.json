@@ -25,6 +25,7 @@
     "debug:grant-kwiga-purchase": "ts-node debug/payments/grant-kwiga-purchase-trial.ts",
     "debug:sync-kwiga-from-subscriptions": "ts-node debug/kwiga/sync-kwiga-access-from-user-subscription.ts",
     "debug:try-prolong-kwiga-payment": "ts-node debug/kwiga/try-prolong-kwiga-for-payment.ts",
+    "debug:smoke-kwiga-end-date": "ts-node debug/kwiga/smoke-kwiga-end-date.ts",
     "debug:inspect-payment-tier": "ts-node debug/payments/inspect-payment-success-tier.ts",
     "debug:clean-user-masters": "ts-node debug/telegram/clean-telegram-user-to-masters.ts",
     "debug:clean-masters-retest": "ts-node debug/users/clean-masters-debug-user-retest.ts",

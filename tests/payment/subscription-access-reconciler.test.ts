@@ -93,7 +93,13 @@ describe("runSubscriptionAccessReconcileOnce (S2-8)", () => {
 
     const res = await runSubscriptionAccessReconcileOnce({ apply: false });
 
-    expect(res).toMatchObject({ checked: 1, extended: 1, skipped: 0, errors: [] });
+    expect(res).toMatchObject({
+      checked: 1,
+      extended: 1,
+      skipped: 0,
+      errors: [],
+      extensions: [],
+    });
     expect(mockExtend).not.toHaveBeenCalled();
     expect(row.update).not.toHaveBeenCalled();
   });
@@ -101,10 +107,13 @@ describe("runSubscriptionAccessReconcileOnce (S2-8)", () => {
   it("apply: extends via helper with synthetic ref and updates high-water mark", async () => {
     const row = makeRow();
     mockFindAll.mockResolvedValue([row] as never);
+    const grantEndAt = new Date("2026-08-14T17:23:00.883Z");
+    mockExtend.mockResolvedValue({ granted: true, grantEndAt });
 
     const res = await runSubscriptionAccessReconcileOnce({ apply: true });
 
     expect(res).toMatchObject({ checked: 1, extended: 1, skipped: 0 });
+    expect(res.extensions).toEqual([{ userId: "269694206", targetEndAt: grantEndAt }]);
     expect(mockExtend).toHaveBeenCalledWith({
       userId: "269694206",
       planId: 1,
@@ -187,7 +196,12 @@ describe("runSubscriptionAccessReconcileOnce (S2-8)", () => {
 
     const res = await runSubscriptionAccessReconcileOnce({ apply: true });
 
-    expect(res).toMatchObject({ checked: 0, extended: 0, skipped: 0 });
+    expect(res).toMatchObject({
+      checked: 0,
+      extended: 0,
+      skipped: 0,
+      extensions: [],
+    });
     expect(mockFindAll).not.toHaveBeenCalled();
   });
 });

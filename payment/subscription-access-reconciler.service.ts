@@ -7,11 +7,19 @@ import { getWayforpayMerchantPassword } from "./payment.config";
 import { getWayforpayRegularPaymentStatus } from "./wayforpay-regular-api";
 import { isMultimaskingRecurringPlanCode } from "./subscription-plan-codes";
 
+export type SubscriptionAccessExtension = {
+  userId: string;
+  /** Groups Multimasking `payment_hook.end_at` — target for KWIGA exact end-date step. */
+  targetEndAt: Date;
+};
+
 export type SubscriptionAccessReconcileResult = {
   checked: number;
   extended: number;
   skipped: number;
   errors: string[];
+  /** Successfully applied group extends in this run (for KWIGA follow-up). Empty on dry-run. */
+  extensions: SubscriptionAccessExtension[];
 };
 
 /** Мінімальний інтервал (мс), на який `lastPayedDate` має бути новішим за high-water mark. */
@@ -46,7 +54,9 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-type ReconcileOutcome = "extended" | "skipped";
+type ReconcileOutcome =
+  | { kind: "skipped" }
+  | { kind: "extended"; userId: string; grantEndAt: Date | null };
 
 async function reconcileOneSubscription(
   row: SubscriptionAuto,
@@ -54,26 +64,26 @@ async function reconcileOneSubscription(
 ): Promise<ReconcileOutcome> {
   const plan = await SubscriptionPlan.findByPk(row.planId, { attributes: ["code"] });
   if (!isMultimaskingRecurringPlanCode(plan?.code)) {
-    return "skipped";
+    return { kind: "skipped" };
   }
 
   const anchor = row.anchorOrderReference?.trim();
   if (!anchor) {
-    return "skipped";
+    return { kind: "skipped" };
   }
 
   const status = await getWayforpayRegularPaymentStatus(anchor);
 
   if (status.status !== "Active") {
-    return "skipped";
+    return { kind: "skipped" };
   }
   if (status.lastPayedStatus !== "Approved") {
-    return "skipped";
+    return { kind: "skipped" };
   }
 
   const lastPayed = parseWayforpayEpoch(status.lastPayedDate);
   if (lastPayed == null) {
-    return "skipped";
+    return { kind: "skipped" };
   }
 
   // High-water mark: webhook (last_charge_at) або попередній reconciler-прогін.
@@ -82,7 +92,7 @@ async function reconcileOneSubscription(
     highWater != null &&
     lastPayed.getTime() <= highWater.getTime() + RECONCILE_EPSILON_MS
   ) {
-    return "skipped";
+    return { kind: "skipped" };
   }
 
   const lastPayedEpochSeconds = Math.floor(lastPayed.getTime() / 1000);
@@ -92,7 +102,7 @@ async function reconcileOneSubscription(
     where: { wayforpayOrderReference: syntheticOrderReference },
   });
   if (alreadyGranted) {
-    return "skipped";
+    return { kind: "skipped" };
   }
 
   if (!apply) {
@@ -104,7 +114,7 @@ async function reconcileOneSubscription(
       syntheticOrderReference,
       lastPayed: lastPayed.toISOString(),
     });
-    return "extended";
+    return { kind: "extended", userId: row.userId, grantEndAt: null };
   }
 
   const grant = await extendRecurringMultimaskingAccess({
@@ -122,7 +132,7 @@ async function reconcileOneSubscription(
       userId: row.userId,
       syntheticOrderReference,
     });
-    return "skipped";
+    return { kind: "skipped" };
   }
 
   await row.update({
@@ -140,7 +150,11 @@ async function reconcileOneSubscription(
     grantEndAt: grant.grantEndAt?.toISOString() ?? null,
   });
 
-  return "extended";
+  return {
+    kind: "extended",
+    userId: row.userId,
+    grantEndAt: grant.grantEndAt ?? null,
+  };
 }
 
 /**
@@ -157,6 +171,7 @@ export async function runSubscriptionAccessReconcileOnce(opts: {
     extended: 0,
     skipped: 0,
     errors: [],
+    extensions: [],
   };
 
   if (!getWayforpayMerchantPassword()) {
@@ -182,8 +197,14 @@ export async function runSubscriptionAccessReconcileOnce(opts: {
     result.checked += 1;
     try {
       const outcome = await reconcileOneSubscription(row, opts.apply);
-      if (outcome === "extended") {
+      if (outcome.kind === "extended") {
         result.extended += 1;
+        if (opts.apply && outcome.grantEndAt != null) {
+          result.extensions.push({
+            userId: outcome.userId,
+            targetEndAt: outcome.grantEndAt,
+          });
+        }
       } else {
         result.skipped += 1;
       }

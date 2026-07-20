@@ -3,6 +3,10 @@ import { resolvePaidChatJanitorIntervalMs } from "./app-settings-queries";
 import { sequelize } from "./db";
 import { runPaidChatJanitorSweepOnce } from "../telegram/paid-chat-janitor/paid-chat-sweep";
 import { runSubscriptionAccessReconcileOnce } from "../payment/subscription-access-reconciler.service";
+import {
+  KWIGA_RECURRING_END_DATE_DELAY_MS,
+  runKwigaRecurringEndDatesOnce,
+} from "../payment/kwiga-recurring-end-date.service";
 
 /**
  * Пауза (мс) між зверненнями до WayForPay `regularApi STATUS` під час reconcile.
@@ -26,11 +30,12 @@ const RECONCILE_STATUS_DELAY_MS = 500;
  *
  * Запуск: `npm run paid-chat:janitor:daemon` або pm2 (див. ecosystem.config.cjs).
  *
- * Цикл: спершу subscription-access reconcile (продовження доступу для пропущених
- * recurring-списань, TZ/update-access.md §5 — завжди apply, без dry-run), далі
- * sweep kick з MASTERS / Chat PRO (без окремих Telegram-нагадувань — див. subscription-renewal-reminder).
+ * Цикл:
+ *   1) groups reconcile (пропущені recurring-списання → payment_hook) — TZ/update-access.md
+ *   2) KWIGA exact end-date лише для щойно extended (та сама end_at) — TZ/kwiga-recurring-prolong.md
+ *   3) sweep kick MASTERS / Chat PRO
  *
- * Прапорець `--reconcile-only`: виконати лише reconcile-крок, без sweep (для дебагу).
+ * Прапорець `--reconcile-only`: кроки 1–2 без sweep (для дебагу).
  */
 
 function parseDelayMs(): number {
@@ -82,13 +87,14 @@ async function main(): Promise<void> {
   const cycle = async (): Promise<void> => {
     if (shuttingDown) return;
 
-    // 1) Subscription-access reconcile (завжди apply). Ізольований try/catch —
-    //    помилка reconcile не має зривати наступний sweep.
+    // 1) Groups reconcile (завжди apply). Ізольований try/catch.
+    let extensions: Array<{ userId: string; targetEndAt: Date }> = [];
     try {
       const rec = await runSubscriptionAccessReconcileOnce({
         apply: true,
         delayMs: RECONCILE_STATUS_DELAY_MS,
       });
+      extensions = rec.extensions;
       console.log(
         `[paid-chat-janitor-daemon] reconcile · checked ${rec.checked} · extended ${rec.extended} · skipped ${rec.skipped} · errors ${rec.errors.length}`,
       );
@@ -99,11 +105,29 @@ async function main(): Promise<void> {
       console.error("[paid-chat-janitor-daemon] reconcile error:", e);
     }
 
+    // 2) KWIGA exact end-date — лише для users щойно extended groups reconcile.
+    if (extensions.length > 0) {
+      try {
+        const kw = await runKwigaRecurringEndDatesOnce({
+          extensions,
+          delayMs: KWIGA_RECURRING_END_DATE_DELAY_MS,
+        });
+        console.log(
+          `[paid-chat-janitor-daemon] kwiga-end-date · users ${kw.users} · attempted ${kw.attempted} · updated ${kw.updated} · skipped ${kw.skipped} · errors ${kw.errors.length}`,
+        );
+        for (const err of kw.errors) {
+          console.error("[paid-chat-janitor-daemon] kwiga-end-date:", err);
+        }
+      } catch (e) {
+        console.error("[paid-chat-janitor-daemon] kwiga-end-date error:", e);
+      }
+    }
+
     if (reconcileOnly) {
       return;
     }
 
-    // 2) Paid-chat sweep.
+    // 3) Paid-chat sweep.
     const t0 = Date.now();
     try {
       const r = await runPaidChatJanitorSweepOnce({ delayMs });
