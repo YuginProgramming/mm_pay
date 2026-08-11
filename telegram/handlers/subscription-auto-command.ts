@@ -1,10 +1,15 @@
 import { Context, Markup, Telegraf } from "telegraf";
+import {
+  cancelSubscriptionAutoForUser,
+  hasActiveSubscriptionAutoRenew,
+} from "../../payment/cancel-subscription-auto.service";
 import { gateMultimaskingCheckoutForTelegramId } from "../../payment/multimasking-checkout-eligibility";
 import { createSubscriptionAutoCheckout } from "../../payment/subscription-auto-checkout.service";
 import {
   getSubscriptionAutoAccessDays,
   getSubscriptionAutoPriceUah,
 } from "../../payment/subscription-auto-settings";
+import { SUPPORT_CONTACT_SUFFIX_PLAIN_UA } from "../core/support";
 import { isPrivateChat } from "../core/chat-guards";
 import { StartContext, trackTelegramUser } from "../core/user-tracking";
 import {
@@ -16,6 +21,18 @@ import {
   multimaskingIneligibleUserMessageUa,
 } from "../profile/paid-chat-payment-eligibility";
 import { EMAIL_REQUIRED_BEFORE_PAYMENT_MESSAGE_UA } from "../payment/wayforpay-invoice";
+
+const UNSUBSCRIBE_CONFIRM_CALLBACK = "unsub_confirm";
+const UNSUBSCRIBE_ABORT_CALLBACK = "unsub_abort";
+
+function unsubscribeConfirmKeyboard() {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback("Так, скасувати", UNSUBSCRIBE_CONFIRM_CALLBACK),
+      Markup.button.callback("Ні", UNSUBSCRIBE_ABORT_CALLBACK),
+    ],
+  ]);
+}
 
 async function gateFailureMessageUa(
   gate: Awaited<ReturnType<typeof gateMultimaskingCheckoutForTelegramId>>,
@@ -99,6 +116,104 @@ export function registerSubscriptionAutoHandlers(bot: Telegraf<StartContext>): v
     } catch (error) {
       console.error("Error handling /subauto:", error);
       await ctx.reply("Помилка. Спробуйте пізніше.");
+    }
+  });
+
+  bot.command("unsubscribe", async (ctx: Context) => {
+    try {
+      if (!ctx.from) return;
+      if (!isPrivateChat(ctx)) return;
+
+      const { user } = await trackTelegramUser(ctx as StartContext);
+      const hasActive = await hasActiveSubscriptionAutoRenew(user.telegramId);
+      if (!hasActive) {
+        await ctx.reply(
+          "Активного автопродовження немає — скасовувати нічого.\n\n" +
+            "Деталі доступу: /profile",
+        );
+        return;
+      }
+
+      await ctx.reply(
+        "Скасувати автопродовження підписки?\n\n" +
+          "Поточний оплачений період доступу збережеться до дати закінчення " +
+          "(див. /profile). Повторні списання з картки буде зупинено.",
+        unsubscribeConfirmKeyboard(),
+      );
+    } catch (error) {
+      console.error("Error handling /unsubscribe:", error);
+      await ctx.reply("Помилка. Спробуйте пізніше.");
+    }
+  });
+
+  bot.action(UNSUBSCRIBE_ABORT_CALLBACK, async (ctx) => {
+    try {
+      if (!ctx.from) return;
+      if (!isPrivateChat(ctx)) {
+        await ctx.answerCbQuery().catch(() => {});
+        return;
+      }
+      await ctx.answerCbQuery();
+      await ctx.editMessageText("Скасування автопродовження не виконано.").catch(async () => {
+        await ctx.reply("Скасування автопродовження не виконано.");
+      });
+    } catch (error) {
+      console.error("Error handling unsub_abort:", error);
+      await ctx.answerCbQuery().catch(() => {});
+    }
+  });
+
+  bot.action(UNSUBSCRIBE_CONFIRM_CALLBACK, async (ctx) => {
+    try {
+      if (!ctx.from) return;
+      if (!isPrivateChat(ctx)) {
+        await ctx.answerCbQuery().catch(() => {});
+        return;
+      }
+
+      await ctx.answerCbQuery();
+      const { user } = await trackTelegramUser(ctx as StartContext);
+      const result = await cancelSubscriptionAutoForUser(user.telegramId);
+
+      if (result.kind === "none") {
+        await ctx.editMessageText(
+          "Активного автопродовження немає — скасовувати нічого.\n\nДеталі: /profile",
+        ).catch(async () => {
+          await ctx.reply(
+            "Активного автопродовження немає — скасовувати нічого.\n\nДеталі: /profile",
+          );
+        });
+        return;
+      }
+
+      if (!result.ok) {
+        console.error("[unsubscribe] cancel failed", {
+          telegramId: user.telegramId,
+          message: result.message,
+          cancelledCount: result.cancelled.length,
+        });
+        const failText =
+          "Не вдалося повністю скасувати автопродовження. Спробуйте пізніше або зверніться до підтримки.\n\n" +
+          SUPPORT_CONTACT_SUFFIX_PLAIN_UA;
+        await ctx.editMessageText(failText).catch(async () => {
+          await ctx.reply(failText);
+        });
+        return;
+      }
+
+      const okText =
+        "Автопродовження скасовано. Повторні списання з картки зупинено.\n\n" +
+        "Оплачений період доступу залишається чинним до дати закінчення — див. /profile.";
+      await ctx.editMessageText(okText).catch(async () => {
+        await ctx.reply(okText);
+      });
+    } catch (error) {
+      console.error("Error handling unsub_confirm:", error);
+      await ctx.answerCbQuery().catch(() => {});
+      await ctx.reply(
+        "Помилка під час скасування. Спробуйте пізніше або зверніться до підтримки.\n\n" +
+          SUPPORT_CONTACT_SUFFIX_PLAIN_UA,
+      );
     }
   });
 }

@@ -8,11 +8,9 @@ import "dotenv/config";
 import { SubscriptionAuto } from "../../database/SubscriptionAuto";
 import { SubscriptionPlan } from "../../database/SubscriptionPlan";
 import { sequelize } from "../../database/db";
+import { cancelSubscriptionAutoForUser } from "../../payment/cancel-subscription-auto.service";
 import { getWayforpayMerchantPassword } from "../../payment/payment.config";
-import {
-  getWayforpayRegularPaymentStatus,
-  removeWayforpayRegularPayment,
-} from "../../payment/wayforpay-regular-api";
+import { getWayforpayRegularPaymentStatus } from "../../payment/wayforpay-regular-api";
 import { resolveDebugTelegramUserId } from "../telegram/resolve-debug-telegram-id";
 
 function dryRunMode(): boolean {
@@ -103,44 +101,16 @@ async function main(): Promise<void> {
 
     if (dryRun) {
       console.log("[dry-run] would call regularApi REMOVE and set cancelled_at\n");
-      continue;
     }
-
-    if (anchor) {
-      const removeResult = await removeWayforpayRegularPayment(anchor);
-      console.log("WayForPay REMOVE:", removeResult);
-    }
-
-    const now = new Date();
-    let wayforpayStatus = row.wayforpayStatus;
-    if (anchor) {
-      try {
-        const after = await getWayforpayRegularPaymentStatus(anchor);
-        wayforpayStatus = after.status ?? "Removed";
-        console.log("WayForPay STATUS (after):", {
-          status: after.status ?? null,
-          mode: after.mode ?? null,
-          nextPaymentDate: after.nextPaymentDate ?? null,
-        });
-      } catch {
-        wayforpayStatus = "Removed";
-      }
-    }
-
-    await row.update({
-      autoRenewEnabled: false,
-      cancelledAt: now,
-      nextChargeAt: null,
-      wayforpayStatus,
-    });
-
-    console.log("DB updated:", {
-      auto_renew_enabled: false,
-      cancelled_at: now.toISOString(),
-      wayforpay_status: wayforpayStatus,
-    });
-    console.log("");
   }
+
+  if (dryRun) {
+    console.log("Done (dry-run).", { active_auto_renew_rows: rows.length });
+    return;
+  }
+
+  const result = await cancelSubscriptionAutoForUser(userId);
+  console.log("cancelSubscriptionAutoForUser:", result);
 
   const remaining = await SubscriptionAuto.count({
     where: {

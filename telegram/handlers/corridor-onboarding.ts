@@ -9,7 +9,7 @@ import { telegramHtmlLink } from "../core/telegram-html";
 export { SUPPORT_EMAIL } from "../core/support";
 
 const CORRIDOR_FOOTER_UA =
-  "Команди: /profile — статус і дати доступу, /payment — оплата, /change_email — змінити email.\n" +
+  "Команди: /profile — статус і дати доступу, /payment — оплата, /unsubscribe — скасувати автопродовження, /change_email — змінити email.\n" +
   "Якщо після оплати нічого не змінилося за кілька хвилин — напишіть " +
   telegramHtmlLink(SUPPORT_MAILTO_URL, SUPPORT_EMAIL) +
   " (вкажіть час оплати).";

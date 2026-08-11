@@ -62,6 +62,7 @@ export async function launchTelegramBot(): Promise<void> {
     { command: "payment", description: "Меню оплати" },
     { command: "profile", description: "Мій профіль і доступні опції" },
     { command: "change_email", description: "Змінити email" },
+    { command: "unsubscribe", description: "Скасувати автопродовження" },
     { command: "consultation", description: "Бот персональної консультації" },
   ]);
 
