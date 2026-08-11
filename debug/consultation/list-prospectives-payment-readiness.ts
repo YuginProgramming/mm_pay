@@ -20,7 +20,7 @@ import {
   persistKwigaRankSnapshot,
 } from "../../telegram/profile/kwiga-rank-db";
 import { hasAcceptedCurrentRules } from "../../telegram/handlers/rules";
-import { SUPPORT_TELEGRAM_URL } from "../../telegram/core/support";
+import { SUPPORT_EMAIL } from "../../telegram/core/support";
 
 async function main(): Promise<void> {
   await sequelize.authenticate();
@@ -101,7 +101,7 @@ async function main(): Promise<void> {
       "Оплата в Telegram не підвищує ранг до pro, але має створити payment_hook і активний доступ.\n",
   );
   console.log("Якщо користувач бачить блокування «немає відеокурсів» — перевірте інший бот/текст; " +
-    `у цьому репо такого фільтра немає. Підтримка: ${SUPPORT_TELEGRAM_URL}\n`);
+    `у цьому репо такого фільтра немає. Підтримка: ${SUPPORT_EMAIL}\n`);
 
   for (const r of rows) {
     console.log(JSON.stringify(r, null, 0));

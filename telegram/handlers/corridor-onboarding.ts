@@ -1,7 +1,4 @@
-import {
-  SUPPORT_TELEGRAM_HANDLE,
-  SUPPORT_TELEGRAM_URL,
-} from "../core/support";
+import { SUPPORT_EMAIL, SUPPORT_MAILTO_URL } from "../core/support";
 import { telegramHtmlLink } from "../core/telegram-html";
 
 /**
@@ -9,12 +6,12 @@ import { telegramHtmlLink } from "../core/telegram-html";
  * Містить HTML (`<a href=…>`) — надсилати з parse_mode: "HTML".
  */
 
-export { SUPPORT_TELEGRAM_URL } from "../core/support";
+export { SUPPORT_EMAIL } from "../core/support";
 
 const CORRIDOR_FOOTER_UA =
   "Команди: /profile — статус і дати доступу, /payment — оплата, /change_email — змінити email.\n" +
   "Якщо після оплати нічого не змінилося за кілька хвилин — напишіть " +
-  telegramHtmlLink(SUPPORT_TELEGRAM_URL, SUPPORT_TELEGRAM_HANDLE) +
+  telegramHtmlLink(SUPPORT_MAILTO_URL, SUPPORT_EMAIL) +
   " (вкажіть час оплати).";
 
 const PAYMENT_STEP_UA =
