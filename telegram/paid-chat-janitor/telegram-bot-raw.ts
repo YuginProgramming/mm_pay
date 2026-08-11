@@ -140,3 +140,19 @@ export async function rawBanChatMember(
     user_id: userId,
   });
 }
+
+/**
+ * Знімає бан у чаті (користувач лишається поза групою, але може знову зайти за invite).
+ * `only_if_banned: true` — no-op, якщо користувач не в бан-листі.
+ */
+export async function rawUnbanChatMember(
+  token: string,
+  chatId: number,
+  userId: number,
+): Promise<void> {
+  await telegramPostJson<unknown>(token, "unbanChatMember", {
+    chat_id: chatId,
+    user_id: userId,
+    only_if_banned: true,
+  });
+}

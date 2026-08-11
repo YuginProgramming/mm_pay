@@ -27,6 +27,8 @@ import { sendTelegramBotMessage } from "./telegram-notify";
 import type { KwigaAudienceRank } from "../telegram/profile/kwiga-user-rank";
 import { SUPPORT_CONTACT_SUFFIX_PLAIN_UA } from "../telegram/core/support";
 import { escapeTelegramHtml, telegramHtmlLink } from "../telegram/core/telegram-html";
+import { resolvePaidChatIdsFromAppSettings } from "../telegram/paid-chat-janitor/paid-chat-resolve-ids";
+import { rawUnbanChatMember } from "../telegram/paid-chat-janitor/telegram-bot-raw";
 
 /**
  * Сума з webhook; ціна в боті (app_settings) може бути іншою — доступ надаємо за фактом підтвердженої оплати.
@@ -87,6 +89,50 @@ export type MultimaskingGrantResult = {
   granted: boolean;
   grantEndAt?: Date;
 };
+
+/**
+ * Після успішної оплати знімає бан у MASTERS / Chat PRO (janitor банить при втраті доступу).
+ * Помилки API не валять grant — лише лог.
+ */
+async function unbanUserFromPaidChatsAfterGrant(telegramId: string): Promise<void> {
+  const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
+  if (!token) {
+    console.warn("[payment] skip paid-chat unban: TELEGRAM_BOT_TOKEN not set");
+    return;
+  }
+  const userId = Number.parseInt(telegramId, 10);
+  if (!Number.isFinite(userId)) {
+    console.warn("[payment] skip paid-chat unban: bad telegramId", telegramId);
+    return;
+  }
+
+  const { mastersChatId, catProChatId } = await resolvePaidChatIdsFromAppSettings();
+  const targets: { label: string; chatId: number | null }[] = [
+    { label: "MASTERS", chatId: mastersChatId },
+    { label: "Chat PRO", chatId: catProChatId },
+  ];
+
+  for (const t of targets) {
+    if (t.chatId == null) {
+      continue;
+    }
+    try {
+      await rawUnbanChatMember(token, t.chatId, userId);
+      console.log("[payment] paid-chat unban ok", {
+        label: t.label,
+        chatId: t.chatId,
+        userId,
+      });
+    } catch (e) {
+      console.error("[payment] paid-chat unban failed", {
+        label: t.label,
+        chatId: t.chatId,
+        userId,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+}
 
 function maxActiveGrantEndAt(rows: ContactProductAccess[], now: Date): Date {
   let max = now;
@@ -393,6 +439,8 @@ export async function grantApprovedMultimaskingAccess(
     candidateRank: postGrantSnapshot.candidateRank,
     accessRowCount: postGrantSnapshot.accessRowCount,
   });
+
+  await unbanUserFromPaidChatsAfterGrant(chatId);
 
   if (options?.skipSuccessMessage) {
     return { granted: true, grantEndAt: endAt };
