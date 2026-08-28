@@ -5,7 +5,11 @@ import { sequelize } from "./db";
  * One row per product access line (Kwiga subscription or a locally granted row).
  * Effective “has access” for reporting: not locally revoked, API says active, and end_at not passed.
  */
-export type AccessSource = "kwiga_sync" | "manual_grant" | "payment_hook";
+export type AccessSource =
+  | "kwiga_sync"
+  | "manual_grant"
+  | "manual_override"
+  | "payment_hook";
 
 export interface ContactProductAccessAttributes {
   id: number;
@@ -26,6 +30,8 @@ export interface ContactProductAccessAttributes {
   offerId: string | null;
   /** WayForPay orderReference (UUID) — ідемпотентність webhook; лише для payment_hook. */
   wayforpayOrderReference: string | null;
+  /** Manual support access operation; only for `manual_override`. */
+  manualAccessGrantId: number | null;
   source: AccessSource;
   revokedAt: Date | null;
   revokedReason: string | null;
@@ -51,6 +57,7 @@ type ContactProductAccessCreationAttributes = Optional<
   | "orderId"
   | "offerId"
   | "wayforpayOrderReference"
+  | "manualAccessGrantId"
   | "source"
   | "revokedAt"
   | "revokedReason"
@@ -80,6 +87,7 @@ export class ContactProductAccess
   declare orderId: string | null;
   declare offerId: string | null;
   declare wayforpayOrderReference: string | null;
+  declare manualAccessGrantId: number | null;
   declare source: AccessSource;
   declare revokedAt: Date | null;
   declare revokedReason: string | null;
@@ -181,6 +189,13 @@ ContactProductAccess.init(
       type: DataTypes.STRING(128),
       allowNull: true,
       field: "wayforpay_order_reference",
+    },
+    manualAccessGrantId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: "manual_access_grant_id",
+      references: { model: "manual_access_grants", key: "id" },
+      onDelete: "RESTRICT",
     },
     source: {
       type: DataTypes.STRING(32),

@@ -39,6 +39,7 @@
     "debug:list-subscription-orders": "ts-node debug/payments/list-subscription-payment-orders.ts",
     "debug:list-subscription-auto": "ts-node debug/payments/list-subscription-auto.ts",
     "debug:subscription-status-by-email": "ts-node debug/payments/show-subscription-status-by-email.ts",
+    "debug:manual-access": "ts-node debug/access/manual-grant-multimasking.ts",
     "debug:remove-telegram-user": "ts-node debug/telegram/remove-telegram-user.ts",
     "debug:sync-kwiga-ranks": "ts-node debug/telegram/sync-telegram-kwiga-ranks.ts",
     "debug:seed-telegram-chats": "ts-node debug/db/seed-telegram-chat-ids-to-app-settings.ts",

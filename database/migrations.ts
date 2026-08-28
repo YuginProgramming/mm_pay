@@ -1035,6 +1035,50 @@ async function createKwigaPurchaseGrantsTable(): Promise<void> {
   );
 }
 
+async function createManualAccessGrantsTable(): Promise<void> {
+  await sequelize.query(`
+    CREATE TABLE IF NOT EXISTS manual_access_grants (
+      id                 SERIAL PRIMARY KEY,
+      operation_key      VARCHAR(160) NOT NULL UNIQUE,
+      telegram_user_id   VARCHAR(64) NOT NULL,
+      contact_id         INTEGER NOT NULL REFERENCES contacts(id) ON DELETE CASCADE,
+      email              VARCHAR(255) NOT NULL,
+      start_at           TIMESTAMPTZ NOT NULL,
+      end_at             TIMESTAMPTZ NOT NULL,
+      days               INTEGER NOT NULL,
+      reason             TEXT NOT NULL,
+      operator           VARCHAR(128) NOT NULL,
+      status             VARCHAR(32) NOT NULL DEFAULT 'pending',
+      close_local_auto   BOOLEAN NOT NULL DEFAULT FALSE,
+      kwiga_result       JSONB,
+      error              TEXT,
+      created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS manual_access_grants_telegram_created_idx
+      ON manual_access_grants (telegram_user_id, created_at);
+  `);
+  await sequelize.query(`
+    CREATE INDEX IF NOT EXISTS manual_access_grants_contact_end_idx
+      ON manual_access_grants (contact_id, end_at);
+  `);
+  await sequelize.query(`
+    ALTER TABLE contact_product_access
+    ADD COLUMN IF NOT EXISTS manual_access_grant_id INTEGER
+      REFERENCES manual_access_grants(id) ON DELETE RESTRICT;
+  `);
+  await sequelize.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS contact_product_access_manual_grant_uq
+      ON contact_product_access (manual_access_grant_id)
+      WHERE manual_access_grant_id IS NOT NULL;
+  `);
+  console.log(
+    "Migration completed: manual_access_grants and manual access link (if missing).",
+  );
+}
+
 async function runMigrations(): Promise<void> {
   try {
     await sequelize.authenticate();
@@ -1058,6 +1102,7 @@ async function runMigrations(): Promise<void> {
     await addSubscriptionPaymentOrderCheckoutUrlColumn();
     await createSubscriptionRenewalReminderLogTable();
     await createKwigaPurchaseGrantsTable();
+    await createManualAccessGrantsTable();
     await seedSubscriptionMonthlyPlan();
     await seedSubscriptionYearlyPlan();
     await seedYearlySubscriptionSettings();

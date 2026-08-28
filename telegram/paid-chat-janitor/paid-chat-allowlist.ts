@@ -1,6 +1,6 @@
 /**
  * Крок (b) paid-chat janitor: хто має право лишатися в MASTERS / Chat PRO за БД
- * (активний доступ MULTIMASKING: `payment_hook`, `subscription_auto` Active + grant,
+ * (активний доступ MULTIMASKING: `payment_hook`/`manual_override`, `subscription_auto` Active + grant,
  * grace `MULTIMASKING_ACCESS_GRACE_DAYS` (усі типи доступу) після простроченого `end_at`, або `user_subscriptions`;
  * ранг KWIGA без урахування оплати).
  *
@@ -79,7 +79,7 @@ export async function loadActiveBotPaymentRowsByContact(): Promise<
   const now = new Date();
   const rows = await ContactProductAccess.findAll({
     where: {
-      source: "payment_hook",
+      source: { [Op.in]: ["payment_hook", "manual_override"] },
       externalProductId: BOT_PAYMENT_EXTERNAL_PRODUCT_ID,
       revokedAt: null,
       isActive: true,
@@ -206,10 +206,15 @@ export async function buildPaidChatAllowlistsStepB(): Promise<PaidChatAllowlists
 
 export type ActiveMultimaskingPaymentSummary =
   | { active: false }
-  | { active: true; grantEndAt: Date | null };
+  | {
+      active: true;
+      grantEndAt: Date | null;
+      source?: "payment_hook" | "manual_override";
+    };
 
 /**
- * Активна оплата MULTIMASKING у боті для контакту: чи є діючий payment_hook і орієнтир кінця періоду.
+ * Активний локальний доступ MULTIMASKING для контакту: діючий payment_hook
+ * або manual_override і орієнтир кінця періоду.
  * `grantEndAt: null` — у записі немає дати закінчення (рідко); див. /profile.
  */
 export async function getActiveMultimaskingPaymentSummaryForContact(
@@ -219,7 +224,7 @@ export async function getActiveMultimaskingPaymentSummaryForContact(
   const rows = await ContactProductAccess.findAll({
     where: {
       contactId,
-      source: "payment_hook",
+      source: { [Op.in]: ["payment_hook", "manual_override"] },
       externalProductId: BOT_PAYMENT_EXTERNAL_PRODUCT_ID,
       revokedAt: null,
       isActive: true,
@@ -230,9 +235,23 @@ export async function getActiveMultimaskingPaymentSummaryForContact(
     return { active: false };
   }
   if (rows.some((r) => r.endAt == null)) {
-    return { active: true, grantEndAt: null };
+    return {
+      active: true,
+      grantEndAt: null,
+      source: rows.some((r) => r.source === "manual_override")
+        ? "manual_override"
+        : "payment_hook",
+    };
   }
-  return { active: true, grantEndAt: maxGrantEndAt(rows) };
+  const grantEndAt = maxGrantEndAt(rows);
+  const latestRow = rows
+    .filter((r) => r.endAt != null && r.endAt.getTime() === grantEndAt?.getTime())
+    .sort((a, b) => b.id - a.id)[0];
+  return {
+    active: true,
+    grantEndAt,
+    source: latestRow?.source === "manual_override" ? "manual_override" : "payment_hook",
+  };
 }
 
 /**
@@ -252,13 +271,14 @@ export async function contactHasActiveMultimaskingPayment(
 }
 
 /**
- * Усі `telegram_users.telegram_id`, для яких є хоча б один `payment_hook` на MULTIMASKING
+ * Усі `telegram_users.telegram_id`, для яких є хоча б один payment_hook
+ * або manual_override на MULTIMASKING
  * на відповідному контакті (для обходу janitor).
  */
 export async function findTelegramIdsWithAnyBotPaymentHistory(): Promise<string[]> {
   const rows = await ContactProductAccess.findAll({
     where: {
-      source: "payment_hook",
+      source: { [Op.in]: ["payment_hook", "manual_override"] },
       externalProductId: BOT_PAYMENT_EXTERNAL_PRODUCT_ID,
     },
     attributes: ["contactId"],

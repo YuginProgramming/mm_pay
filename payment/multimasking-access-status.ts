@@ -10,6 +10,7 @@ import { getSubscriptionStatusForUserId } from "./subscription-status.service";
 
 export type MultimaskingAccessSource =
   | "payment_hook"
+  | "manual_override"
   | "subscription_auto"
   | "user_subscription";
 
@@ -112,21 +113,34 @@ export async function hasActiveMultimaskingRecurringAuto(userId: string): Promis
   return (await findActiveSubscriptionAutoForUser(userId)) != null;
 }
 
-/** Останній `endAt` payment_hook (навіть якщо вже прострочений) — для grace-вікна. */
-async function getLatestMultimaskingGrantEndAt(contactId: number): Promise<Date | null> {
+type LatestMultimaskingGrant = {
+  endAt: Date;
+  source: "payment_hook" | "manual_override";
+};
+
+/** Останній ручний або payment_hook grant (навіть якщо вже прострочений) — для grace-вікна. */
+async function getLatestMultimaskingGrantEndAt(
+  contactId: number,
+): Promise<LatestMultimaskingGrant | null> {
   const row = await ContactProductAccess.findOne({
     where: {
       contactId,
-      source: "payment_hook",
+      source: { [Op.in]: ["payment_hook", "manual_override"] },
       externalProductId: BOT_PAYMENT_EXTERNAL_PRODUCT_ID,
       revokedAt: null,
       isActive: true,
       endAt: { [Op.ne]: null },
     },
     order: [["endAt", "DESC"]],
-    attributes: ["endAt"],
+    attributes: ["endAt", "source"],
   });
-  return row?.endAt ?? null;
+  if (!row?.endAt) {
+    return null;
+  }
+  return {
+    endAt: row.endAt,
+    source: row.source === "manual_override" ? "manual_override" : "payment_hook",
+  };
 }
 
 function isWithinGraceAfterEndAt(
@@ -147,10 +161,17 @@ function resolveGraceSource(args: {
   autoRenew: MultimaskingAutoRenewSnapshot | null;
   effectiveEndAt: Date;
   latestGrantEndAt: Date | null;
+  latestGrantSource: "payment_hook" | "manual_override" | null;
   userSubscriptionEndAt: Date | null;
 }): MultimaskingAccessSource {
   if (args.autoRenew != null) {
     return "subscription_auto";
+  }
+  if (
+    args.latestGrantSource === "manual_override" &&
+    args.latestGrantEndAt?.getTime() === args.effectiveEndAt.getTime()
+  ) {
+    return "manual_override";
   }
   const grantMs = args.latestGrantEndAt?.getTime() ?? Number.NEGATIVE_INFINITY;
   const subMs = args.userSubscriptionEndAt?.getTime() ?? Number.NEGATIVE_INFINITY;
@@ -161,7 +182,8 @@ function resolveGraceSource(args: {
 }
 
 /**
- * Чи є активний доступ до MULTIMASKING зараз (OR: payment_hook, recurring+grant, user_subscriptions, grace).
+ * Чи є активний доступ до MULTIMASKING зараз (OR: payment_hook/manual_override,
+ * recurring+grant, user_subscriptions, grace).
  */
 export async function hasActiveMultimaskingAccess(
   contactId: number,
@@ -184,16 +206,17 @@ export async function hasActiveMultimaskingAccess(
   let inGracePeriod = false;
 
   let source: MultimaskingAccessSource | null = null;
-  if (grantActive && autoRenew != null) {
+  if (grantActive && autoRenew != null && grantSummary.source !== "manual_override") {
     source = "subscription_auto";
   } else if (grantActive) {
-    source = "payment_hook";
+    source = grantSummary.source ?? "payment_hook";
   } else if (userSubActive) {
     source = "user_subscription";
   }
 
   if (!hasAccess) {
-    const latestGrantEndAt = await getLatestMultimaskingGrantEndAt(contactId);
+    const latestGrant = await getLatestMultimaskingGrantEndAt(contactId);
+    const latestGrantEndAt = latestGrant?.endAt ?? null;
     const expiredEndCandidates: Date[] = [];
 
     if (
@@ -221,6 +244,7 @@ export async function hasActiveMultimaskingAccess(
         autoRenew,
         effectiveEndAt,
         latestGrantEndAt,
+        latestGrantSource: latestGrant?.source ?? null,
         userSubscriptionEndAt,
       });
     }

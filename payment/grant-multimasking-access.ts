@@ -94,16 +94,17 @@ export type MultimaskingGrantResult = {
  * Після успішної оплати знімає бан у MASTERS / Chat PRO (janitor банить при втраті доступу).
  * Помилки API не валять grant — лише лог.
  */
-async function unbanUserFromPaidChatsAfterGrant(telegramId: string): Promise<void> {
+export async function unbanUserFromPaidChatsAfterGrant(telegramId: string): Promise<string[]> {
+  const errors: string[] = [];
   const token = process.env.TELEGRAM_BOT_TOKEN?.trim();
   if (!token) {
     console.warn("[payment] skip paid-chat unban: TELEGRAM_BOT_TOKEN not set");
-    return;
+    return errors;
   }
   const userId = Number.parseInt(telegramId, 10);
   if (!Number.isFinite(userId)) {
     console.warn("[payment] skip paid-chat unban: bad telegramId", telegramId);
-    return;
+    return errors;
   }
 
   const { mastersChatId, catProChatId } = await resolvePaidChatIdsFromAppSettings();
@@ -124,14 +125,17 @@ async function unbanUserFromPaidChatsAfterGrant(telegramId: string): Promise<voi
         userId,
       });
     } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      errors.push(`${t.label}: ${message}`);
       console.error("[payment] paid-chat unban failed", {
         label: t.label,
         chatId: t.chatId,
         userId,
-        error: e instanceof Error ? e.message : String(e),
+        error: message,
       });
     }
   }
+  return errors;
 }
 
 function maxActiveGrantEndAt(rows: ContactProductAccess[], now: Date): Date {

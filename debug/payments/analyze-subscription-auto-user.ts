@@ -140,14 +140,14 @@ async function main(): Promise<void> {
   const email = tgUser?.email ?? null;
   const contact = email ? await findContactByEmailForBot(email) : null;
 
-  // 4) contact_product_access (payment_hook grants)
+  // 4) contact_product_access (payment_hook and manual_override grants)
   let grants: ContactProductAccess[] = [];
   let access = null;
   if (contact) {
     grants = await ContactProductAccess.findAll({
       where: {
         contactId: contact.id,
-        source: "payment_hook",
+        source: { [Op.in]: ["payment_hook", "manual_override"] },
         externalProductId: BOT_PAYMENT_EXTERNAL_PRODUCT_ID,
       },
       order: [["endAt", "DESC"]],
@@ -162,8 +162,10 @@ async function main(): Promise<void> {
         telegram_email: email,
         contact_id: contact?.id ?? null,
         contact_external_id: contact?.externalId ?? null,
-        payment_hook_grants: grants.map((g) => ({
+        payment_and_manual_grants: grants.map((g) => ({
           id: g.id,
+          source: g.source,
+          manual_access_grant_id: g.manualAccessGrantId,
           wayforpay_order_reference: g.wayforpayOrderReference,
           start_at: iso(g.startAt),
           end_at: iso(g.endAt),
