@@ -3,6 +3,7 @@ import {
   cancelSubscriptionAutoForUser,
   hasActiveSubscriptionAutoRenew,
 } from "../../payment/cancel-subscription-auto.service";
+import { UNSUBSCRIBE_MANAGE_CALLBACK } from "../../payment/telegram-notify";
 import { gateMultimaskingCheckoutForTelegramId } from "../../payment/multimasking-checkout-eligibility";
 import { createSubscriptionAutoCheckout } from "../../payment/subscription-auto-checkout.service";
 import {
@@ -24,6 +25,11 @@ import { EMAIL_REQUIRED_BEFORE_PAYMENT_MESSAGE_UA } from "../payment/wayforpay-i
 
 const UNSUBSCRIBE_CONFIRM_CALLBACK = "unsub_confirm";
 const UNSUBSCRIBE_ABORT_CALLBACK = "unsub_abort";
+
+const UNSUBSCRIBE_CONFIRM_TEXT_UA =
+  "Скасувати автопродовження підписки?\n\n" +
+  "Поточний оплачений період доступу збережеться до дати закінчення " +
+  "(див. /profile). Повторні списання з картки буде зупинено.";
 
 function unsubscribeConfirmKeyboard() {
   return Markup.inlineKeyboard([
@@ -134,14 +140,36 @@ export function registerSubscriptionAutoHandlers(bot: Telegraf<StartContext>): v
         return;
       }
 
-      await ctx.reply(
-        "Скасувати автопродовження підписки?\n\n" +
-          "Поточний оплачений період доступу збережеться до дати закінчення " +
-          "(див. /profile). Повторні списання з картки буде зупинено.",
-        unsubscribeConfirmKeyboard(),
-      );
+      await ctx.reply(UNSUBSCRIBE_CONFIRM_TEXT_UA, unsubscribeConfirmKeyboard());
     } catch (error) {
       console.error("Error handling /unsubscribe:", error);
+      await ctx.reply("Помилка. Спробуйте пізніше.");
+    }
+  });
+
+  bot.action(UNSUBSCRIBE_MANAGE_CALLBACK, async (ctx) => {
+    try {
+      if (!ctx.from) return;
+      if (!isPrivateChat(ctx)) {
+        await ctx.answerCbQuery().catch(() => {});
+        return;
+      }
+
+      await ctx.answerCbQuery();
+      const { user } = await trackTelegramUser(ctx as StartContext);
+      const hasActive = await hasActiveSubscriptionAutoRenew(user.telegramId);
+      if (!hasActive) {
+        await ctx.reply(
+          "Активного автопродовження немає — скасовувати нічого.\n\n" +
+            "Деталі доступу: /profile",
+        );
+        return;
+      }
+
+      await ctx.reply(UNSUBSCRIBE_CONFIRM_TEXT_UA, unsubscribeConfirmKeyboard());
+    } catch (error) {
+      console.error("Error handling unsub_manage:", error);
+      await ctx.answerCbQuery().catch(() => {});
       await ctx.reply("Помилка. Спробуйте пізніше.");
     }
   });

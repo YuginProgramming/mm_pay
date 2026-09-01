@@ -1,14 +1,23 @@
 import { Op } from "sequelize";
 import { SubscriptionAuto } from "../database/SubscriptionAuto";
+import { SubscriptionPlan } from "../database/SubscriptionPlan";
 import { SubscriptionRenewalReminderLog } from "../database/SubscriptionRenewalReminderLog";
 import { UserSubscription } from "../database/UserSubscription";
 import { hasActiveMultimaskingRecurringAuto } from "./multimasking-access-status";
-import { sendTelegramBotMessage } from "./telegram-notify";
+import {
+  MANAGE_SUBSCRIPTION_BUTTON_TEXT,
+  sendTelegramBotMessage,
+  UNSUBSCRIBE_MANAGE_CALLBACK,
+  type TelegramCallbackButton,
+} from "./telegram-notify";
 import { subscriptionFlags } from "./subscription-flags";
 
 const RENEWAL_DAY_MARKERS = [7, 3, 1] as const;
-/** Pre-charge reminder for active WayForPay auto-renew (`subscription_auto`). */
-const CHARGE_REMINDER_DAYS_BEFORE = 3 as const;
+/** Recurring auto-charge reminder (`subscription_auto`) — Kyiv calendar D-1. */
+const CHARGE_REMINDER_ALERT_TYPE = "charge_d1" as const;
+const KYIV_TZ = "Europe/Kyiv";
+const KYIV_WORK_START_MINUTES = 9 * 60;
+const KYIV_WORK_END_MINUTES = 18 * 60;
 
 function parseEnvSeconds(name: string, fallback: number): number {
   const raw = Number(process.env[name] ?? "");
@@ -28,6 +37,73 @@ function startOfUtcDay(date: Date): Date {
   );
 }
 
+type KyivDateTimeParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+};
+
+function kyivDateTimeParts(date: Date): KyivDateTimeParts {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: KYIV_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const num = (type: Intl.DateTimeFormatPartTypes): number =>
+    Number(parts.find((p) => p.type === type)?.value);
+  return {
+    year: num("year"),
+    month: num("month"),
+    day: num("day"),
+    hour: num("hour"),
+    minute: num("minute"),
+  };
+}
+
+function addCalendarDays(
+  year: number,
+  month: number,
+  day: number,
+  delta: number,
+): { year: number; month: number; day: number } {
+  const d = new Date(Date.UTC(year, month - 1, day + delta));
+  return {
+    year: d.getUTCFullYear(),
+    month: d.getUTCMonth() + 1,
+    day: d.getUTCDate(),
+  };
+}
+
+export function kyivCalendarDateKey(date: Date): string {
+  const p = kyivDateTimeParts(date);
+  return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
+}
+
+/** Kyiv local time in [09:00, 18:00). */
+export function isKyivWorkingHours(now: Date): boolean {
+  const p = kyivDateTimeParts(now);
+  const minutes = p.hour * 60 + p.minute;
+  return minutes >= KYIV_WORK_START_MINUTES && minutes < KYIV_WORK_END_MINUTES;
+}
+
+/** True when Kyiv calendar date of `now` is the day before Kyiv date of `target`. */
+export function isKyivCalendarDayBefore(now: Date, target: Date): boolean {
+  const today = kyivDateTimeParts(now);
+  const charge = kyivDateTimeParts(target);
+  const tomorrow = addCalendarDays(today.year, today.month, today.day, 1);
+  return (
+    tomorrow.year === charge.year &&
+    tomorrow.month === charge.month &&
+    tomorrow.day === charge.day
+  );
+}
+
 function daysUntil(endAt: Date, now: Date): number {
   const endDay = startOfUtcDay(endAt);
   const nowDay = startOfUtcDay(now);
@@ -38,23 +114,39 @@ function daysAfter(endAt: Date, now: Date): number {
   return -daysUntil(endAt, now);
 }
 
-function formatChargeDateUaKyiv(date: Date): string {
-  return date.toLocaleString("uk-UA", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Europe/Kyiv",
-  });
+const DEFAULT_CHARGE_REMINDER_PRICE_UAH = 500;
+
+export function formatChargeReminderPriceUah(price: string | number | null | undefined): string {
+  const n = typeof price === "number" ? price : Number(price);
+  if (!Number.isFinite(n)) return String(DEFAULT_CHARGE_REMINDER_PRICE_UAH);
+  return String(Math.round(n));
 }
 
-export function buildSubscriptionAutoChargeReminderTextUa(nextChargeAt: Date): string {
+/** HTML (`parse_mode: HTML`). `{PRICE}` from the subscription plan (monthly 500). */
+export function buildSubscriptionAutoChargeReminderTextUa(
+  priceUah: string | number = DEFAULT_CHARGE_REMINDER_PRICE_UAH,
+): string {
+  const price = formatChargeReminderPriceUah(priceUah);
   return (
-    `Нагадуємо: наступне списання за підписку відбудеться ${formatChargeDateUaKyiv(nextChargeAt)}. ` +
-    "Будь ласка, переконайтеся, що на картці достатньо коштів.\n\n" +
-    "Скасувати автопродовження можна командою /unsubscribe у меню бота."
+    "Невелике нагадування від Multimasking 💛\n" +
+    `Завтра продовжується ваша підписка на участь у закритому чаті Multimasking — з картки буде автоматично списано ${price} грн.\n` +
+    "Дякуємо, що ви з нами! 🙌\n" +
+    "Якщо хочете продовжити участь — нічого робити не потрібно. Підписка продовжиться автоматично.\n" +
+    "Якщо ви вирішили зробити паузу, скасувати підписку можна до моменту наступного списання:\n\n" +
+    `<i>Невеликий момент: назва операції у банківській виписці іноді може відрізнятися від назви Multimasking. Якщо ви побачите списання на ${price} грн за підписку приблизно в цю дату — найімовірніше, це оплата участі в Multimasking.</i>`
   );
+}
+
+function chargeReminderManageButton(): TelegramCallbackButton {
+  return {
+    text: MANAGE_SUBSCRIPTION_BUTTON_TEXT,
+    callbackData: UNSUBSCRIBE_MANAGE_CALLBACK,
+  };
+}
+
+function priceUahFromAutoRow(row: SubscriptionAuto): string {
+  const plan = (row as SubscriptionAuto & { plan?: SubscriptionPlan | null }).plan;
+  return formatChargeReminderPriceUah(plan?.price ?? DEFAULT_CHARGE_REMINDER_PRICE_UAH);
 }
 
 async function sendRenewalReminderIfFirst(input: {
@@ -64,6 +156,8 @@ async function sendRenewalReminderIfFirst(input: {
   dedupeKey: string;
   subscriptionEndAt: Date | null;
   text: string;
+  parseMode?: "HTML";
+  callbackButtons?: TelegramCallbackButton[];
 }): Promise<void> {
   try {
     await SubscriptionRenewalReminderLog.create({
@@ -84,16 +178,30 @@ async function sendRenewalReminderIfFirst(input: {
     throw err;
   }
 
-  await sendTelegramBotMessage(input.userId, input.text);
+  const notifyOptions =
+    input.parseMode || (input.callbackButtons && input.callbackButtons.length > 0)
+      ? {
+          parseMode: input.parseMode,
+          callbackButtons: input.callbackButtons,
+        }
+      : undefined;
+  if (notifyOptions) {
+    await sendTelegramBotMessage(input.userId, input.text, undefined, notifyOptions);
+  } else {
+    await sendTelegramBotMessage(input.userId, input.text);
+  }
 }
 
 async function sendDueSubscriptionAutoChargeReminders(now: Date): Promise<void> {
+  if (!isKyivWorkingHours(now)) return;
+
   const rows = await SubscriptionAuto.findAll({
     where: {
       autoRenewEnabled: true,
       cancelledAt: null,
       nextChargeAt: { [Op.ne]: null },
     },
+    include: [{ model: SubscriptionPlan, as: "plan", attributes: ["price"] }],
     limit: 500,
     order: [["nextChargeAt", "ASC"]],
   });
@@ -101,19 +209,20 @@ async function sendDueSubscriptionAutoChargeReminders(now: Date): Promise<void> 
   for (const row of rows) {
     const nextChargeAt = row.nextChargeAt;
     if (!nextChargeAt) continue;
+    if (now.getTime() >= nextChargeAt.getTime()) continue;
+    if (!isKyivCalendarDayBefore(now, nextChargeAt)) continue;
 
-    const left = daysUntil(nextChargeAt, now);
-    if (left !== CHARGE_REMINDER_DAYS_BEFORE) continue;
-
-    const alertType = "charge_d3";
-    const dedupeKey = `auto:${row.id}:${alertType}:${startOfUtcDay(nextChargeAt).toISOString()}`;
+    const alertType = CHARGE_REMINDER_ALERT_TYPE;
+    const dedupeKey = `auto:${row.id}:${alertType}:${kyivCalendarDateKey(nextChargeAt)}`;
     await sendRenewalReminderIfFirst({
       userId: row.userId,
       subscriptionId: row.id,
       alertType,
       dedupeKey,
       subscriptionEndAt: nextChargeAt,
-      text: buildSubscriptionAutoChargeReminderTextUa(nextChargeAt),
+      text: buildSubscriptionAutoChargeReminderTextUa(priceUahFromAutoRow(row)),
+      parseMode: "HTML",
+      callbackButtons: [chargeReminderManageButton()],
     });
   }
 }
