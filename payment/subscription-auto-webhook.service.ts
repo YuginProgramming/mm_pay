@@ -23,6 +23,7 @@ import { getWayforpayRegularPaymentStatus } from "./wayforpay-regular-api";
 import { getWayforpayMerchantPassword } from "./payment.config";
 import type { PaymentMetadata, WayForPayWebhookPayload } from "./payment.types";
 import { sendTelegramBotMessage } from "./telegram-notify";
+import { wayforpayOrderReferenceLookupKeys } from "./wayforpay-order-reference";
 
 export {
   isMultimaskingRecurringPlanCode,
@@ -275,12 +276,13 @@ async function resolveRecurringAutoForRenewalWebhook(
   orderReference: string,
   userId: string,
 ): Promise<SubscriptionAuto | null> {
+  const lookupKeys = wayforpayOrderReferenceLookupKeys(orderReference);
   const byRef = await SubscriptionAuto.findOne({
     where: {
-      [Op.or]: [
-        { anchorOrderReference: orderReference },
-        { latestOrderReference: orderReference },
-      ],
+      [Op.or]: lookupKeys.flatMap((ref) => [
+        { anchorOrderReference: ref },
+        { latestOrderReference: ref },
+      ]),
     },
   });
   if (byRef) {
@@ -293,7 +295,7 @@ async function resolveRecurringAutoForRenewalWebhook(
     if (!isMultimaskingRecurringPlanCode(plan?.code)) continue;
     if (row.cancelledAt != null) continue;
     const anchor = row.anchorOrderReference?.trim() || "";
-    if (anchor && anchor !== orderReference) {
+    if (anchor && !lookupKeys.includes(anchor)) {
       return row;
     }
   }

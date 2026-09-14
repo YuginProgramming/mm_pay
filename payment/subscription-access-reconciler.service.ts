@@ -4,7 +4,10 @@ import { SubscriptionPlan } from "../database/SubscriptionPlan";
 import { ContactProductAccess } from "../database/ContactProductAccess";
 import { extendRecurringMultimaskingAccess } from "./extend-recurring-access";
 import { getWayforpayMerchantPassword } from "./payment.config";
-import { getWayforpayRegularPaymentStatus } from "./wayforpay-regular-api";
+import {
+  getWayforpayRegularPaymentStatus,
+  type WayforpayRegularStatusResponse,
+} from "./wayforpay-regular-api";
 import { isMultimaskingRecurringPlanCode } from "./subscription-plan-codes";
 
 export type SubscriptionAccessExtension = {
@@ -58,6 +61,51 @@ type ReconcileOutcome =
   | { kind: "skipped" }
   | { kind: "extended"; userId: string; grantEndAt: Date | null };
 
+function uniqueRegularStatusRefs(row: SubscriptionAuto): string[] {
+  const refs: string[] = [];
+  const anchor = row.anchorOrderReference?.trim();
+  const latest = row.latestOrderReference?.trim();
+  if (anchor) {
+    refs.push(anchor);
+  }
+  if (latest && latest !== anchor) {
+    refs.push(latest);
+  }
+  return refs;
+}
+
+function pickReconcileCharge(
+  polled: Array<{ ref: string; status: WayforpayRegularStatusResponse }>,
+  highWater: Date | null,
+): { ref: string; status: WayforpayRegularStatusResponse; lastPayed: Date } | null {
+  let best: { ref: string; status: WayforpayRegularStatusResponse; lastPayed: Date } | null =
+    null;
+
+  for (const item of polled) {
+    if (item.status.status !== "Active") {
+      continue;
+    }
+    if (item.status.lastPayedStatus !== "Approved") {
+      continue;
+    }
+    const lastPayed = parseWayforpayEpoch(item.status.lastPayedDate);
+    if (lastPayed == null) {
+      continue;
+    }
+    if (
+      highWater != null &&
+      lastPayed.getTime() <= highWater.getTime() + RECONCILE_EPSILON_MS
+    ) {
+      continue;
+    }
+    if (best == null || lastPayed.getTime() > best.lastPayed.getTime()) {
+      best = { ref: item.ref, status: item.status, lastPayed };
+    }
+  }
+
+  return best;
+}
+
 async function reconcileOneSubscription(
   row: SubscriptionAuto,
   apply: boolean,
@@ -67,39 +115,44 @@ async function reconcileOneSubscription(
     return { kind: "skipped" };
   }
 
-  const anchor = row.anchorOrderReference?.trim();
-  if (!anchor) {
+  const refs = uniqueRegularStatusRefs(row);
+  if (refs.length === 0) {
     return { kind: "skipped" };
   }
 
-  const status = await getWayforpayRegularPaymentStatus(anchor);
-
-  if (status.status !== "Active") {
+  const polled: Array<{ ref: string; status: WayforpayRegularStatusResponse }> = [];
+  let lastError: unknown = null;
+  for (const ref of refs) {
+    try {
+      const status = await getWayforpayRegularPaymentStatus(ref);
+      polled.push({ ref, status });
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  if (polled.length === 0) {
+    if (lastError != null) {
+      throw lastError;
+    }
     return { kind: "skipped" };
   }
-  if (status.lastPayedStatus !== "Approved") {
-    return { kind: "skipped" };
-  }
 
-  const lastPayed = parseWayforpayEpoch(status.lastPayedDate);
-  if (lastPayed == null) {
-    return { kind: "skipped" };
-  }
-
-  // High-water mark: webhook (last_charge_at) або попередній reconciler-прогін.
   const highWater = maxDate(row.lastChargeAt ?? null, row.lastReconciledPayedAt ?? null);
-  if (
-    highWater != null &&
-    lastPayed.getTime() <= highWater.getTime() + RECONCILE_EPSILON_MS
-  ) {
+  const charge = pickReconcileCharge(polled, highWater);
+  if (charge == null) {
     return { kind: "skipped" };
   }
 
-  const lastPayedEpochSeconds = Math.floor(lastPayed.getTime() / 1000);
-  const syntheticOrderReference = `reg-${anchor}-${lastPayedEpochSeconds}`;
+  const lastPayedEpochSeconds = Math.floor(charge.lastPayed.getTime() / 1000);
+  const syntheticOrderReference = `reg-${charge.ref}-${lastPayedEpochSeconds}`;
 
   const alreadyGranted = await ContactProductAccess.findOne({
-    where: { wayforpayOrderReference: syntheticOrderReference },
+    where: {
+      [Op.or]: [
+        { wayforpayOrderReference: syntheticOrderReference },
+        { wayforpayOrderReference: { [Op.like]: `${charge.ref}_WFPREG-%` } },
+      ],
+    },
   });
   if (alreadyGranted) {
     return { kind: "skipped" };
@@ -110,9 +163,9 @@ async function reconcileOneSubscription(
       autoId: row.id,
       userId: row.userId,
       planId: row.planId,
-      anchor,
+      statusRef: charge.ref,
       syntheticOrderReference,
-      lastPayed: lastPayed.toISOString(),
+      lastPayed: charge.lastPayed.toISOString(),
     });
     return { kind: "extended", userId: row.userId, grantEndAt: null };
   }
@@ -121,8 +174,8 @@ async function reconcileOneSubscription(
     userId: row.userId,
     planId: row.planId,
     orderReference: syntheticOrderReference,
-    amount: status.amount ?? 0,
-    currency: status.currency ?? "UAH",
+    amount: charge.status.amount ?? 0,
+    currency: charge.status.currency ?? "UAH",
     source: "reconciler",
   });
 
@@ -136,10 +189,10 @@ async function reconcileOneSubscription(
   }
 
   await row.update({
-    lastReconciledPayedAt: lastPayed,
-    nextChargeAt: parseWayforpayEpoch(status.nextPaymentDate) ?? row.nextChargeAt,
-    wayforpayStatus: status.status ?? row.wayforpayStatus,
-    wayforpayMode: status.mode ?? row.wayforpayMode,
+    lastReconciledPayedAt: charge.lastPayed,
+    nextChargeAt: parseWayforpayEpoch(charge.status.nextPaymentDate) ?? row.nextChargeAt,
+    wayforpayStatus: charge.status.status ?? row.wayforpayStatus,
+    wayforpayMode: charge.status.mode ?? row.wayforpayMode,
   });
 
   console.log("[access-reconciler] extended", {

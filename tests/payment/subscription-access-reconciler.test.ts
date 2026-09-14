@@ -174,6 +174,42 @@ describe("runSubscriptionAccessReconcileOnce (S2-8)", () => {
     expect(mockExtend).not.toHaveBeenCalled();
   });
 
+  it("polls latest when it differs from anchor and uses the Approved latest charge", async () => {
+    const latest = "724974d3-81ea-4e5e-b6ed-fae803189185";
+    mockStatus.mockImplementation(async (ref: string) => {
+      if (ref === ANCHOR) {
+        return approvedStatus({ lastPayedStatus: "Declined" }) as never;
+      }
+      return approvedStatus() as never;
+    });
+    mockFindAll.mockResolvedValue([
+      makeRow({ latestOrderReference: latest }),
+    ] as never);
+
+    const res = await runSubscriptionAccessReconcileOnce({ apply: true });
+
+    expect(res).toMatchObject({ checked: 1, extended: 1, skipped: 0 });
+    expect(mockStatus).toHaveBeenCalledWith(ANCHOR);
+    expect(mockStatus).toHaveBeenCalledWith(latest);
+    expect(mockExtend).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderReference: `reg-${latest}-${NOW_S - 3600}`,
+      }),
+    );
+  });
+
+  it("skips when a WFPREG grant for that parent already exists", async () => {
+    mockAccessFindOne.mockResolvedValue({
+      wayforpayOrderReference: `${ANCHOR}_WFPREG-528105-1`,
+    } as never);
+    mockFindAll.mockResolvedValue([makeRow()] as never);
+
+    const res = await runSubscriptionAccessReconcileOnce({ apply: true });
+
+    expect(res).toMatchObject({ extended: 0, skipped: 1 });
+    expect(mockExtend).not.toHaveBeenCalled();
+  });
+
   it("resilient: STATUS error is captured, loop continues", async () => {
     mockStatus
       .mockRejectedValueOnce(new Error("WFP 500"))

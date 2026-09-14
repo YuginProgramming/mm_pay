@@ -1,14 +1,22 @@
 import { randomUUID } from "crypto";
+import { Op } from "sequelize";
+import { SubscriptionAuto } from "../database/SubscriptionAuto";
+import { SubscriptionPaymentOrder } from "../database/SubscriptionPaymentOrder";
 import { createInvoice } from "./client";
+import { isConsultationProductCode } from "./consultation-product";
+import { MULTIMASKING_PRODUCT_NAME } from "./multimasking-product";
 import { peekPendingOrder, putPendingOrder, takePendingOrder } from "./pending-orders";
-import { buildAckSignature, verifyWebhookSignature } from "./signature";
 import type {
   CreateInvoiceResult,
   PaymentMetadata,
   WayForPayAckResponse,
   WayForPayWebhookPayload,
 } from "./payment.types";
-import { isConsultationProductCode } from "./consultation-product";
+import { buildAckSignature, verifyWebhookSignature } from "./signature";
+import {
+  parentWayforpayOrderReference,
+  wayforpayOrderReferenceLookupKeys,
+} from "./wayforpay-order-reference";
 
 const parseMetadataFromProductName = (name: string): PaymentMetadata => {
   const [courseNameRaw, chatIdRaw] = String(name ?? "").split(",");
@@ -52,7 +60,46 @@ const createCheckoutForCourse = async (
   }
 };
 
-/** Invoice serviceUrl callbacks often omit `products[]`; then we use DB pending row by orderReference. */
+function metadataFromChatId(chatId: string): PaymentMetadata {
+  return {
+    courseName: MULTIMASKING_PRODUCT_NAME,
+    chatId,
+    flowType: "legacy_course",
+  };
+}
+
+async function resolveWebhookMetadataFromLedger(
+  orderReference: string,
+): Promise<PaymentMetadata | null> {
+  const parent = parentWayforpayOrderReference(orderReference);
+  const order = await SubscriptionPaymentOrder.findOne({
+    where: { orderReference: parent },
+    attributes: ["userId"],
+  });
+  if (order?.userId?.trim()) {
+    return metadataFromChatId(order.userId.trim());
+  }
+
+  const auto = await SubscriptionAuto.findOne({
+    where: {
+      [Op.or]: [
+        { anchorOrderReference: parent },
+        { latestOrderReference: parent },
+      ],
+    },
+    attributes: ["userId"],
+  });
+  if (auto?.userId?.trim()) {
+    return metadataFromChatId(auto.userId.trim());
+  }
+
+  return null;
+}
+
+/**
+ * Invoice serviceUrl callbacks often omit `products[]`; then pending row, then ledger.
+ * Recurring `*_WFPREG-*` webhooks have neither products nor pending — resolve via parent UUID.
+ */
 const resolveWebhookMetadata = async (
   data: WayForPayWebhookPayload,
 ): Promise<PaymentMetadata | null> => {
@@ -64,11 +111,15 @@ const resolveWebhookMetadata = async (
       return null;
     }
   }
-  const pending = await peekPendingOrder(data.orderReference);
-  if (pending) {
-    return { courseName: pending.courseName, chatId: pending.chatId };
+
+  for (const ref of wayforpayOrderReferenceLookupKeys(data.orderReference)) {
+    const pending = await peekPendingOrder(ref);
+    if (pending) {
+      return { courseName: pending.courseName, chatId: pending.chatId };
+    }
   }
-  return null;
+
+  return resolveWebhookMetadataFromLedger(data.orderReference);
 };
 
 const TERMINAL_FAILURE = new Set(["Declined", "Voided", "Refunded", "Expired"]);
@@ -88,7 +139,9 @@ const releasePendingIfTerminal = async (
 ): Promise<void> => {
   const status = String(payload.transactionStatus);
   if (status === "Approved" || TERMINAL_FAILURE.has(status)) {
-    await takePendingOrder(payload.orderReference);
+    for (const ref of wayforpayOrderReferenceLookupKeys(payload.orderReference)) {
+      await takePendingOrder(ref);
+    }
   }
 };
 
