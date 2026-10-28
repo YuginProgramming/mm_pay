@@ -1,15 +1,12 @@
 /**
- * cancelSubscriptionAutoForUser — WayForPay REMOVE + DB cancel.
+ * cancelSubscriptionAutoForUser — sweep all live WFP regulars + DB cancel.
  *
  * Запуск: npx vitest run tests/payment/cancel-subscription-auto.test.ts
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SubscriptionAuto } from "../../database/SubscriptionAuto";
 import { cancelSubscriptionAutoForUser } from "../../payment/cancel-subscription-auto.service";
-import {
-  getWayforpayRegularPaymentStatus,
-  removeWayforpayRegularPayment,
-} from "../../payment/wayforpay-regular-api";
+import { removeLiveWayforpayRegularsForUser } from "../../payment/user-wayforpay-regulars";
 
 vi.mock("../../database/SubscriptionAuto", () => ({
   SubscriptionAuto: {
@@ -17,28 +14,33 @@ vi.mock("../../database/SubscriptionAuto", () => ({
   },
 }));
 
-vi.mock("../../payment/wayforpay-regular-api", () => ({
-  removeWayforpayRegularPayment: vi.fn(),
-  getWayforpayRegularPaymentStatus: vi.fn(),
+vi.mock("../../payment/user-wayforpay-regulars", () => ({
+  removeLiveWayforpayRegularsForUser: vi.fn(),
 }));
 
 describe("cancelSubscriptionAutoForUser", () => {
   const findAll = vi.mocked(SubscriptionAuto.findAll);
-  const remove = vi.mocked(removeWayforpayRegularPayment);
-  const status = vi.mocked(getWayforpayRegularPaymentStatus);
+  const sweep = vi.mocked(removeLiveWayforpayRegularsForUser);
 
   beforeEach(() => {
     vi.clearAllMocks();
+    sweep.mockResolvedValue({
+      scanned: [],
+      live: [],
+      kept: null,
+      removed: [],
+      errors: [],
+    });
   });
 
   it("returns none when no active auto-renew rows", async () => {
     findAll.mockResolvedValue([]);
     const result = await cancelSubscriptionAutoForUser("123");
     expect(result).toEqual({ ok: true, kind: "none" });
-    expect(remove).not.toHaveBeenCalled();
+    expect(sweep).toHaveBeenCalledWith("123");
   });
 
-  it("REMOVE + marks cancelled when anchor exists", async () => {
+  it("sweeps all live regulars then marks cancelled", async () => {
     const update = vi.fn().mockResolvedValue(undefined);
     findAll.mockResolvedValue([
       {
@@ -49,16 +51,10 @@ describe("cancelSubscriptionAutoForUser", () => {
         update,
       } as unknown as SubscriptionAuto,
     ]);
-    remove.mockResolvedValue({ reasonCode: 4100, reason: "Ok" });
-    status.mockResolvedValue({
-      reasonCode: 4100,
-      reason: "Ok",
-      status: "Removed",
-    });
 
     const result = await cancelSubscriptionAutoForUser("123");
 
-    expect(remove).toHaveBeenCalledWith("ord-1");
+    expect(sweep).toHaveBeenCalledWith("123");
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         autoRenewEnabled: false,
@@ -74,7 +70,7 @@ describe("cancelSubscriptionAutoForUser", () => {
     }
   });
 
-  it("updates DB only when no anchor", async () => {
+  it("updates DB when no anchor (sweep still runs)", async () => {
     const update = vi.fn().mockResolvedValue(undefined);
     findAll.mockResolvedValue([
       {
@@ -88,7 +84,7 @@ describe("cancelSubscriptionAutoForUser", () => {
 
     const result = await cancelSubscriptionAutoForUser("123");
 
-    expect(remove).not.toHaveBeenCalled();
+    expect(sweep).toHaveBeenCalledWith("123");
     expect(update).toHaveBeenCalled();
     expect(result.ok).toBe(true);
     if (result.ok && result.kind === "cancelled") {
@@ -96,7 +92,7 @@ describe("cancelSubscriptionAutoForUser", () => {
     }
   });
 
-  it("returns error when REMOVE fails", async () => {
+  it("returns error when sweep throws", async () => {
     const update = vi.fn().mockResolvedValue(undefined);
     findAll.mockResolvedValue([
       {
@@ -107,7 +103,7 @@ describe("cancelSubscriptionAutoForUser", () => {
         update,
       } as unknown as SubscriptionAuto,
     ]);
-    remove.mockRejectedValue(new Error("regularApi REMOVE failed"));
+    sweep.mockRejectedValue(new Error("regularApi REMOVE failed"));
 
     const result = await cancelSubscriptionAutoForUser("123");
 

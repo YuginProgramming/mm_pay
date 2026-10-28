@@ -24,6 +24,8 @@ import { getWayforpayMerchantPassword } from "./payment.config";
 import type { PaymentMetadata, WayForPayWebhookPayload } from "./payment.types";
 import { sendTelegramBotMessage } from "./telegram-notify";
 import { wayforpayOrderReferenceLookupKeys } from "./wayforpay-order-reference";
+import { resolveSubscriptionAutoAnchorAfterPayment } from "./subscription-auto-anchor";
+import { removeLiveWayforpayRegularsForUser } from "./user-wayforpay-regulars";
 
 export {
   isMultimaskingRecurringPlanCode,
@@ -205,18 +207,16 @@ async function upsertSubscriptionAutoFromPayment(args: {
     where: { userId: args.userId, planId: args.planId },
   });
 
-  const anchorOrderReference =
-    existing?.anchorOrderReference?.trim() || args.orderReference;
-  const isRenewal = Boolean(
-    existing &&
-      (existing.anchorOrderReference?.trim() || "") !== args.orderReference.trim(),
-  );
+  const { anchorOrderReference, isRenewal } = resolveSubscriptionAutoAnchorAfterPayment({
+    existingAnchor: existing?.anchorOrderReference,
+    incomingOrderReference: args.orderReference,
+  });
 
   const plan = await SubscriptionPlan.findByPk(args.planId, { attributes: ["code"] });
   const planCode = plan?.code ?? SUBSCRIPTION_AUTO_PLAN_CODE;
 
   const wfp = await fetchWayforpayRegularSnapshot(anchorOrderReference);
-  const resolved = resolveWayforpayFieldsAfterApproved({
+  const fields = resolveWayforpayFieldsAfterApproved({
     wfp,
     planCode,
     existing,
@@ -230,31 +230,35 @@ async function upsertSubscriptionAutoFromPayment(args: {
       autoRenewEnabled: true,
       lastChargeStatus: "Approved",
       lastChargeAt: now,
-      nextChargeAt: resolved.nextChargeAt,
-      wayforpayStatus: resolved.wayforpayStatus,
-      wayforpayMode: resolved.wayforpayMode,
-      anchorOrderReference: existing.anchorOrderReference ?? args.orderReference,
+      nextChargeAt: fields.nextChargeAt,
+      wayforpayStatus: fields.wayforpayStatus,
+      wayforpayMode: fields.wayforpayMode,
+      anchorOrderReference,
       cancelledAt: null,
     });
-    return { anchorOrderReference, isRenewal };
+  } else {
+    await SubscriptionAuto.create({
+      userId: args.userId,
+      planId: args.planId,
+      anchorOrderReference,
+      latestOrderReference: args.orderReference,
+      paymentToken: args.recToken,
+      autoRenewEnabled: true,
+      nextChargeAt: fields.nextChargeAt,
+      wayforpayStatus: fields.wayforpayStatus,
+      wayforpayMode: fields.wayforpayMode,
+      lastChargeStatus: "Approved",
+      lastChargeAt: now,
+      cancelledAt: null,
+    });
   }
 
-  await SubscriptionAuto.create({
-    userId: args.userId,
-    planId: args.planId,
-    anchorOrderReference: args.orderReference,
-    latestOrderReference: args.orderReference,
-    paymentToken: args.recToken,
-    autoRenewEnabled: true,
-    nextChargeAt: resolved.nextChargeAt,
-    wayforpayStatus: resolved.wayforpayStatus,
-    wayforpayMode: resolved.wayforpayMode,
-    lastChargeStatus: "Approved",
-    lastChargeAt: now,
-    cancelledAt: null,
+  await removeLiveWayforpayRegularsForUser(args.userId, {
+    keepOrderReference: anchorOrderReference,
+  }).catch((err) => {
+    console.error("[subscription-auto] extra regular sweep failed", err);
   });
-
-  return { anchorOrderReference: args.orderReference, isRenewal: false };
+  return { anchorOrderReference, isRenewal };
 }
 
 export type RecurringApprovedPaymentContext = {

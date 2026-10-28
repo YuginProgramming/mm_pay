@@ -12,6 +12,7 @@ import {
   hasAcceptedCurrentRules,
 } from "../handlers/rules";
 import { hasActiveMultimaskingAccess } from "../../payment/multimasking-access-status";
+import { gateMultimaskingCheckoutForTelegramId } from "../../payment/multimasking-checkout-eligibility";
 import { computeKwigaRankSnapshot } from "../profile/kwiga-rank-db";
 import {
   buildMultimaskingAlreadyActiveAlertUa,
@@ -358,26 +359,14 @@ export async function buildWayForPayInvoiceKeyboard(telegramId: string) {
 
   const access = await hasActiveMultimaskingAccess(contact.id, telegramId);
   if (access.hasAccess) {
-    const activeRows: ReturnType<typeof Markup.button.callback>[][] = [
+    return Markup.inlineKeyboard([
       [
         Markup.button.callback(
           sparkleLabel("Доступ уже активний"),
           WFP_ALREADY_ACTIVE_INFO,
         ),
       ],
-    ];
-    if (
-      subscriptionFlags.subscriptionModeEnabled &&
-      access.source !== "subscription_auto"
-    ) {
-      activeRows.push([
-        Markup.button.callback(
-          sparkleLabel("Продовжити підписку"),
-          SUBSCRIPTION_RENEW_NOW_CALLBACK,
-        ),
-      ]);
-    }
-    return Markup.inlineKeyboard(activeRows);
+    ]);
   }
 
   return Markup.inlineKeyboard(await buildEligiblePayKeyboardRows());
@@ -398,6 +387,29 @@ export function registerWayForPayInvoiceHandlers(bot: Telegraf<Context>): void {
         await ctx.reply(
           "Режим підписок зараз вимкнено. Спробуйте пізніше або зверніться до підтримки.",
         );
+        return;
+      }
+
+      const gate = await gateMultimaskingCheckoutForTelegramId(String(chatId));
+      if (!gate.ok) {
+        if (gate.reason === "already_active_access") {
+          await ctx.reply(
+            await buildMultimaskingAlreadyActivePaymentMessageUa({
+              grantEndAt: gate.grantEndAtIso ? new Date(gate.grantEndAtIso) : null,
+              accessSource: gate.accessSource,
+              autoRenew: gate.autoRenew,
+            }),
+          );
+        } else if (gate.reason === "no_email") {
+          await ctx.reply(EMAIL_REQUIRED_BEFORE_PAYMENT_MESSAGE_UA);
+        } else if (gate.reason === "no_consent") {
+          const { text, extra } = buildPaymentNeedsConsentMessageAndKeyboard();
+          await ctx.reply(text, extra);
+        } else if ("rank" in gate) {
+          await ctx.reply(multimaskingIneligibleUserMessageUa(gate.rank));
+        } else {
+          await ctx.reply("Оплата недоступна. Перевірте /profile.");
+        }
         return;
       }
 

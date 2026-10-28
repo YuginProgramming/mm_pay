@@ -8,6 +8,7 @@ import {
   createWayforpayPurchaseWithRegular,
   formatWayforpayDateNextUtc,
 } from "./wayforpay-purchase";
+import { removeLiveWayforpayRegularsForUser } from "./user-wayforpay-regulars";
 
 const ACTIVE_ORDER_STATUSES = ["created", "pending", "processing", "suspended"];
 
@@ -65,6 +66,13 @@ export async function createMultimaskingRecurringCheckout(
   }
 
   const forceNew = Boolean(options?.forceNew);
+
+  await removeLiveWayforpayRegularsForUser(userId).catch((err) => {
+    console.error("[multimasking-recurring] stale regular sweep failed", {
+      userId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  });
 
   const existing = await SubscriptionPaymentOrder.findOne({
     where: {

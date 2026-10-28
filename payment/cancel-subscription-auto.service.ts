@@ -1,8 +1,5 @@
 import { SubscriptionAuto } from "../database/SubscriptionAuto";
-import {
-  getWayforpayRegularPaymentStatus,
-  removeWayforpayRegularPayment,
-} from "./wayforpay-regular-api";
+import { removeLiveWayforpayRegularsForUser } from "./user-wayforpay-regulars";
 
 export type CancelSubscriptionAutoRowResult = {
   id: number;
@@ -39,7 +36,7 @@ async function findActiveAutoRenewRows(
 }
 
 /**
- * Cancel WayForPay recurring (regularApi REMOVE) and mark subscription_auto cancelled.
+ * Cancel WayForPay recurring (regularApi REMOVE all live rules) and mark subscription_auto cancelled.
  * Does not revoke paid-period access (grant end stays until janitor/sweep).
  */
 export async function cancelSubscriptionAutoForUser(
@@ -47,51 +44,44 @@ export async function cancelSubscriptionAutoForUser(
 ): Promise<CancelSubscriptionAutoResult> {
   const rows = await findActiveAutoRenewRows(userId);
   if (rows.length === 0) {
+    try {
+      await removeLiveWayforpayRegularsForUser(userId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { ok: false, kind: "error", message: message.slice(0, 300), cancelled: [] };
+    }
     return { ok: true, kind: "none" };
   }
 
+  try {
+    await removeLiveWayforpayRegularsForUser(userId);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      ok: false,
+      kind: "error",
+      message: message.slice(0, 300),
+      cancelled: [],
+    };
+  }
+
   const cancelled: CancelSubscriptionAutoRowResult[] = [];
+  const now = new Date();
 
   for (const row of rows) {
     const anchor = row.anchorOrderReference?.trim() ?? "";
-    let wayforpayStatus = row.wayforpayStatus;
-    let removedAtWayforpay = false;
-
-    try {
-      if (anchor) {
-        await removeWayforpayRegularPayment(anchor);
-        removedAtWayforpay = true;
-        try {
-          const after = await getWayforpayRegularPaymentStatus(anchor);
-          wayforpayStatus = after.status ?? "Removed";
-        } catch {
-          wayforpayStatus = "Removed";
-        }
-      }
-
-      const now = new Date();
-      await row.update({
-        autoRenewEnabled: false,
-        cancelledAt: now,
-        nextChargeAt: null,
-        wayforpayStatus,
-      });
-
-      cancelled.push({
-        id: row.id,
-        anchorOrderReference: anchor || null,
-        removedAtWayforpay,
-        wayforpayStatus,
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      return {
-        ok: false,
-        kind: "error",
-        message: message.slice(0, 300),
-        cancelled,
-      };
-    }
+    await row.update({
+      autoRenewEnabled: false,
+      cancelledAt: now,
+      nextChargeAt: null,
+      wayforpayStatus: "Removed",
+    });
+    cancelled.push({
+      id: row.id,
+      anchorOrderReference: anchor || null,
+      removedAtWayforpay: Boolean(anchor),
+      wayforpayStatus: "Removed",
+    });
   }
 
   return { ok: true, kind: "cancelled", cancelled };
